@@ -1,4 +1,4 @@
-import { CSSProperties, ChangeEvent, FormEvent, useEffect, useState } from "react";
+import React, { CSSProperties, ChangeEvent, FormEvent, useEffect, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -8,6 +8,12 @@ import {
   Check,
   CircleAlert,
   ChevronDown,
+  Wifi,
+  WifiOff,
+  Battery,
+  Edit3,
+  UserPlus,
+  UserMinus,
   Eye,
   Lock,
   LogOut,
@@ -16,9 +22,10 @@ import {
   Trash2,
   Upload,
   X,
-  UserRound
+  UserRound,
+  User
 } from "lucide-react";
-import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from "react-leaflet";
 import aeroInspectDrone from "./assets/aeroinspect-drone.png";
 
 type SessionUser = {
@@ -30,6 +37,12 @@ type MockUser = SessionUser & {
   username: string;
   password: string;
   active: boolean;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  email?: string;
+  company?: string;
+  location?: string;
 };
 
 type LockState = {
@@ -66,6 +79,23 @@ type MapMarker = {
   type: AssetType;
 };
 
+type InspectionPoint = {
+  id: number;
+  latitude: string;
+  longitude: string;
+};
+
+type InspectionMission = {
+  id: number;
+  name: string;
+  assetId: number;
+  assetName: string;
+  routePoints: InspectionPoint[];
+  status?: "Pendiente" | "En ejecución" | "Finalizada";
+  startedAt?: string;
+  finishedAt?: string;
+};
+
 type Plant = {
   id: string;
   name: string;
@@ -90,7 +120,9 @@ const ASSET_TYPE_COLORS: Record<AssetType, string> = {
   Tuberia: "#d8782c",
   Techo: "#5f6672"
 };
+const DRONE_OPERATION_ROLES = ["Tecnico de Mantenimiento"];
 const ASSETS_STORAGE_KEY = "aeroinspect.assets";
+const MISSIONS_STORAGE_KEY = "aeroinspect.missions";
 const ASSET_CONSULT_ROLES = ["Jefe de Planta", "Tecnico de Mantenimiento"];
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -135,6 +167,12 @@ const selectedMarkerIcon = L.divIcon({
   html: "<span></span>",
   iconAnchor: [4, 4],
   iconSize: [8, 8]
+});
+const missionRoutePointIcon = L.divIcon({
+  className: "leaflet-route-marker",
+  html: "<span></span>",
+  iconAnchor: [5, 5],
+  iconSize: [10, 10]
 });
 
 const MOCK_PLANT: Plant = {
@@ -236,6 +274,18 @@ function loadStoredAssets() {
     if (!storedAssets) return [];
 
     return JSON.parse(storedAssets) as Asset[];
+  } catch {
+    return [];
+  }
+}
+
+function loadStoredMissions() {
+  try {
+    const storedMissions = window.localStorage.getItem(MISSIONS_STORAGE_KEY);
+
+    if (!storedMissions) return [];
+
+    return JSON.parse(storedMissions) as InspectionMission[];
   } catch {
     return [];
   }
@@ -424,12 +474,26 @@ function Home({
 }) {
   const isRegisterAssetPath = currentPath === "/registro-activo";
   const isAssetsPath = currentPath === "/mis-activos";
+  const isMissionPath = currentPath === "/configurar-mision";
+  const isMissionsPath = currentPath === "/mis-misiones";
+  const isDronePath = currentPath === "/dron";
+  const isLaunchPath = currentPath === "/ejecutar-despegue";
+  const isProfilePath = currentPath === "/perfil";
+  const isRoleMgmtPath = currentPath === "/gestion-roles";
   const [assets, setAssets] = useState<Asset[]>(loadStoredAssets);
+  const [missions, setMissions] = useState<InspectionMission[]>(loadStoredMissions);
+  const [users, setUsers] = useState<MockUser[]>(REGISTERED_USERS);
+  const [droneConnected, setDroneConnected] = useState<boolean>(false);
+  const [battery, setBattery] = useState<number | null>(null);
   const userCanConsultAssets = canConsultAssets(user.role);
 
   useEffect(() => {
     window.localStorage.setItem(ASSETS_STORAGE_KEY, JSON.stringify(assets));
   }, [assets]);
+
+  useEffect(() => {
+    window.localStorage.setItem(MISSIONS_STORAGE_KEY, JSON.stringify(missions));
+  }, [missions]);
 
   const createAsset = (asset: Omit<Asset, "id" | "plantId">) => {
     setAssets((current) => [
@@ -438,6 +502,21 @@ function Home({
         ...asset,
         id: Date.now(),
         plantId: MOCK_PLANT.id
+      }
+    ]);
+  };
+
+  const updateAsset = (nextAsset: Asset) => {
+    setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)));
+  };
+
+  const createMission = (mission: Omit<InspectionMission, "id">) => {
+    setMissions((current) => [
+      ...current,
+      {
+        ...mission,
+        id: Date.now(),
+        status: "Pendiente"
       }
     ]);
   };
@@ -458,7 +537,7 @@ function Home({
             <Bell size={18} aria-hidden="true" />
             <span aria-hidden="true" />
           </button>
-          <button className="user-menu" type="button">
+          <button className="user-menu" type="button" onClick={() => navigateTo("/perfil")}>
             <span className="user-avatar">{getUserInitials(user.name)}</span>
             <span>{user.name}</span>
             <ChevronDown size={16} aria-hidden="true" />
@@ -468,7 +547,11 @@ function Home({
 
       <aside className="sidebar">
         <nav className="nav-list" aria-label="Principal">
-          <button className={!isRegisterAssetPath && !isAssetsPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
+          <button
+            className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath ? "active" : undefined}
+            onClick={() => navigateTo("/")}
+            type="button"
+          >
             Inicio
           </button>
           {user.role === "Jefe de Planta" && (
@@ -481,15 +564,36 @@ function Home({
             </button>
           )}
           {userCanConsultAssets && (
-            <button className={isAssetsPath ? "active" : undefined} onClick={() => navigateTo("/mis-activos")} type="button">
-              Mis activos
+            <>
+              <button className={isAssetsPath ? "active" : undefined} onClick={() => navigateTo("/mis-activos")} type="button">
+                Mis activos
+              </button>
+              <button className={isMissionsPath ? "active" : undefined} onClick={() => navigateTo("/mis-misiones")} type="button">
+                Mis misiones
+              </button>
+            </>
+          )}
+          {DRONE_OPERATION_ROLES.includes(user.role) && (
+            <>
+              <button className={isDronePath ? "active" : undefined} onClick={() => navigateTo("/dron")} type="button">
+                Dron
+              </button>
+              <button className={isLaunchPath ? "active" : undefined} onClick={() => navigateTo("/ejecutar-despegue")} type="button">
+                Ejecutar despegue
+              </button>
+            </>
+          )}
+          
+          {user.role === "Tecnico de Mantenimiento" && (
+            <button className={isMissionPath ? "active" : undefined} onClick={() => navigateTo("/configurar-mision")} type="button">
+              Configurar misión
             </button>
           )}
         </nav>
       </aside>
 
-      <section className={isRegisterAssetPath || isAssetsPath ? "workspace register-workspace" : "workspace"}>
-        {!isRegisterAssetPath && !isAssetsPath && (
+      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath ? "workspace register-workspace" : "workspace"}>
+        {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && user.role !== "Tecnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">
             <div>
               <p className="eyebrow">Bienvenida, {user.name}</p>
@@ -510,8 +614,45 @@ function Home({
           </header>
         )}
 
-        {isAssetsPath && userCanConsultAssets ? (
-          <MisActivosView assets={assets} onBack={() => navigateTo("/")} plant={MOCK_PLANT} />
+        {isProfilePath ? (
+          <ProfileView user={user} users={users} setUsers={setUsers} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onLogout={() => { navigateTo("/"); onLogout(); }} />
+        ) : isRoleMgmtPath && user.role === "Jefe de Planta" ? (
+          <RoleManagementView users={users} setUsers={setUsers} onBack={() => navigateTo("/")} />
+        ) : isMissionsPath ? (
+          <MisMisionesView
+            missions={missions}
+            assets={assets}
+            onBack={() => navigateTo("/")}
+            plant={MOCK_PLANT}
+          />
+        ) : isMissionPath && user.role === "Tecnico de Mantenimiento" ? (
+          <ConfigurarMisionView
+            assets={assets}
+            missions={missions}
+            onBack={() => navigateTo("/")}
+            onCreateMission={createMission}
+            plant={MOCK_PLANT}
+          />
+        ) : isLaunchPath && DRONE_OPERATION_ROLES.includes(user.role) ? (
+          <LaunchMissionView
+            missions={missions}
+            assets={assets}
+            droneConnected={droneConnected}
+            battery={battery}
+            setMissions={setMissions}
+            onBack={() => navigateTo("/")}
+            plant={MOCK_PLANT}
+          />
+        ) : isDronePath && DRONE_OPERATION_ROLES.includes(user.role) ? (
+          <DroneTelemetryView
+            onBack={() => navigateTo("/")}
+            droneConnected={droneConnected}
+            setDroneConnected={setDroneConnected}
+            battery={battery}
+            setBattery={setBattery}
+          />
+        ) : isAssetsPath && userCanConsultAssets ? (
+          <MisActivosView assets={assets} onBack={() => navigateTo("/")} onUpdateAsset={updateAsset} plant={MOCK_PLANT} />
         ) : user.role === "Jefe de Planta" ? (
           isRegisterAssetPath ? (
             <RegistrarActivoView
@@ -526,7 +667,13 @@ function Home({
             <JefePlantaView assets={assets} onRegisterAsset={() => navigateTo("/registro-activo")} plant={MOCK_PLANT} />
           )
         ) : (
-          <TecnicoMantenimientoView />
+          <section className="content-band">
+            <div>
+              <p className="eyebrow">Bienvenido</p>
+              <h2>Sistema AeroInspect</h2>
+              <p>Seleccione una opción en la barra lateral para comenzar.</p>
+            </div>
+          </section>
         )}
       </section>
     </main>
@@ -543,14 +690,18 @@ function getUserInitials(name: string) {
     .toUpperCase();
 }
 
-function TecnicoMantenimientoView() {
+function TecnicoMantenimientoView({ onCreateMission }: { onCreateMission: () => void }) {
   return (
     <section className="content-band">
       <div>
         <p className="eyebrow">Vista por rol</p>
         <h2>Tecnico de Mantenimiento</h2>
-        <p>Placeholder de la vista tecnica. La armamos cuando definamos el flujo.</p>
+        <p>Planifica misiones de inspeccion sobre activos registrados.</p>
       </div>
+      <button className="secondary-button" onClick={onCreateMission} type="button">
+        Configurar misión
+        <ArrowRight size={18} aria-hidden="true" />
+      </button>
     </section>
   );
 }
@@ -596,6 +747,234 @@ function JefePlantaView({
           <span>Activos registrados: {assets.filter((asset) => asset.plantId === plant.id).length}</span>
         </div>
       </div>
+    </section>
+  );
+}
+
+function ConfigurarMisionView({
+  assets,
+  missions,
+  onBack,
+  onCreateMission,
+  plant
+}: {
+  assets: Asset[];
+  missions: InspectionMission[];
+  onBack: () => void;
+  onCreateMission: (mission: Omit<InspectionMission, "id">) => void;
+  plant: Plant;
+}) {
+  const plantAssets = assets.filter((asset) => asset.plantId === plant.id);
+  const [missionName, setMissionName] = useState("");
+  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(plantAssets[0]?.id ?? null);
+  const [isAssetOpen, setIsAssetOpen] = useState(false);
+  const [routePoints, setRoutePoints] = useState<InspectionPoint[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<"name" | "asset" | "route", string>>>({});
+  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const selectedAsset = plantAssets.find((asset) => asset.id === selectedAssetId) ?? null;
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFieldErrors({});
+    setIsSuccessOpen(false);
+
+    if (plantAssets.length === 0) {
+      setFieldErrors({ asset: "No hay activos disponibles para configurar una mision." });
+      return;
+    }
+
+    const nextFieldErrors: Partial<Record<"name" | "asset" | "route", string>> = {};
+
+    if (!missionName.trim()) nextFieldErrors.name = "Ingrese nombre de la mision.";
+    if (!selectedAsset) nextFieldErrors.asset = "Seleccione un activo a inspeccionar.";
+    if (routePoints.length === 0) nextFieldErrors.route = "Defina al menos un punto de inspeccion.";
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      return;
+    }
+
+    if (missionName.length > 100) {
+      setFieldErrors({ name: "El nombre de la mision no puede superar los 100 caracteres." });
+      return;
+    }
+
+    const missionExists = missions.some(
+      (mission) => mission.assetId === selectedAsset?.id && mission.name.trim().toLowerCase() === missionName.trim().toLowerCase()
+    );
+
+    if (missionExists) {
+      setFieldErrors({ name: "Ya existe una mision con ese nombre para el activo seleccionado." });
+      return;
+    }
+
+    onCreateMission({
+      name: missionName.trim(),
+      assetId: selectedAsset!.id,
+      assetName: selectedAsset!.name,
+      routePoints
+    });
+
+    setMissionName("");
+    setSelectedAssetId(plantAssets[0]?.id ?? null);
+    setRoutePoints([]);
+    setIsSuccessOpen(true);
+  };
+
+  return (
+    <section className="asset-page">
+      <header className="asset-header">
+        <button className="back-link" onClick={onBack} type="button">
+          <ArrowLeft size={18} aria-hidden="true" />
+          Volver
+        </button>
+        <div>
+          <p className="asset-title">Configurar misión</p>
+          <p>Crear una planificacion de vuelo asociada a un activo registrado para su posterior ejecucion.</p>
+        </div>
+      </header>
+
+      <form className="asset-form" onSubmit={handleSubmit}>
+        <section className="form-panel">
+          {plantAssets.length === 0 && <p className="empty-assets">No hay activos registrados. Primero debe darse de alta un activo.</p>}
+
+          <div className="field-grid">
+            <label>
+              <span className="field-label">
+                <span>Nombre de la misión <small>*</small></span>
+              </span>
+              <input
+                aria-invalid={Boolean(fieldErrors.name)}
+                className={fieldErrors.name ? "field-invalid" : undefined}
+                disabled={plantAssets.length === 0}
+                maxLength={100}
+                onChange={(event) => setMissionName(event.target.value)}
+                placeholder="Ej: Inspeccion Silo Sur"
+                type="text"
+                value={missionName}
+              />
+              {fieldErrors.name && <FieldError message={fieldErrors.name} />}
+            </label>
+
+            <label>
+              <span className="field-label">
+                <span>Activo a inspeccionar <small>*</small></span>
+              </span>
+              <div className="asset-select">
+                <button
+                  aria-expanded={isAssetOpen}
+                  aria-haspopup="listbox"
+                  className={fieldErrors.asset ? "asset-select-trigger field-invalid" : "asset-select-trigger"}
+                  disabled={plantAssets.length === 0}
+                  onClick={() => setIsAssetOpen((current) => !current)}
+                  type="button"
+                >
+                  <span className={selectedAsset ? undefined : "select-placeholder"}>{selectedAsset?.name || "Seleccionar activo"}</span>
+                  <ChevronDown size={17} aria-hidden="true" />
+                </button>
+
+                {isAssetOpen && plantAssets.length > 0 && (
+                  <div className="asset-select-menu" role="listbox">
+                    {plantAssets.map((asset) => (
+                      <button
+                        className={selectedAssetId === asset.id ? "selected" : undefined}
+                        key={asset.id}
+                        onClick={() => {
+                          setSelectedAssetId(asset.id);
+                          setIsAssetOpen(false);
+                          setRoutePoints([]);
+                        }}
+                        role="option"
+                        type="button"
+                      >
+                        {asset.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {fieldErrors.asset && <FieldError message={fieldErrors.asset} />}
+            </label>
+          </div>
+        </section>
+
+        <section className="map-placeholder">
+          <div>
+            <div>
+              <p className="map-field-label">Recorrido de inspección</p>
+            </div>
+          </div>
+          <p className="map-help">Selecciona uno o mas puntos sobre el mapa para definir el recorrido de la mision.</p>
+
+          <div className="mission-layout">
+            <MissionRouteMap
+              asset={selectedAsset}
+              disabled={plantAssets.length === 0}
+              onAddPoint={(point) => {
+                setRoutePoints((current) => [...current, { ...point, id: Date.now() + current.length }]);
+                setFieldErrors((current) => ({ ...current, route: undefined }));
+              }}
+              plant={plant}
+              routePoints={routePoints}
+            />
+
+            <div className="mission-route-panel">
+              <div>
+                <p className="map-field-label">Puntos definidos</p>
+                <p>{routePoints.length} puntos de inspeccion</p>
+              </div>
+
+              {routePoints.length === 0 ? (
+                <p className="mission-empty">No hay puntos definidos.</p>
+              ) : (
+                <div className="mission-point-list">
+                  {routePoints.map((point, index) => (
+                    <div className="mission-point-row" key={point.id}>
+                      <span>{index + 1}</span>
+                      <p>{point.latitude}, {point.longitude}</p>
+                      <button
+                        aria-label="Quitar punto"
+                        onClick={() => setRoutePoints((current) => current.filter((item) => item.id !== point.id))}
+                        type="button"
+                      >
+                        <X size={15} aria-hidden="true" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {routePoints.length > 0 && (
+                <button className="modal-link-button" onClick={() => setRoutePoints([])} type="button">
+                  Limpiar recorrido
+                </button>
+              )}
+            </div>
+          </div>
+          {fieldErrors.route && <FieldError message={fieldErrors.route} />}
+        </section>
+
+        <div className="form-actions">
+          <button className="register-button" disabled={plantAssets.length === 0} type="submit">
+            <Save size={18} aria-hidden="true" />
+            Registrar misión
+          </button>
+        </div>
+      </form>
+
+      {isSuccessOpen && (
+        <MissionSuccessModal
+          onClose={() => setIsSuccessOpen(false)}
+          onGoHome={() => {
+            setIsSuccessOpen(false);
+            navigateTo("/");
+          }}
+          onViewMissions={() => {
+            setIsSuccessOpen(false);
+            navigateTo("/mis-misiones");
+          }}
+        />
+      )}
     </section>
   );
 }
@@ -956,8 +1335,19 @@ function RegistrarActivoView({
   );
 }
 
-function MisActivosView({ assets, onBack, plant }: { assets: Asset[]; onBack: () => void; plant: Plant }) {
+function MisActivosView({
+  assets,
+  onBack,
+  onUpdateAsset,
+  plant
+}: {
+  assets: Asset[];
+  onBack: () => void;
+  onUpdateAsset: (asset: Asset) => void;
+  plant: Plant;
+}) {
   const [typeFilter, setTypeFilter] = useState<AssetType | "Todos">("Todos");
+  const [detailAsset, setDetailAsset] = useState<Asset | null>(null);
   const plantAssets = assets.filter((asset) => asset.plantId === plant.id);
   const filteredAssets = typeFilter === "Todos" ? plantAssets : plantAssets.filter((asset) => asset.type === typeFilter);
   const markers = filteredAssets.map((asset) => ({
@@ -1022,6 +1412,7 @@ function MisActivosView({ assets, onBack, plant }: { assets: Asset[]; onBack: ()
                     <th>Nombre</th>
                     <th>Tipo</th>
                     <th>Ubicacion</th>
+                    <th>Detalle</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1039,12 +1430,688 @@ function MisActivosView({ assets, onBack, plant }: { assets: Asset[]; onBack: ()
                           {asset.latitude}, {asset.longitude}
                         </span>
                       </td>
+                      <td>
+                        <button className="table-detail-button" onClick={() => setDetailAsset(asset)} type="button">
+                          Ver detalle
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
+        </div>
+      </section>
+
+      {detailAsset && (
+        <AssetDetailModal
+          asset={detailAsset}
+          onClose={() => setDetailAsset(null)}
+          onUpdateAsset={(nextAsset) => {
+            setDetailAsset(nextAsset);
+            onUpdateAsset(nextAsset);
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
+function AssetDetailModal({
+  asset,
+  onClose,
+  onUpdateAsset
+}: {
+  asset: Asset;
+  onClose: () => void;
+  onUpdateAsset: (asset: Asset) => void;
+}) {
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const assetImages = asset.images ?? [];
+  const selectedImage = selectedImageIndex !== null ? assetImages[selectedImageIndex] : null;
+
+  const deleteSelectedImage = () => {
+    if (selectedImageIndex === null) return;
+
+    onUpdateAsset({
+      ...asset,
+      images: assetImages.filter((_, index) => index !== selectedImageIndex)
+    });
+    setSelectedImageIndex(null);
+  };
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section aria-modal="true" className="asset-detail-modal" role="dialog">
+        <div className="asset-detail-header">
+          <div>
+            <h2>{asset.name}</h2>
+          </div>
+          <button aria-label="Cerrar detalle" className="modal-link-button" onClick={onClose} type="button">
+            <X size={17} aria-hidden="true" />
+            Cerrar
+          </button>
+        </div>
+
+        <div className="asset-detail-section">
+          <h3>Descripcion</h3>
+          <p>{asset.description || "Sin descripcion cargada."}</p>
+        </div>
+
+        <div className="asset-detail-section">
+          <h3>Imagenes asociadas</h3>
+          {assetImages.length > 0 ? (
+            <div className="asset-detail-images">
+              {assetImages.map((image, index) => (
+                <button key={image.id} onClick={() => setSelectedImageIndex(index)} type="button">
+                  <img alt={image.name} src={image.preview} />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p>Sin imagenes cargadas.</p>
+          )}
+        </div>
+      </section>
+
+      {selectedImage && (
+        <div className="image-modal-backdrop" role="presentation">
+          <section aria-modal="true" className="image-modal" role="dialog">
+            <div className="image-modal-actions">
+              <button aria-label="Cerrar vista previa" onClick={() => setSelectedImageIndex(null)} type="button">
+                <X size={18} aria-hidden="true" />
+              </button>
+              <button aria-label="Eliminar imagen" onClick={deleteSelectedImage} type="button">
+                <Trash2 size={18} aria-hidden="true" />
+              </button>
+            </div>
+            <img alt={selectedImage.name} src={selectedImage.preview} />
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MisMisionesView({
+  missions,
+  assets,
+  onBack,
+  plant
+}: {
+  missions: InspectionMission[];
+  assets: Asset[];
+  onBack: () => void;
+  plant: Plant;
+}) {
+  const [detailMission, setDetailMission] = useState<InspectionMission | null>(null);
+  const plantAssetIds = assets.filter((a) => a.plantId === plant.id).map((a) => a.id);
+  const plantMissions = missions.filter((m) => plantAssetIds.includes(m.assetId));
+
+  return (
+    <section className="asset-page">
+      <header className="asset-header">
+        <button className="back-link" onClick={onBack} type="button">
+          <ArrowLeft size={18} aria-hidden="true" />
+          Volver
+        </button>
+        <div>
+          <p className="asset-title">Mis misiones</p>
+          <p>Listado de misiones de inspección registradas para esta planta.</p>
+        </div>
+      </header>
+
+      <section className="assets-consult">
+        <div className="assets-table-panel">
+          <div className="assets-table-toolbar">
+            <div>
+              <p className="map-field-label">Misiones registradas</p>
+              <p>Cantidad: {plantMissions.length}</p>
+            </div>
+          </div>
+
+          {plantMissions.length === 0 ? (
+            <p className="empty-assets">No hay misiones registradas.</p>
+          ) : (
+            <div className="assets-table-wrap">
+              <table className="assets-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Activo</th>
+                    <th>Puntos</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plantMissions.map((mission) => (
+                    <tr key={mission.id}>
+                      <td>{mission.name}</td>
+                      <td>{mission.assetName}</td>
+                      <td>{mission.routePoints.length}</td>
+                      <td>
+                        <button className="table-detail-button" onClick={() => setDetailMission(mission)} type="button">
+                          Ver detalle
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {detailMission && (
+        <div className="modal-backdrop" role="presentation">
+          <section aria-modal="true" className="asset-detail-modal" role="dialog">
+            <div className="asset-detail-header">
+              <div>
+                <h2>{detailMission.name}</h2>
+                <p>Activo: {detailMission.assetName}</p>
+                <p>Puntos definidos: {detailMission.routePoints.length}</p>
+              </div>
+              <button aria-label="Cerrar detalle" className="modal-link-button" onClick={() => setDetailMission(null)} type="button">
+                <X size={17} aria-hidden="true" />
+                Cerrar
+              </button>
+            </div>
+
+            <div className="asset-detail-section">
+              <MissionRouteMap
+                asset={assets.find((a) => a.id === detailMission.assetId) ?? null}
+                disabled={true}
+                onAddPoint={() => {}}
+                plant={plant}
+                routePoints={detailMission.routePoints}
+              />
+            </div>
+          </section>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function DroneTelemetryView({
+  onBack,
+  droneConnected,
+  setDroneConnected,
+  battery,
+  setBattery
+}: {
+  onBack: () => void;
+  droneConnected: boolean;
+  setDroneConnected: (v: boolean) => void;
+  battery: number | null;
+  setBattery: (v: number | null) => void;
+}) {
+  const [showAlert, setShowAlert] = useState<string | null>(null);
+
+  // Simulate telemetry updates when connected
+  useEffect(() => {
+    let interval: number | undefined;
+
+    if (droneConnected) {
+      setShowAlert(null);
+      if (battery === null) setBattery(100);
+      interval = window.setInterval(() => {
+        setBattery((b) => {
+          if (b === null) return 100;
+          const next = Math.max(0, b - 1);
+          if (next === 0) {
+            // simulate connection loss when battery drains
+            setDroneConnected(false);
+            setShowAlert("El dron ha perdido la conexion (bateria 0%).");
+            return 0;
+          }
+          return next;
+        });
+      }, 2000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [droneConnected]);
+
+  useEffect(() => {
+    if (!droneConnected) {
+      // while disconnected telemetry shouldn't update
+      setShowAlert((s) => s ?? "Dron desconectado. Telemetria no disponible.");
+    }
+  }, [droneConnected]);
+
+  const generalStatus = !droneConnected ? "No disponible para operar" : battery !== null && battery >= 30 ? "Listo para operar" : "No disponible para operar";
+
+  return (
+    <section className="asset-page">
+      <header className="asset-header">
+        <button className="back-link" onClick={onBack} type="button">
+          <ArrowLeft size={18} aria-hidden="true" />
+          Volver
+        </button>
+        <div>
+          <p className="asset-title">Telemetría del dron</p>
+          <p>Visualiza el estado del dron antes del despegue.</p>
+        </div>
+      </header>
+
+      <section className="drone-telemetry">
+        <div className="telemetry-card">
+          <div className="telemetry-row">
+            <strong>Estado de conexión:</strong>
+            <span className={droneConnected ? "status-connected" : "status-disconnected"}>
+              {droneConnected ? (
+                <>
+                  <Wifi size={16} aria-hidden="true" /> Conectado
+                </>
+              ) : (
+                <>
+                  <WifiOff size={16} aria-hidden="true" /> Desconectado
+                </>
+              )}
+            </span>
+          </div>
+
+          <div className="telemetry-row">
+            <strong>Nivel de batería:</strong>
+            <span>{battery === null ? "—" : `${battery}%`}</span>
+          </div>
+
+          <div className="telemetry-row">
+            <strong>Estado general:</strong>
+            <span>{generalStatus}</span>
+          </div>
+
+          {showAlert && (
+            <div className="telemetry-alert">
+              <CircleAlert size={16} aria-hidden="true" /> {showAlert}
+            </div>
+          )}
+
+          <div className="telemetry-actions">
+            <button className="modal-link-button" onClick={() => setDroneConnected((c) => !c)} type="button">
+              {droneConnected ? "Simular desconexion" : "Simular conexion"}
+            </button>
+            <button
+              className="register-button"
+              onClick={() => {
+                setBattery(100);
+                setShowAlert(null);
+              }}
+              type="button"
+            >
+              Reset bateria
+            </button>
+          </div>
+        </div>
+
+        {!droneConnected && (
+          <p className="empty-assets">No hay dispositivos disponibles para monitoreo.</p>
+        )}
+      </section>
+    </section>
+  );
+}
+
+function LaunchMissionView({
+  missions,
+  assets,
+  droneConnected,
+  battery,
+  setMissions,
+  onBack,
+  plant
+}: {
+  missions: InspectionMission[];
+  assets: Asset[];
+  droneConnected: boolean;
+  battery: number | null;
+  setMissions: React.Dispatch<React.SetStateAction<InspectionMission[]>>;
+  onBack: () => void;
+  plant: Plant;
+}) {
+  const [selectedMissionId, setSelectedMissionId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [running, setRunning] = useState<boolean>(false);
+
+  const plantAssetIds = assets.filter((a) => a.plantId === plant.id).map((a) => a.id);
+  const plantMissions = missions.filter((m) => plantAssetIds.includes(m.assetId));
+
+  const selectedMission = plantMissions.find((m) => m.id === selectedMissionId) ?? null;
+
+  const MIN_BATTERY = 30;
+
+  const handleStart = () => {
+    setError(null);
+
+    if (!selectedMission) {
+      setError("No hay ninguna misión seleccionada.");
+      return;
+    }
+
+    if (!droneConnected) {
+      setError("El dron no está conectado. Imposible iniciar la misión.");
+      return;
+    }
+
+    if (battery === null || battery < MIN_BATTERY) {
+      setError("Batería insuficiente para iniciar la misión.");
+      return;
+    }
+
+    // start mission
+    setRunning(true);
+    const startTime = new Date().toISOString();
+    setMissions((current) => current.map((m) => (m.id === selectedMission.id ? { ...m, status: "En ejecución", startedAt: startTime } : m)));
+
+    // simulate mission duration then finish
+    setTimeout(() => {
+      const endTime = new Date().toISOString();
+      setMissions((current) => current.map((m) => (m.id === selectedMission.id ? { ...m, status: "Finalizada", finishedAt: endTime } : m)));
+      setRunning(false);
+    }, 5000);
+  };
+
+  return (
+    <section className="asset-page">
+      <header className="asset-header">
+        <button className="back-link" onClick={onBack} type="button">
+          <ArrowLeft size={18} aria-hidden="true" />
+          Volver
+        </button>
+        <div>
+          <p className="asset-title">Ejecutar despegue</p>
+          <p>Seleccione una misión y ejecute el despegue si el dron está disponible.</p>
+        </div>
+      </header>
+
+      <section className="launch-mission">
+        <div className="assets-table-panel">
+          <div className="assets-table-toolbar">
+            <div>
+              <p className="map-field-label">Misión a ejecutar</p>
+              <p>Cantidad: {plantMissions.length}</p>
+            </div>
+          </div>
+
+          {plantMissions.length === 0 ? (
+            <p className="empty-assets">No hay misiones configuradas.</p>
+          ) : (
+            <div className="assets-table-wrap">
+              <table className="assets-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Activo</th>
+                    <th>Estado</th>
+                    <th>Seleccionar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plantMissions.map((mission) => (
+                    <tr key={mission.id} className={selectedMissionId === mission.id ? "selected-row" : undefined}>
+                      <td>{mission.name}</td>
+                      <td>{mission.assetName}</td>
+                      <td>{mission.status ?? "Pendiente"}</td>
+                      <td>
+                        <button className="table-detail-button" onClick={() => setSelectedMissionId(mission.id)} type="button">
+                          Seleccionar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="mission-preview">
+          {selectedMission ? (
+            <>
+              <h3>Preview: {selectedMission.name}</h3>
+              <MissionRouteMap
+                asset={assets.find((a) => a.id === selectedMission.assetId) ?? null}
+                disabled={true}
+                onAddPoint={() => {}}
+                plant={plant}
+                routePoints={selectedMission.routePoints}
+              />
+
+              {error && <p className="form-error">{error}</p>}
+
+              <div className="form-actions">
+                <button className="register-button" disabled={running} onClick={handleStart} type="button">
+                  {running ? "En ejecución..." : "Iniciar despegue"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="empty-assets">Selecciona una misión para ver su recorrido.</p>
+          )}
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function ProfileView({ user, users, setUsers, onBack, onAssignRoles, onLogout }: { user: SessionUser; users: MockUser[]; setUsers: React.Dispatch<React.SetStateAction<MockUser[]>>; onBack: () => void; onAssignRoles: () => void; onLogout: () => void }) {
+  const userEntry = users.find((u) => u.name === user.name) ?? null;
+  const firstName = userEntry?.firstName ?? user.name.split(" ")[0] ?? user.name;
+  const lastName = userEntry?.lastName ?? user.name.split(" ").slice(1).join(" ") ?? "";
+  const phone = userEntry?.phone ?? "";
+  const email = userEntry?.email ?? (userEntry ? `${userEntry.username}@example.com` : "");
+  const company = userEntry?.company ?? "Mi Empresa";
+  const location = userEntry?.location ?? "Ubicación";
+  const jefe = users.find((u) => u.role === "Jefe de Planta")?.name ?? "-";
+  const [showChange, setShowChange] = useState(false);
+  const [currentPwd, setCurrentPwd] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [pwdMessage, setPwdMessage] = useState<string | null>(null);
+
+  return (
+    <section className="asset-page">
+      <header className="asset-header">
+        <button className="back-link" onClick={onBack} type="button">
+          <ArrowLeft size={18} aria-hidden="true" />
+          Volver
+        </button>
+      </header>
+
+      <section className="profile-view">
+      <div className="profile-card">
+
+        <div className="profile-header">
+          <div className="profile-avatar">
+            <User size={50} />
+          </div>
+
+          <h2>{firstName} {lastName}</h2>
+
+          <span className="profile-role">
+            {user.role}
+          </span>
+        </div>
+
+        <div className="profile-section">
+          <h3>Información personal</h3>
+
+          <div className="profile-field">
+            <label>Nombre</label>
+            <span>{firstName}</span>
+          </div>
+
+          <div className="profile-field">
+            <label>Apellido</label>
+            <span>{lastName}</span>
+          </div>
+
+          <div className="profile-field">
+            <label>Teléfono</label>
+            <span>{phone || "—"}</span>
+          </div>
+
+          <div className="profile-field">
+            <label>Email</label>
+            <span>{email}</span>
+          </div>
+
+          <div className="profile-field">
+            <label>Empresa</label>
+            <span>{company}</span>
+          </div>
+
+          <div className="profile-field">
+            <label>Ubicación</label>
+            <span>{location}</span>
+          </div>
+
+          {user.role === "Tecnico de Mantenimiento" && (
+            <div className="profile-field">
+              <label>Jefe de Planta</label>
+              <span>{jefe}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="profile-actions">
+          <button
+            className="secondary-button"
+            onClick={() => setShowChange((s) => !s)}
+            type="button"
+          >
+            Cambiar contraseña
+          </button>
+
+          {user.role === "Jefe de Planta" && (
+            <button
+              className="secondary-button"
+              onClick={onAssignRoles}
+              type="button"
+            >
+              Asignar roles
+            </button>
+          )}
+
+          <button
+            className="logout-button"
+            onClick={onLogout}
+            type="button"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+
+          {showChange && (
+            <div className="change-password">
+              <label>Contraseña actual<input type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)} /></label>
+              <label>Nueva contraseña<input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} /></label>
+              <label>Confirmar contraseña<input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} /></label>
+              {pwdMessage && <p className="form-error">{pwdMessage}</p>}
+              <div>
+                <button className="register-button" onClick={() => {
+                  setPwdMessage(null);
+                  if (!userEntry) { setPwdMessage("Cuenta local no encontrada."); return; }
+                  if (userEntry.password !== currentPwd) { setPwdMessage("Contraseña actual incorrecta."); return; }
+                  if (!newPwd || newPwd !== confirmPwd) { setPwdMessage("Las contraseñas no coinciden."); return; }
+                  // update user password
+                  setUsers((u) => u.map(x => x.username === userEntry.username ? { ...x, password: newPwd } : x));
+                  setPwdMessage("Contraseña actualizada.");
+                  setShowChange(false);
+                  setCurrentPwd(""); setNewPwd(""); setConfirmPwd("");
+                }} type="button">Guardar</button>
+                <button className="modal-link-button" onClick={() => setShowChange(false)} type="button">Cancelar</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {user.role === "Jefe de Planta" && (
+          <div className="profile-list">
+            <h3>Técnicos de Mantenimiento a cargo</h3>
+            <ul>
+              {users.filter((u) => u.role === "Tecnico de Mantenimiento").map((t) => (
+                <li key={t.username}>{t.name} — {t.active ? "Activo" : "Inactivo"}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+    </section>
+  );
+}
+
+function RoleManagementView({ users, setUsers, onBack }: { users: MockUser[]; setUsers: React.Dispatch<React.SetStateAction<MockUser[]>>; onBack: () => void }) {
+  const [form, setForm] = useState({ username: "", password: "", name: "", role: "Tecnico de Mantenimiento", active: true });
+
+  const handleCreate = () => {
+    if (!form.username || !form.password || !form.name) return;
+    setUsers((current) => [...current, { username: form.username, password: form.password, name: form.name, role: form.role as any, active: form.active }]);
+    setForm({ username: "", password: "", name: "", role: "Tecnico de Mantenimiento", active: true });
+  };
+
+  const handleDelete = (username: string) => {
+    setUsers((current) => current.filter((u) => u.username !== username));
+  };
+
+  const handleRoleChange = (username: string, role: string) => {
+    setUsers((current) => current.map((u) => (u.username === username ? { ...u, role } : u)));
+  };
+
+  return (
+    <section className="asset-page">
+      <header className="asset-header">
+        <button className="back-link" onClick={onBack} type="button">
+          <ArrowLeft size={18} aria-hidden="true" />
+          Volver
+        </button>
+        <div>
+          <p className="asset-title">Gestión de usuarios</p>
+          <p>Crear, editar y asignar roles a cuentas del sistema.</p>
+        </div>
+      </header>
+
+      <section className="role-management">
+        <div className="create-user">
+          <h3>Crear cuenta</h3>
+          <label>Usuario<input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} /></label>
+          <label>Nombre<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+          <label>Clave<input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></label>
+          <label>Rol<select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}><option>Tecnico de Mantenimiento</option><option>Jefe de Planta</option></select></label>
+          <label>Activo<input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} /></label>
+          <div><button className="register-button" onClick={handleCreate} type="button">Crear cuenta</button></div>
+        </div>
+
+        <div className="users-table">
+          <h3>Usuarios registrados</h3>
+          <table className="assets-table">
+            <thead>
+              <tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Activo</th><th>Acciones</th></tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.username}>
+                  <td>{u.username}</td>
+                  <td>{u.name}</td>
+                  <td>
+                    <select value={u.role} onChange={(e) => handleRoleChange(u.username, e.target.value)}>
+                      <option>Jefe de Planta</option>
+                      <option>Tecnico de Mantenimiento</option>
+                    </select>
+                  </td>
+                  <td>{u.active ? "Sí" : "No"}</td>
+                  <td>
+                    <button className="modal-link-button" onClick={() => handleDelete(u.username)} type="button"><UserMinus size={16} aria-hidden="true" /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
     </section>
@@ -1079,6 +2146,87 @@ function SuccessModal({
           </button>
         </div>
       </section>
+    </div>
+  );
+}
+
+function MissionSuccessModal({ onClose, onGoHome, onViewMissions }: { onClose: () => void; onGoHome: () => void; onViewMissions: () => void }) {
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section aria-modal="true" className="success-modal" role="dialog">
+        <div className="success-icon">
+          <Check size={24} aria-hidden="true" />
+        </div>
+        <h2>Misión registrada</h2>
+        <p>Ya esta disponible para su posterior ejecucion.</p>
+        <div className="modal-actions">
+          <button className="modal-link-button" onClick={onGoHome} type="button">
+            <ArrowLeft size={18} aria-hidden="true" />
+            Volver a Home
+          </button>
+          <button className="register-button" onClick={onViewMissions} type="button">
+            Ver misiones
+            <ArrowRight size={18} aria-hidden="true" />
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function MissionRouteMap({
+  asset,
+  disabled,
+  onAddPoint,
+  plant,
+  routePoints
+}: {
+  asset: Asset | null;
+  disabled: boolean;
+  onAddPoint: (point: { latitude: string; longitude: string }) => void;
+  plant: Plant;
+  routePoints: InspectionPoint[];
+}) {
+  const center: [number, number] = asset
+    ? [Number(asset.latitude), Number(asset.longitude)]
+    : [Number(plant.center.latitude), Number(plant.center.longitude)];
+  const routePositions: Array<[number, number]> = routePoints.map((point) => [Number(point.latitude), Number(point.longitude)]);
+
+  return (
+    <div className="leaflet-map-shell">
+      <MapContainer center={center} className="leaflet-map" maxZoom={SATELLITE_LAYER.maxZoom} minZoom={16} scrollWheelZoom zoom={18} zoomControl>
+        <TileLayer
+          attribution={SATELLITE_LAYER.attribution}
+          maxNativeZoom={SATELLITE_LAYER.maxNativeZoom}
+          maxZoom={SATELLITE_LAYER.maxZoom}
+          tileSize={SATELLITE_LAYER.tileSize}
+          url={SATELLITE_LAYER.url}
+          zoomOffset={SATELLITE_LAYER.zoomOffset}
+        />
+
+        {asset && (
+          <Marker
+            bubblingMouseEvents={false}
+            icon={createAssetMarkerIcon(asset.type)}
+            position={[Number(asset.latitude), Number(asset.longitude)]}
+            title={asset.name}
+          />
+        )}
+
+        {routePositions.length > 1 && <Polyline color="#111827" positions={routePositions} weight={2} />}
+
+        {routePoints.map((point) => (
+          <Marker
+            bubblingMouseEvents={false}
+            icon={missionRoutePointIcon}
+            key={point.id}
+            position={[Number(point.latitude), Number(point.longitude)]}
+            title="Punto de inspeccion"
+          />
+        ))}
+
+        {!disabled && <MapClickHandler onSelect={onAddPoint} />}
+      </MapContainer>
     </div>
   );
 }
