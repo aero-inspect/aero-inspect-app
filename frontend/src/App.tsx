@@ -1,4 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import {
   ArrowRight,
   ArrowLeft,
@@ -12,6 +14,7 @@ import {
   Save,
   UserRound
 } from "lucide-react";
+import { MapContainer, Marker, Polygon, TileLayer, useMapEvents } from "react-leaflet";
 import aeroInspectDrone from "./assets/aeroinspect-drone.png";
 
 type SessionUser = {
@@ -66,6 +69,46 @@ type Plant = {
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCK_TIME_MS = 15 * 60 * 1000;
 const ASSET_TYPES: AssetType[] = ["Silo", "Noria", "Cinta transportadora", "Tuberia", "Techo"];
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+const SATELLITE_LAYER = MAPTILER_KEY
+  ? {
+      attribution: "Imagery MapTiler",
+      maxNativeZoom: 22,
+      maxZoom: 22,
+      tileSize: 512,
+      url: `https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=${MAPTILER_KEY}`,
+      zoomOffset: -1
+    }
+  : MAPBOX_TOKEN
+  ? {
+      attribution: "Imagery Mapbox",
+      maxNativeZoom: 22,
+      maxZoom: 22,
+      tileSize: 512,
+      url: `https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.jpg90?access_token=${MAPBOX_TOKEN}`,
+      zoomOffset: -1
+    }
+  : {
+      attribution: "Tiles Esri",
+      maxNativeZoom: 19,
+      maxZoom: 19,
+      tileSize: 256,
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      zoomOffset: 0
+    };
+const assetMarkerIcon = L.divIcon({
+  className: "leaflet-asset-marker",
+  html: '<span></span>',
+  iconAnchor: [10, 10],
+  iconSize: [20, 20]
+});
+const selectedMarkerIcon = L.divIcon({
+  className: "leaflet-asset-marker selected",
+  html: '<span></span>',
+  iconAnchor: [6, 6],
+  iconSize: [12, 12]
+});
 
 const MOCK_PLANT: Plant = {
   id: "planta-principal",
@@ -483,7 +526,7 @@ function JefePlantaView({
       </div>
 
       <div className="plant-map-shell">
-        <StaticSatelliteMap
+        <LeafletSatelliteMap
           markers={assets
             .filter((asset) => asset.plantId === plant.id)
             .map((asset) => ({
@@ -562,7 +605,7 @@ function RegistrarActivoView({
 
     onCreateAsset({
       name: name.trim(),
-      type,
+      type: type as AssetType,
       latitude: latitude.trim(),
       longitude: longitude.trim(),
       description: description.trim()
@@ -673,7 +716,7 @@ function RegistrarActivoView({
           </div>
           <p>Selecciona el punto exacto dentro de la planta. Las coordenadas se completan automaticamente.</p>
 
-          <StaticSatelliteMap
+          <LeafletSatelliteMap
             markers={assets
               .filter((asset) => asset.plantId === plant.id)
               .map((asset) => ({
@@ -736,7 +779,7 @@ function RegistrarActivoView({
   );
 }
 
-function StaticSatelliteMap({
+function LeafletSatelliteMap({
   markers,
   onSelect,
   plant,
@@ -747,77 +790,58 @@ function StaticSatelliteMap({
   plant: Plant;
   selectedLocation?: { latitude: string; longitude: string };
 }) {
-  const bounds = getPlantBounds(plant);
-  const imageUrl = getStaticMapUrl(bounds);
-  const boundaryPoints = plant.bounds.map((point) => `${getLongitudePercent(point.longitude, bounds)}%,${getLatitudePercent(point.latitude, bounds)}%`).join(" ");
-  const getMarkerStyle = (latitude: string, longitude: string) => ({
-    left: `${getLongitudePercent(longitude, bounds)}%`,
-    top: `${getLatitudePercent(latitude, bounds)}%`
-  });
-
-  const handleMapClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!onSelect) return;
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const xPercent = (event.clientX - rect.left) / rect.width;
-    const yPercent = (event.clientY - rect.top) / rect.height;
-    const longitude = bounds.west + (bounds.east - bounds.west) * xPercent;
-    const latitude = bounds.north - (bounds.north - bounds.south) * yPercent;
-
-    onSelect({
-      latitude: latitude.toFixed(6),
-      longitude: longitude.toFixed(6)
-    });
-  };
+  const center: [number, number] = [Number(plant.center.latitude), Number(plant.center.longitude)];
+  const polygon = plant.bounds.map((point) => [Number(point.latitude), Number(point.longitude)] as [number, number]);
 
   return (
-    <div className={onSelect ? "static-map interactive" : "static-map"} onClick={handleMapClick}>
-      <img alt="Mapa satelital de la planta" draggable={false} src={imageUrl} />
+    <div className="leaflet-map-shell">
+      <MapContainer center={center} className="leaflet-map" maxZoom={SATELLITE_LAYER.maxZoom} minZoom={16} scrollWheelZoom zoom={18} zoomControl>
+        <TileLayer
+          attribution={SATELLITE_LAYER.attribution}
+          maxNativeZoom={SATELLITE_LAYER.maxNativeZoom}
+          maxZoom={SATELLITE_LAYER.maxZoom}
+          tileSize={SATELLITE_LAYER.tileSize}
+          url={SATELLITE_LAYER.url}
+          zoomOffset={SATELLITE_LAYER.zoomOffset}
+        />
+        <Polygon className="leaflet-plant-zone" pathOptions={{ color: "#00d7c7", fillColor: "#00d7c7", fillOpacity: 0.12, weight: 2 }} positions={polygon} />
 
-      <svg className="plant-zone" aria-hidden="true">
-        <polygon points={boundaryPoints} />
-      </svg>
+        {markers.map((marker) => (
+          <Marker
+            bubblingMouseEvents={false}
+            icon={assetMarkerIcon}
+            key={marker.id}
+            position={[Number(marker.latitude), Number(marker.longitude)]}
+            title={marker.label}
+          />
+        ))}
 
-      {markers.map((marker) => (
-        <span className="asset-marker" key={marker.id} style={getMarkerStyle(marker.latitude, marker.longitude)} title={marker.label}>
-          <MapPin size={18} aria-hidden="true" />
-        </span>
-      ))}
+        {selectedLocation && (
+          <Marker
+            bubblingMouseEvents={false}
+            icon={selectedMarkerIcon}
+            position={[Number(selectedLocation.latitude), Number(selectedLocation.longitude)]}
+            title="Punto seleccionado"
+          />
+        )}
 
-      {selectedLocation && (
-        <span className="asset-marker selected" style={getMarkerStyle(selectedLocation.latitude, selectedLocation.longitude)} title="Punto seleccionado">
-          <MapPin size={18} aria-hidden="true" />
-        </span>
-      )}
+        {onSelect && <MapClickHandler onSelect={onSelect} />}
+      </MapContainer>
     </div>
   );
 }
 
-function getPlantBounds(plant: Plant) {
-  const latitudes = plant.bounds.map((point) => Number(point.latitude));
-  const longitudes = plant.bounds.map((point) => Number(point.longitude));
+function MapClickHandler({ onSelect }: { onSelect: (location: { latitude: string; longitude: string }) => void }) {
+  useMapEvents({
+    click(event) {
+      onSelect({
+        latitude: event.latlng.lat.toFixed(6),
+        longitude: event.latlng.lng.toFixed(6)
+      });
+    }
+  });
 
-  return {
-    north: Math.max(...latitudes),
-    south: Math.min(...latitudes),
-    east: Math.max(...longitudes),
-    west: Math.min(...longitudes)
-  };
-}
-
-function getStaticMapUrl(bounds: { north: number; south: number; east: number; west: number }) {
-  const padding = 0.00055;
-  const bbox = [bounds.west - padding, bounds.south - padding, bounds.east + padding, bounds.north + padding].join(",");
-
-  return `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${bbox}&bboxSR=4326&imageSR=4326&size=512,512&format=jpg&f=image`;
-}
-
-function getLatitudePercent(latitude: string, bounds: { north: number; south: number }) {
-  return ((bounds.north - Number(latitude)) / (bounds.north - bounds.south)) * 100;
-}
-
-function getLongitudePercent(longitude: string, bounds: { east: number; west: number }) {
-  return ((Number(longitude) - bounds.west) / (bounds.east - bounds.west)) * 100;
+  return null;
 }
 
 function FieldError({ message }: { message: string }) {
