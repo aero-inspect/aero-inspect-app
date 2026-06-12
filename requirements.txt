@@ -1,0 +1,21 @@
+Node.js LTS >= 20
+npm >= 10
+
+# Install project dependencies with:
+# npm install
+
+# Main dependencies installed by package.json:
+@vitejs/plugin-react
+@types/leaflet
+@types/react
+@types/react-dom
+cors
+dotenv
+express
+leaflet
+lucide-react
+react
+react-dom
+react-leaflet
+typescript
+vite
