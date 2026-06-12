@@ -72,7 +72,7 @@ npm run build
 
 ## Mapa
 
-La vista de Jefe de Planta usa Leaflet + React-Leaflet.
+La vista de Jefe de Planta usa Leaflet + React-Leaflet para el mapa satelital.
 
 - Con `VITE_MAPTILER_KEY`: usa MapTiler Satellite.
 - Sin key: usa Esri World Imagery como fallback.

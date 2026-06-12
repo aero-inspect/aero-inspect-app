@@ -1,10 +1,11 @@
-import { FormEvent, useEffect, useState } from "react";
+import { CSSProperties, ChangeEvent, FormEvent, useEffect, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   ArrowRight,
   ArrowLeft,
   Bell,
+  Check,
   CircleAlert,
   ChevronDown,
   Eye,
@@ -12,9 +13,12 @@ import {
   LogOut,
   MapPin,
   Save,
+  Trash2,
+  Upload,
+  X,
   UserRound
 } from "lucide-react";
-import { MapContainer, Marker, Polygon, TileLayer, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 import aeroInspectDrone from "./assets/aeroinspect-drone.png";
 
 type SessionUser = {
@@ -35,6 +39,12 @@ type LockState = {
 
 type AssetType = "Silo" | "Noria" | "Cinta transportadora" | "Tuberia" | "Techo";
 
+type AssetImage = {
+  id: number;
+  name: string;
+  preview: string;
+};
+
 type Asset = {
   id: number;
   name: string;
@@ -42,6 +52,9 @@ type Asset = {
   latitude: string;
   longitude: string;
   description: string;
+  imageName?: string;
+  imagePreview?: string;
+  images?: AssetImage[];
   plantId: string;
 };
 
@@ -50,6 +63,7 @@ type MapMarker = {
   latitude: string;
   longitude: string;
   label: string;
+  type: AssetType;
 };
 
 type Plant = {
@@ -69,6 +83,15 @@ type Plant = {
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCK_TIME_MS = 15 * 60 * 1000;
 const ASSET_TYPES: AssetType[] = ["Silo", "Noria", "Cinta transportadora", "Tuberia", "Techo"];
+const ASSET_TYPE_COLORS: Record<AssetType, string> = {
+  Silo: "#d94b4b",
+  Noria: "#e7b416",
+  "Cinta transportadora": "#8f5cc2",
+  Tuberia: "#d8782c",
+  Techo: "#5f6672"
+};
+const ASSETS_STORAGE_KEY = "aeroinspect.assets";
+const ASSET_CONSULT_ROLES = ["Jefe de Planta", "Tecnico de Mantenimiento"];
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 const SATELLITE_LAYER = MAPTILER_KEY
@@ -97,17 +120,21 @@ const SATELLITE_LAYER = MAPTILER_KEY
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       zoomOffset: 0
     };
-const assetMarkerIcon = L.divIcon({
-  className: "leaflet-asset-marker",
-  html: '<span></span>',
-  iconAnchor: [10, 10],
-  iconSize: [20, 20]
-});
+function createAssetMarkerIcon(type: AssetType) {
+  const color = ASSET_TYPE_COLORS[type];
+
+  return L.divIcon({
+    className: "leaflet-asset-marker",
+    html: `<span style="background:${color}; border-color:${color}; box-shadow:0 5px 12px rgba(2,18,30,0.28);"></span>`,
+    iconAnchor: [5, 5],
+    iconSize: [10, 10]
+  });
+}
 const selectedMarkerIcon = L.divIcon({
   className: "leaflet-asset-marker selected",
-  html: '<span></span>',
-  iconAnchor: [6, 6],
-  iconSize: [12, 12]
+  html: "<span></span>",
+  iconAnchor: [4, 4],
+  iconSize: [8, 8]
 });
 
 const MOCK_PLANT: Plant = {
@@ -196,6 +223,22 @@ function getRoleHomeTitle(role: string) {
   }
 
   return "Vista Tecnico de Mantenimiento";
+}
+
+function canConsultAssets(role: string) {
+  return ASSET_CONSULT_ROLES.includes(role);
+}
+
+function loadStoredAssets() {
+  try {
+    const storedAssets = window.localStorage.getItem(ASSETS_STORAGE_KEY);
+
+    if (!storedAssets) return [];
+
+    return JSON.parse(storedAssets) as Asset[];
+  } catch {
+    return [];
+  }
 }
 
 export function App() {
@@ -380,17 +423,13 @@ function Home({
   onLogout: () => void;
 }) {
   const isRegisterAssetPath = currentPath === "/registro-activo";
-  const [assets, setAssets] = useState<Asset[]>([
-    {
-      id: 1,
-      name: "Silo Norte",
-      type: "Silo",
-      latitude: "-35.140664",
-      longitude: "-60.458214",
-      description: "Activo inicial de referencia.",
-      plantId: MOCK_PLANT.id
-    }
-  ]);
+  const isAssetsPath = currentPath === "/mis-activos";
+  const [assets, setAssets] = useState<Asset[]>(loadStoredAssets);
+  const userCanConsultAssets = canConsultAssets(user.role);
+
+  useEffect(() => {
+    window.localStorage.setItem(ASSETS_STORAGE_KEY, JSON.stringify(assets));
+  }, [assets]);
 
   const createAsset = (asset: Omit<Asset, "id" | "plantId">) => {
     setAssets((current) => [
@@ -429,7 +468,7 @@ function Home({
 
       <aside className="sidebar">
         <nav className="nav-list" aria-label="Principal">
-          <button className={!isRegisterAssetPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
+          <button className={!isRegisterAssetPath && !isAssetsPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
             Inicio
           </button>
           {user.role === "Jefe de Planta" && (
@@ -441,11 +480,16 @@ function Home({
               Registrar Activo
             </button>
           )}
+          {userCanConsultAssets && (
+            <button className={isAssetsPath ? "active" : undefined} onClick={() => navigateTo("/mis-activos")} type="button">
+              Mis activos
+            </button>
+          )}
         </nav>
       </aside>
 
-      <section className={isRegisterAssetPath ? "workspace register-workspace" : "workspace"}>
-        {!isRegisterAssetPath && (
+      <section className={isRegisterAssetPath || isAssetsPath ? "workspace register-workspace" : "workspace"}>
+        {!isRegisterAssetPath && !isAssetsPath && (
           <header className="topbar">
             <div>
               <p className="eyebrow">Bienvenida, {user.name}</p>
@@ -466,9 +510,18 @@ function Home({
           </header>
         )}
 
-        {user.role === "Jefe de Planta" ? (
+        {isAssetsPath && userCanConsultAssets ? (
+          <MisActivosView assets={assets} onBack={() => navigateTo("/")} plant={MOCK_PLANT} />
+        ) : user.role === "Jefe de Planta" ? (
           isRegisterAssetPath ? (
-            <RegistrarActivoView assets={assets} onBack={() => navigateTo("/")} onCreateAsset={createAsset} plant={MOCK_PLANT} />
+            <RegistrarActivoView
+              assets={assets}
+              onBack={() => navigateTo("/")}
+              onCreateAsset={createAsset}
+              onGoHome={() => navigateTo("/")}
+              onViewAssets={() => navigateTo("/mis-activos")}
+              plant={MOCK_PLANT}
+            />
           ) : (
             <JefePlantaView assets={assets} onRegisterAsset={() => navigateTo("/registro-activo")} plant={MOCK_PLANT} />
           )
@@ -533,7 +586,8 @@ function JefePlantaView({
               id: asset.id,
               latitude: asset.latitude,
               longitude: asset.longitude,
-              label: asset.name
+              label: asset.name,
+              type: asset.type
             }))}
           plant={plant}
         />
@@ -550,11 +604,15 @@ function RegistrarActivoView({
   assets,
   onBack,
   onCreateAsset,
+  onGoHome,
+  onViewAssets,
   plant
 }: {
   assets: Asset[];
   onBack: () => void;
   onCreateAsset: (asset: Omit<Asset, "id" | "plantId">) => void;
+  onGoHome: () => void;
+  onViewAssets: () => void;
   plant: Plant;
 }) {
   const [name, setName] = useState("");
@@ -563,15 +621,19 @@ function RegistrarActivoView({
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [description, setDescription] = useState("");
+  const [assetImages, setAssetImages] = useState<AssetImage[]>([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [showRegisteredAssets, setShowRegisteredAssets] = useState(false);
+  const [registeredAssetTypeFilters, setRegisteredAssetTypeFilters] = useState<AssetType[]>(ASSET_TYPES);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<"name" | "type" | "location" | "description", string>>>({});
-  const [successMessage, setSuccessMessage] = useState("");
+  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     setFieldErrors({});
-    setSuccessMessage("");
+    setIsSuccessOpen(false);
 
     const nextFieldErrors: Partial<Record<"name" | "type" | "location" | "description", string>> = {};
 
@@ -608,7 +670,8 @@ function RegistrarActivoView({
       type: type as AssetType,
       latitude: latitude.trim(),
       longitude: longitude.trim(),
-      description: description.trim()
+      description: description.trim(),
+      images: assetImages
     });
 
     setName("");
@@ -616,7 +679,62 @@ function RegistrarActivoView({
     setLatitude("");
     setLongitude("");
     setDescription("");
-    setSuccessMessage("Activo registrado correctamente. Quedo disponible para futuras inspecciones y misiones.");
+    setAssetImages([]);
+    setSelectedImageIndex(null);
+    setIsSuccessOpen(true);
+  };
+
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+
+    if (files.length === 0) {
+      return;
+    }
+
+    Promise.all(
+      files.map(
+        (file, index) =>
+          new Promise<AssetImage>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () =>
+              resolve({
+                id: Date.now() + index,
+                name: file.name,
+                preview: String(reader.result ?? "")
+              });
+            reader.readAsDataURL(file);
+          })
+      )
+    ).then((nextImages) => setAssetImages((current) => [...current, ...nextImages]));
+
+    event.target.value = "";
+  };
+
+  const selectedImage = selectedImageIndex !== null ? assetImages[selectedImageIndex] : null;
+
+  const deleteSelectedImage = () => {
+    if (selectedImageIndex === null) return;
+
+    setAssetImages((current) => current.filter((_, index) => index !== selectedImageIndex));
+    setSelectedImageIndex(null);
+  };
+
+  const registeredAssetMarkers = assets
+    .filter((asset) => asset.plantId === plant.id)
+    .filter((asset) => registeredAssetTypeFilters.includes(asset.type))
+    .map((asset) => ({
+      id: asset.id,
+      latitude: asset.latitude,
+      longitude: asset.longitude,
+      label: asset.name,
+      type: asset.type
+    }));
+  const registeredAssetFilterOptions = ASSET_TYPES;
+
+  const toggleRegisteredAssetType = (assetType: AssetType) => {
+    setRegisteredAssetTypeFilters((current) =>
+      current.includes(assetType) ? current.filter((typeItem) => typeItem !== assetType) : [...current, assetType]
+    );
   };
 
   return (
@@ -690,92 +808,278 @@ function RegistrarActivoView({
             </label>
           </div>
 
-          <label>
-            <span className="field-label">
-              <span>Descripcion</span>
-            </span>
-            <textarea
-              aria-invalid={Boolean(fieldErrors.description)}
-              className={fieldErrors.description ? "field-invalid" : undefined}
-              maxLength={500}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Detalle opcional del activo, referencia visual o condicion inicial."
-              value={description}
-            />
-            {fieldErrors.description && <FieldError message={fieldErrors.description} />}
-          </label>
+          <div className="asset-media-grid">
+            <label>
+              <span className="field-label">
+                <span>Descripcion</span>
+              </span>
+              <textarea
+                aria-invalid={Boolean(fieldErrors.description)}
+                className={fieldErrors.description ? "field-invalid" : undefined}
+                maxLength={500}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Detalle opcional del activo, referencia visual o condicion inicial."
+                value={description}
+              />
+              {fieldErrors.description && <FieldError message={fieldErrors.description} />}
+            </label>
+
+            <div className="asset-image-field">
+              <span className="field-label">
+                <span>Imagenes del activo</span>
+              </span>
+              <input accept="image/*" className="asset-upload-input" id="asset-images" multiple onChange={handleImageChange} type="file" />
+              <label className="asset-upload-button" htmlFor="asset-images">
+                <Upload size={17} aria-hidden="true" />
+                Subir imagen
+              </label>
+
+              {assetImages.length > 0 && (
+                <div className="asset-thumbnails">
+                  {assetImages.map((image, index) => (
+                    <button key={image.id} onClick={() => setSelectedImageIndex(index)} type="button">
+                      <img alt={image.name} src={image.preview} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </section>
 
         <section className="map-placeholder">
           <div>
-            <MapPin size={22} aria-hidden="true" />
             <div>
-              <p className="eyebrow">Ubicacion geografica <span className="required-inline">*</span></p>
-              <h2>Punto sobre el mapa</h2>
+              <p className="map-field-label">Ubicacion geografica</p>
             </div>
           </div>
-          <p>Selecciona el punto exacto dentro de la planta. Las coordenadas se completan automaticamente.</p>
+          <p className="map-help">Selecciona el punto exacto dentro de la planta. Las coordenadas se completan automaticamente.</p>
 
-          <LeafletSatelliteMap
-            markers={assets
-              .filter((asset) => asset.plantId === plant.id)
-              .map((asset) => ({
-                id: asset.id,
-                latitude: asset.latitude,
-                longitude: asset.longitude,
-                label: asset.name
-              }))}
-            onSelect={(location) => {
-              setLatitude(location.latitude);
-              setLongitude(location.longitude);
-              setFieldErrors((current) => ({ ...current, location: undefined }));
-            }}
-            plant={plant}
-            selectedLocation={latitude && longitude ? { latitude, longitude } : undefined}
-          />
+          <div className="location-layout">
+            <LeafletSatelliteMap
+              markers={showRegisteredAssets ? registeredAssetMarkers : []}
+              onSelect={(location) => {
+                setLatitude(location.latitude);
+                setLongitude(location.longitude);
+                setFieldErrors((current) => ({ ...current, location: undefined }));
+              }}
+              plant={plant}
+              selectedLocation={latitude && longitude ? { latitude, longitude } : undefined}
+            />
 
-          <div className="field-grid compact">
-            <label>
-              <span className="field-label">
-                <span>Latitud <small>*</small></span>
-              </span>
-              <input
-                aria-invalid={Boolean(fieldErrors.location)}
-                className={fieldErrors.location ? "field-invalid" : undefined}
-                onChange={(event) => setLatitude(event.target.value)}
-                placeholder="-34.3372"
-                type="text"
-                value={latitude}
-              />
-            </label>
-            <label>
-              <span className="field-label">
-                <span>Longitud <small>*</small></span>
-              </span>
-              <input
-                aria-invalid={Boolean(fieldErrors.location)}
-                className={fieldErrors.location ? "field-invalid" : undefined}
-                onChange={(event) => setLongitude(event.target.value)}
-                placeholder="-57.2575"
-                type="text"
-                value={longitude}
-              />
-            </label>
+            <div className="location-fields">
+              <label>
+                <span className="field-label">
+                  <span>Latitud <small>*</small></span>
+                </span>
+                <input
+                  aria-invalid={Boolean(fieldErrors.location)}
+                  className={fieldErrors.location ? "field-invalid" : undefined}
+                  onChange={(event) => setLatitude(event.target.value)}
+                  placeholder="-35.140664"
+                  type="text"
+                  value={latitude}
+                />
+              </label>
+              <label>
+                <span className="field-label">
+                  <span>Longitud <small>*</small></span>
+                </span>
+                <input
+                  aria-invalid={Boolean(fieldErrors.location)}
+                  className={fieldErrors.location ? "field-invalid" : undefined}
+                  onChange={(event) => setLongitude(event.target.value)}
+                  placeholder="-60.458214"
+                  type="text"
+                  value={longitude}
+                />
+              </label>
+              <div className="map-filter-panel">
+                <button className="map-toggle-button" onClick={() => setShowRegisteredAssets((current) => !current)} type="button">
+                  {showRegisteredAssets ? "Ocultar activos registrados" : "Ver activos registrados"}
+                </button>
+                {showRegisteredAssets && (
+                  <div className="map-type-options" aria-label="Filtrar activos registrados por tipo">
+                    {registeredAssetFilterOptions.map((assetType) => (
+                      <button
+                        className={registeredAssetTypeFilters.includes(assetType) ? "selected" : undefined}
+                        key={assetType}
+                        onClick={() => toggleRegisteredAssetType(assetType)}
+                        style={{ "--asset-type-color": ASSET_TYPE_COLORS[assetType] } as CSSProperties}
+                        type="button"
+                      >
+                        <span aria-hidden="true" />
+                        {assetType}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
           {fieldErrors.location && <FieldError message={fieldErrors.location} />}
         </section>
 
         {error && <p className="form-error asset-message">{error}</p>}
-        {successMessage && <p className="success-message asset-message">{successMessage}</p>}
-
         <div className="form-actions">
-          <button className="secondary-button" type="submit">
+          <button className="register-button" type="submit">
             <Save size={18} aria-hidden="true" />
-            Confirmar registro
+            Registrar
           </button>
         </div>
       </form>
+
+      {isSuccessOpen && (
+        <SuccessModal
+          message="Ya esta disponible para futuras inspecciones y misiones."
+          onGoHome={onGoHome}
+          onViewAssets={onViewAssets}
+        />
+      )}
+
+      {selectedImage && (
+        <div className="image-modal-backdrop" role="presentation">
+          <section aria-modal="true" className="image-modal" role="dialog">
+            <div className="image-modal-actions">
+              <button aria-label="Cerrar vista previa" onClick={() => setSelectedImageIndex(null)} type="button">
+                <X size={18} aria-hidden="true" />
+              </button>
+              <button aria-label="Eliminar imagen" onClick={deleteSelectedImage} type="button">
+                <Trash2 size={18} aria-hidden="true" />
+              </button>
+            </div>
+            <img alt={selectedImage.name} src={selectedImage.preview} />
+          </section>
+        </div>
+      )}
     </section>
+  );
+}
+
+function MisActivosView({ assets, onBack, plant }: { assets: Asset[]; onBack: () => void; plant: Plant }) {
+  const [typeFilter, setTypeFilter] = useState<AssetType | "Todos">("Todos");
+  const plantAssets = assets.filter((asset) => asset.plantId === plant.id);
+  const filteredAssets = typeFilter === "Todos" ? plantAssets : plantAssets.filter((asset) => asset.type === typeFilter);
+  const markers = filteredAssets.map((asset) => ({
+    id: asset.id,
+    latitude: asset.latitude,
+    longitude: asset.longitude,
+    label: asset.name,
+    type: asset.type
+  }));
+
+  return (
+    <section className="asset-page">
+      <header className="asset-header">
+        <button className="back-link" onClick={onBack} type="button">
+          <ArrowLeft size={18} aria-hidden="true" />
+          Volver
+        </button>
+        <div>
+          <p className="asset-title">Mis activos</p>
+          <p>Cada marcador indica una estructura disponible para futuras inspecciones.</p>
+        </div>
+      </header>
+
+      <section className="assets-consult">
+        <div className="assets-map-panel">
+          <div className="assets-map-heading">
+            <div>
+              <p className="map-field-label">Mapa de planta</p>
+              <p>{filteredAssets.length} activos visibles</p>
+            </div>
+          </div>
+          <LeafletSatelliteMap markers={markers} plant={plant} />
+        </div>
+
+        <div className="assets-table-panel">
+          <div className="assets-table-toolbar">
+            <div>
+              <p className="map-field-label">Activos registrados</p>
+              <p>Cantidad: {plantAssets.length}</p>
+            </div>
+            <label className="filter-field">
+              <select onChange={(event) => setTypeFilter(event.target.value as AssetType | "Todos")} value={typeFilter}>
+                <option value="Todos">Todos</option>
+                {ASSET_TYPES.map((assetType) => (
+                  <option key={assetType} value={assetType}>
+                    {assetType}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {plantAssets.length === 0 ? (
+            <p className="empty-assets">No hay activos disponibles.</p>
+          ) : filteredAssets.length === 0 ? (
+            <p className="empty-assets">No hay activos disponibles para el tipo seleccionado.</p>
+          ) : (
+            <div className="assets-table-wrap">
+              <table className="assets-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Ubicacion</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAssets.map((asset) => (
+                    <tr key={asset.id}>
+                      <td>{asset.name}</td>
+                      <td>
+                        <span className="asset-type-cell">
+                          <span style={{ "--asset-type-color": ASSET_TYPE_COLORS[asset.type] } as CSSProperties} />
+                          {asset.type}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="asset-location">
+                          {asset.latitude}, {asset.longitude}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function SuccessModal({
+  message,
+  onGoHome,
+  onViewAssets
+}: {
+  message: string;
+  onGoHome: () => void;
+  onViewAssets: () => void;
+}) {
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section aria-modal="true" className="success-modal" role="dialog">
+        <div className="success-icon">
+          <Check size={24} aria-hidden="true" />
+        </div>
+        <h2>Activo registrado</h2>
+        <p>{message}</p>
+        <div className="modal-actions">
+          <button className="modal-link-button" onClick={onGoHome} type="button">
+            <ArrowLeft size={18} aria-hidden="true" />
+            Volver a Home
+          </button>
+          <button className="register-button" onClick={onViewAssets} type="button">
+            Ver mis activos
+            <ArrowRight size={18} aria-hidden="true" />
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -791,7 +1095,6 @@ function LeafletSatelliteMap({
   selectedLocation?: { latitude: string; longitude: string };
 }) {
   const center: [number, number] = [Number(plant.center.latitude), Number(plant.center.longitude)];
-  const polygon = plant.bounds.map((point) => [Number(point.latitude), Number(point.longitude)] as [number, number]);
 
   return (
     <div className="leaflet-map-shell">
@@ -804,12 +1107,10 @@ function LeafletSatelliteMap({
           url={SATELLITE_LAYER.url}
           zoomOffset={SATELLITE_LAYER.zoomOffset}
         />
-        <Polygon className="leaflet-plant-zone" pathOptions={{ color: "#00d7c7", fillColor: "#00d7c7", fillOpacity: 0.12, weight: 2 }} positions={polygon} />
-
         {markers.map((marker) => (
           <Marker
             bubblingMouseEvents={false}
-            icon={assetMarkerIcon}
+            icon={createAssetMarkerIcon(marker.type)}
             key={marker.id}
             position={[Number(marker.latitude), Number(marker.longitude)]}
             title={marker.label}
