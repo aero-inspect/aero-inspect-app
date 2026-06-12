@@ -2,12 +2,6 @@
 
 App inicial para inspecciones con drones sobre infraestructura externa agroindustrial.
 
-## Requisitos
-
-- Node.js LTS 20 o superior
-- npm 10 o superior
-- Key gratuita de MapTiler para mapa satelital
-
 ## Instalacion
 
 ```bash
