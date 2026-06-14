@@ -436,6 +436,12 @@
 }
 
 .ready-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px; /* Separación entre el texto y la flecha */
+
+  /* 2. Tus estilos originales que ya estaban bien */
   min-height: 36px;
   padding: 0 16px;
   border: 0;
@@ -544,6 +550,25 @@
   color: #0f172a;
   cursor: pointer;
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+}
+
+.weather-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.weather-location {
+  display: block;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.tech-weather-section .section-title {
+  margin: 0; /* Esto evita que el título se desalinee con el botón */
 }
 
 .weather-display {

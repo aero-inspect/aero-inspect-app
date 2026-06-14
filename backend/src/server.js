@@ -11,7 +11,7 @@ const registeredUsers = [
   {
     username: "tecnico",
     password: "Tecnico#123",
-    name: "Tecnico de Mantenimiento",
+    name: "María Emilia Andersen",
     role: "Tecnico de Mantenimiento",
     active: true
   },

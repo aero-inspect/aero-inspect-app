@@ -2,13 +2,16 @@ import { useState, type FormEvent } from "react";
 import {
   ArrowLeft,
   Building2,
+  Camera,
   Check,
   ChevronDown,
   Info,
   Lightbulb,
   MapPin,
   Warehouse,
-  Wrench
+  Wrench,
+  X,
+  Maximize2
 } from "lucide-react";
 import type { Asset, AssetType, Plant } from "../types";
 import { ASSET_TYPES, ASSET_TYPE_COLORS } from "../constants";
@@ -16,6 +19,9 @@ import { LeafletSatelliteMap } from "../components/LeafletSatelliteMap";
 import { FieldError } from "../components/FieldError";
 import { SuccessModal } from "../components/SuccessModal";
 import { AppTopActions } from "../components/AppTopActions";
+
+// Definimos los tipos de estado (si no los tenías en ../types)
+type AssetStatus = "Operativo" | "Mantenimiento" | "Fuera de servicio";
 
 export function RegistrarActivoView({
   assets,
@@ -34,13 +40,36 @@ export function RegistrarActivoView({
 }) {
   const [name, setName] = useState("");
   const [type, setType] = useState<AssetType>("Silo");
+  const [status, setStatus] = useState<AssetStatus>("Operativo");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [description, setDescription] = useState("");
+  
+  // Estado para las fotos
+  const [images, setImages] = useState<{ preview: string; file: File }[]>([]);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
+
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<"name" | "type" | "location" | "description", string>>>({});
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
 
   const selectedLocation = latitude && longitude ? { latitude, longitude } : undefined;
+
+  // Manejo de imágenes
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const newImages = Array.from(files).map((file) => ({
+      preview: URL.createObjectURL(file),
+      file
+    }));
+
+    setImages((prev) => [...prev, ...newImages]);
+  };
+
+  const removeImage = (indexToRemove: number) => {
+    setImages((prev) => prev.filter((_, index) => index !== indexToRemove));
+  };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -68,37 +97,50 @@ export function RegistrarActivoView({
     onCreateAsset({
       name: name.trim(),
       type,
+      status, // Pasamos el nuevo estado
       latitude: latitude.trim(),
       longitude: longitude.trim(),
       description: description.trim(),
-      images: []
+      images: images // Pasamos el array de fotos
     });
 
     setName("");
     setType("Silo");
+    setStatus("Operativo");
     setLatitude("");
     setLongitude("");
     setDescription("");
+    setImages([]);
     setIsSuccessOpen(true);
   };
 
   return (
     <section className="register-asset-dashboard">
-      <header className="register-asset-header">
-        <div className="register-asset-title">
-          <button className="register-back-button" onClick={onBack} type="button" aria-label="Volver">
-            <ArrowLeft size={18} />
+      
+      {/* 1. Header corregido para igualar al Home/MisActivos */}
+      <header className="assets-dashboard-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <button 
+            onClick={onBack} 
+            type="button" 
+            aria-label="Volver"
+            style={{ 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              width: '36px', height: '36px', background: '#fff', 
+              border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer' 
+            }}
+          >
+            <ArrowLeft size={18} color="#0f172a" />
           </button>
           <div>
-            <h1>Registrar nuevo activo</h1>
-            <p>Completa la informacion del activo y selecciona su ubicacion en el mapa.</p>
+            <h1 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: 800 }}>Registrar nuevo activo</h1>
+            <p style={{ margin: 0, color: '#64748b', fontSize: '0.8rem' }}>Completa la información y selecciona su ubicación.</p>
           </div>
         </div>
-
         <AppTopActions />
       </header>
 
-      <form className="register-asset-layout" onSubmit={handleSubmit}>
+      <form className="register-asset-layout" onSubmit={handleSubmit} style={{ marginTop: '20px' }}>
         <section className="register-card register-map-card">
           <h2>Ubicacion en el mapa</h2>
           <p>Haz clic en el mapa para seleccionar la ubicacion exacta del activo.</p>
@@ -158,20 +200,35 @@ export function RegistrarActivoView({
             {fieldErrors.name && <FieldError message={fieldErrors.name} />}
           </label>
 
-          <label className="register-field">
-            <span>Tipo de activo *</span>
-            <div className="register-select-wrap">
-              <select onChange={(event) => setType(event.target.value as AssetType)} value={type}>
-                {ASSET_TYPES.map((assetType) => (
-                  <option key={assetType} value={assetType}>
-                    {assetType}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={17} />
-            </div>
-            {fieldErrors.type && <FieldError message={fieldErrors.type} />}
-          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+            <label className="register-field">
+              <span>Tipo de activo *</span>
+              <div className="register-select-wrap">
+                <select onChange={(event) => setType(event.target.value as AssetType)} value={type}>
+                  {ASSET_TYPES.map((assetType) => (
+                    <option key={assetType} value={assetType}>
+                      {assetType}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={17} />
+              </div>
+              {fieldErrors.type && <FieldError message={fieldErrors.type} />}
+            </label>
+
+            {/* 2. Nuevo Selector de Estado */}
+            <label className="register-field">
+              <span>Estado del activo *</span>
+              <div className="register-select-wrap">
+                <select onChange={(event) => setStatus(event.target.value as AssetStatus)} value={status}>
+                  <option value="Operativo">Operativo</option>
+                  <option value="Mantenimiento">Mantenimiento</option>
+                  <option value="Fuera de servicio">Fuera de servicio</option>
+                </select>
+                <ChevronDown size={17} />
+              </div>
+            </label>
+          </div>
 
           <label className="register-field">
             <span>Ubicacion geografica *</span>
@@ -183,6 +240,36 @@ export function RegistrarActivoView({
               placeholder="Selecciona un punto en el mapa"
             />
           </label>
+
+          {/* 3. Nueva Sección para subir fotos */}
+          <div className="register-field">
+            <span>Fotografías (opcional)</span>
+            <div className="image-upload-wrapper">
+              <label className="image-upload-btn">
+                <Camera size={20} />
+                <span>Adjuntar fotos</span>
+                <input type="file" accept="image/*" multiple hidden onChange={handleImageUpload} />
+              </label>
+
+              {images.length > 0 && (
+                <div className="image-preview-grid">
+                  {images.map((img, index) => (
+                    <div key={index} className="image-thumbnail">
+                      <img src={img.preview} alt={`Preview ${index}`} />
+                      <div className="image-actions">
+                        <button type="button" onClick={() => setExpandedImage(img.preview)} aria-label="Expandir">
+                          <Maximize2 size={12} />
+                        </button>
+                        <button type="button" onClick={() => removeImage(index)} aria-label="Eliminar">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
           <label className="register-field">
             <span>Descripcion (opcional)</span>
@@ -227,6 +314,18 @@ export function RegistrarActivoView({
           </div>
         </aside>
       </form>
+
+      {/* Modal para ver la imagen en grande */}
+      {expandedImage && (
+        <div className="image-expanded-modal" onClick={() => setExpandedImage(null)}>
+          <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="close-modal-btn" onClick={() => setExpandedImage(null)} type="button">
+              <X size={24} />
+            </button>
+            <img src={expandedImage} alt="Foto expandida" />
+          </div>
+        </div>
+      )}
 
       {isSuccessOpen && (
         <SuccessModal

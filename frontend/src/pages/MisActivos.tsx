@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Building2,
+  Camera,
   CheckCircle2,
   MapPin,
   PackagePlus,
@@ -41,6 +42,8 @@ export function MisActivosView({
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
+
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   const plantAssets = useMemo(() => assets.filter((asset) => asset.plantId === plant.id), [assets, plant.id]);
 
@@ -143,7 +146,6 @@ export function MisActivosView({
                       <tr className={isSelected ? "selected" : undefined} key={asset.id} onClick={() => setSelectedAssetId(isSelected ? null : asset.id)}>
                         <td>
                           <div className="assets-name-cell">
-                            <AssetThumbnail asset={asset} />
                             <strong>{asset.name}</strong>
                           </div>
                         </td>
@@ -209,8 +211,6 @@ export function MisActivosView({
               </button>
             </div>
 
-            <AssetPreview asset={selectedAsset} />
-
             <div className="assets-detail-list">
               <AssetDetailItem icon={<Warehouse size={15} />} label="Tipo" value={selectedAsset.type} />
               <AssetDetailItem icon={<MapPin size={15} />} label="Ubicacion" value={`${getAssetZone(selectedAsset)}\n${selectedAsset.latitude}, ${selectedAsset.longitude}`} />
@@ -218,6 +218,24 @@ export function MisActivosView({
               <AssetDetailItem icon={<CalendarIcon />} label="Fecha de registro" value="12/03/2026" />
               <AssetDetailItem icon={<CheckCircle2 size={15} />} label="Ultima inspeccion" value="28/05/2026" />
             </div>
+
+
+            <div className="assets-detail-item" style={{ marginTop: "12px" }}>
+                <Camera size={15} />
+                <div>
+                  <span>Archivos</span>
+                  
+                  {(selectedAsset.images?.[0]?.preview || selectedAsset.imagePreview) ? (
+                  <p>
+                    <button className="view-images-btn" onClick={() => setIsImageModalOpen(true)} type="button">
+                      Ver imágenes
+                    </button>
+                  </p>
+                  ) : (
+                    <p>Sin imágenes adjuntas</p>
+                  )}
+                </div>
+              </div>
 
             <button className="assets-missions-link" type="button">
               Misiones asociadas
@@ -238,6 +256,23 @@ export function MisActivosView({
           </aside>
         )}
       </section>
+
+      {isImageModalOpen && selectedAsset && (selectedAsset.images?.[0]?.preview || selectedAsset.imagePreview) && (
+        <div className="image-modal-backdrop" onClick={() => setIsImageModalOpen(false)}>
+          <div className="image-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="image-modal-actions">
+              <button onClick={() => setIsImageModalOpen(false)} type="button" aria-label="Cerrar">
+                <X size={18} />
+              </button>
+            </div>
+            <img 
+              src={selectedAsset.images?.[0]?.preview ?? selectedAsset.imagePreview} 
+              alt={`Foto de ${selectedAsset.name}`} 
+            />
+          </div>
+        </div>
+      )}
+
     </section>
   );
 }
@@ -254,33 +289,6 @@ function AssetStatCard({ icon, label, tone, value }: { icon: ReactNode; label: s
   );
 }
 
-function AssetThumbnail({ asset }: { asset: Asset }) {
-  const image = asset.images?.[0]?.preview ?? asset.imagePreview;
-
-  if (image) {
-    return <img alt="" className="assets-thumb" src={image} />;
-  }
-
-  return (
-    <span className="assets-thumb placeholder" style={{ "--asset-type-color": ASSET_TYPE_COLORS[asset.type] } as CSSProperties}>
-      {getAssetIcon(asset.type)}
-    </span>
-  );
-}
-
-function AssetPreview({ asset }: { asset: Asset }) {
-  const image = asset.images?.[0]?.preview ?? asset.imagePreview;
-
-  if (image) {
-    return <img alt="" className="assets-detail-image" src={image} />;
-  }
-
-  return (
-    <div className="assets-detail-image placeholder" style={{ "--asset-type-color": ASSET_TYPE_COLORS[asset.type] } as CSSProperties}>
-      {getAssetIcon(asset.type)}
-    </div>
-  );
-}
 
 function AssetDetailItem({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (

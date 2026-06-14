@@ -156,6 +156,8 @@
   border-radius: 50%;
   background: #e5e7eb;
   color: #0b8f49;
+  min-height: 96px; 
+  flex-shrink: 0;
 }
 
 .profile-photo img {
@@ -163,6 +165,11 @@
   height: 100%;
   border-radius: inherit;
   object-fit: cover;
+  object-position: center;
+  position: absolute; 
+  top: 0;
+  left: 0;
+  
 }
 
 .profile-photo-edit {

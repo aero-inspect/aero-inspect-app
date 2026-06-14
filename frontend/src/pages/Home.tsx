@@ -17,6 +17,7 @@ import { JefePlantaView } from "./JefePlanta";
 import { MonitorMissionView } from "./MonitorMission";
 import { ReportesView } from "./Reportes";
 import { AppTopActions, DroneGlyph } from "../components/AppTopActions";
+import { WeatherWidget } from "../components/WeatherWidget";
 
 const MOCK_PLANT = {
   id: "planta-principal",
@@ -448,42 +449,7 @@ export function Home({
                 </div>
 
                 {/* Weather Details */}
-                <div className="tech-weather-section">
-                  <h2 className="section-title">Clima actual</h2>
-                  <button className="weather-forecast-btn">
-                    Ver pronóstico <ArrowRight size={14} />
-                  </button>
-                  <div className="weather-display">
-                    <img className="weather-main-image" src="/src/assets/clima.jpg" alt="Clima parcialmente nublado" />
-                    <div>
-                      <div className="weather-main-temp">23°C</div>
-                      <div className="weather-main-desc">Parcialmente nublado</div>
-                    </div>
-                  </div>
-                  <div className="weather-details-grid">
-                    <div className="weather-detail-item">
-                      <Wind size={20} />
-                      <div>
-                        <span className="detail-value">14 km/h</span>
-                        <span className="detail-label">Viento</span>
-                      </div>
-                    </div>
-                    <div className="weather-detail-item">
-                      <Droplets size={20} />
-                      <div>
-                        <span className="detail-value">48%</span>
-                        <span className="detail-label">Humedad</span>
-                      </div>
-                    </div>
-                    <div className="weather-detail-item">
-                      <Eye size={20} />
-                      <div>
-                        <span className="detail-value">10 km</span>
-                        <span className="detail-label">Visibilidad</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <WeatherWidget city="Bragado" province={MOCK_PLANT.province} />
 
                 {/* Drone Status */}
                 <div className="tech-drone-section">
@@ -504,6 +470,7 @@ export function Home({
                       <Navigation size={18} className="detail-icon-green" />
                       <div>
                         <span className="detail-label">GPS</span>
+                         <span> </span>
                         <span className="detail-value-green">Bueno</span>
                       </div>
                     </div>
@@ -511,6 +478,7 @@ export function Home({
                       <Signal size={18} className="detail-icon-green" />
                       <div>
                         <span className="detail-label">Señal</span>
+                         <span> </span>
                         <span className="detail-value-green">Excelente</span>
                       </div>
                     </div>
