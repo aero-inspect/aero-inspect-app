@@ -1,21 +1,8 @@
 import { useMemo, useState, type ReactNode } from "react";
-import {
-  Bell,
-  CalendarCheck,
-  CheckCircle2,
-  Clock3,
-  Pause,
-  Play,
-  Plus,
-  Search,
-  Sun,
-  Trash2,
-  UserRound,
-  X,
-  XCircle
-} from "lucide-react";
+import { CalendarCheck, CheckCircle2, Clock3, Pause, Play, Plus, Search, Trash2, X, XCircle } from "lucide-react";
 import type { Asset, InspectionMission, Plant } from "../types";
 import { MissionRouteMap } from "../components/MissionRouteMap";
+import { AppTopActions } from "../components/AppTopActions";
 
 type MissionDisplayStatus = "Pendiente" | "En progreso" | "Completada" | "Cancelada";
 
@@ -90,22 +77,7 @@ export function MisMisionesView({
           <h1>Misiones</h1>
           <p>Gestiona y monitorea las misiones de inspeccion.</p>
         </div>
-        <div className="missions-top-actions">
-          <div className="missions-weather">
-            <Sun size={30} />
-            <div>
-              <strong>23°C</strong>
-              <span>Parcialmente nublado</span>
-            </div>
-          </div>
-          <button className="tech-notification-button" type="button" aria-label="Notificaciones">
-            <Bell size={20} />
-            <span>3</span>
-          </button>
-          <button className="tech-user-button" type="button" aria-label="Perfil">
-            <UserRound size={21} />
-          </button>
-        </div>
+        <AppTopActions />
       </header>
 
       <section className="missions-summary-row">

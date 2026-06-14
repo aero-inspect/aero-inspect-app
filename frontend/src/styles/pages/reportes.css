@@ -2,7 +2,7 @@
   display: grid;
   grid-template-rows: auto auto auto minmax(160px, 0.68fr) minmax(220px, 1fr);
   gap: 9px;
-  height: 100vh;
+  height: var(--app-canvas-height);
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
@@ -548,7 +548,7 @@
   .reports-dashboard {
     overflow: auto;
     height: auto;
-    min-height: 100vh;
+    min-height: var(--app-canvas-height);
   }
 
   .reports-stats,

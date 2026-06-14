@@ -1,19 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
-import {
-  Bell,
-  CalendarDays,
-  Download,
-  Eye,
-  FileDown,
-  FileText,
-  Search,
-  Sun,
-  Trash2,
-  UserRound,
-  ClipboardCheck,
-  AlertTriangle
-} from "lucide-react";
+import { CalendarDays, Download, Eye, FileDown, FileText, Search, Trash2, ClipboardCheck, AlertTriangle } from "lucide-react";
 import type { Asset } from "../types";
+import { AppTopActions } from "../components/AppTopActions";
 
 type ReportStatus = "Completado" | "En revision";
 
@@ -74,22 +62,7 @@ export function ReportesView({ assets }: { assets: Asset[] }) {
           <p>Descarga reportes de inspecciones y hallazgos.</p>
         </div>
 
-        <div className="reports-top-actions">
-          <div className="profile-weather">
-            <Sun size={30} />
-            <div>
-              <strong>23°C</strong>
-              <span>Parcialmente nublado</span>
-            </div>
-          </div>
-          <button className="tech-notification-button" type="button" aria-label="Notificaciones">
-            <Bell size={20} />
-            <span>3</span>
-          </button>
-          <button className="tech-user-button" type="button" aria-label="Perfil">
-            <UserRound size={21} />
-          </button>
-        </div>
+        <AppTopActions />
       </header>
 
       <section className="reports-stats">

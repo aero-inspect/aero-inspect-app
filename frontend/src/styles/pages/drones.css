@@ -1,5 +1,5 @@
 .drones-dashboard {
-  height: 100vh;
+  height: var(--app-canvas-height);
   overflow-x: hidden;
   overflow-y: auto;
   padding: 18px 22px 24px;

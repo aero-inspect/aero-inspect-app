@@ -3,7 +3,7 @@
   grid-template-columns: 260px minmax(0, 1fr);
   grid-template-rows: 58px minmax(0, 1fr);
   overflow-x: hidden;
-  min-height: 100vh;
+  min-height: var(--app-canvas-height);
   background: #eef6f5;
 }
 

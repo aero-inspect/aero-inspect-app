@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowRight, Bell, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, Calendar, AlertTriangle, Battery, Navigation, Signal, Eye, Wind, Droplets, Sun, HelpCircle, UserRound } from "lucide-react";
+import { Fragment } from "react";
+import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, Calendar, AlertTriangle, Battery, Navigation, Signal, Eye, Wind, Droplets, HelpCircle, UserRound } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { MockUser, InspectionMission, Asset, Plant, SessionUser } from "../types";
 import { canConsultAssets, getRoleHomeTitle, getUserInitials } from "../utils/helpers";
@@ -16,6 +16,7 @@ import { RoleManagementView } from "./GestionRoles";
 import { JefePlantaView } from "./JefePlanta";
 import { MonitorMissionView } from "./MonitorMission";
 import { ReportesView } from "./Reportes";
+import { AppTopActions, DroneGlyph } from "../components/AppTopActions";
 
 const MOCK_PLANT = {
   id: "planta-principal",
@@ -77,8 +78,6 @@ export function Home({
   const userCanConsultAssets = canConsultAssets(user.role);
   const currentUser = users.find((u) => u.name === user.name);
   const currentProfileImage = currentUser?.profileImage ?? "";
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-
   return (
     <main className="home-shell-no-header">
       <aside className="sidebar-full">
@@ -225,7 +224,7 @@ export function Home({
         ) : user.role === "Jefe de Planta" ? (
           <JefePlantaView assets={assets} missions={missions} onRegisterAsset={() => navigateTo("/registro-activo")} plant={MOCK_PLANT} />
         ) : user.role === "Tecnico de Mantenimiento" ? (
-          <>
+          <Fragment>
             {/* New Maintenance Technician Dashboard */}
             <div className="tech-dashboard">
               <div className="tech-topbar">
@@ -234,19 +233,7 @@ export function Home({
                   <p className="tech-subtitle">Aquí tienes un resumen de la operación actual.</p>
                 </div>
 
-                <div className="tech-top-actions">
-                  <div className="tech-weather">
-                    <Sun size={34} className="weather-icon" />
-                    <div className="weather-info">
-                      <span className="weather-temp">23°C</span>
-                      <span className="weather-desc">Parcialmente nublado</span>
-                    </div>
-                  </div>
-                  <NotificationButton isOpen={isNotificationsOpen} onToggle={() => setIsNotificationsOpen((current) => !current)} />
-                  <button className="tech-user-button" onClick={() => navigateTo("/perfil")} type="button" aria-label="Perfil">
-                    <UserRound size={21} />
-                  </button>
-                </div>
+                <AppTopActions />
               </div>
 
               {/* Stats Cards Row */}
@@ -335,67 +322,68 @@ export function Home({
                 </div>
 
                 {/* Upcoming Missions */}
-                <div className="tech-missions-section">
-                  <div className="section-header">
-                    <h2 className="section-title">Misiones próximas</h2>
-                    <button className="view-all-btn" onClick={() => navigateTo("/mis-misiones")}>
-                      Ver todas <ArrowRight size={14} />
-                    </button>
+                <div className="tech-missions-column">
+                  <div className="tech-missions-section">
+                    <div className="section-header">
+                      <h2 className="section-title">Misiones próximas</h2>
+                      <button className="view-all-btn" onClick={() => navigateTo("/mis-misiones")}>
+                        Ver todas <ArrowRight size={14} />
+                      </button>
+                    </div>
+                    <div className="tech-missions-list">
+                      <div className="tech-mission-card">
+                        <div className="mission-details">
+                          <h3 className="mission-name">Inspección Silo Norte</h3>
+                          <div className="mission-location">
+                            <MapPin size={14} />
+                            <span>Silo Norte</span>
+                          </div>
+                        </div>
+                        <div className="mission-meta">
+                          <div className="mission-time">
+                            <Clock size={14} />
+                            <span>09:30</span>
+                          </div>
+                          <span className="mission-badge badge-pending">Pendiente</span>
+                        </div>
+                      </div>
+
+                      <div className="tech-mission-card">
+                        <div className="mission-details">
+                          <h3 className="mission-name">Cinta Transportadora 2</h3>
+                          <div className="mission-location">
+                            <MapPin size={14} />
+                            <span>Sector Este</span>
+                          </div>
+                        </div>
+                        <div className="mission-meta">
+                          <div className="mission-time">
+                            <Clock size={14} />
+                            <span>11:15</span>
+                          </div>
+                          <span className="mission-badge badge-pending">Pendiente</span>
+                        </div>
+                      </div>
+
+                      <div className="tech-mission-card">
+                        <div className="mission-details">
+                          <h3 className="mission-name">Noria Principal</h3>
+                          <div className="mission-location">
+                            <MapPin size={14} />
+                            <span>Sector Central</span>
+                          </div>
+                        </div>
+                        <div className="mission-meta">
+                          <div className="mission-time">
+                            <Clock size={14} />
+                            <span>14:00</span>
+                          </div>
+                          <span className="mission-badge badge-progress">En progreso</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="tech-missions-list">
-                    <div className="tech-mission-card">
-                      <div className="mission-details">
-                        <h3 className="mission-name">Inspección Silo Norte</h3>
-                        <div className="mission-location">
-                          <MapPin size={14} />
-                          <span>Silo Norte</span>
-                        </div>
-                      </div>
-                      <div className="mission-meta">
-                        <div className="mission-time">
-                          <Clock size={14} />
-                          <span>09:30</span>
-                        </div>
-                        <span className="mission-badge badge-pending">Pendiente</span>
-                      </div>
-                    </div>
 
-                    <div className="tech-mission-card">
-                      <div className="mission-details">
-                        <h3 className="mission-name">Cinta Transportadora 2</h3>
-                        <div className="mission-location">
-                          <MapPin size={14} />
-                          <span>Sector Este</span>
-                        </div>
-                      </div>
-                      <div className="mission-meta">
-                        <div className="mission-time">
-                          <Clock size={14} />
-                          <span>11:15</span>
-                        </div>
-                        <span className="mission-badge badge-pending">Pendiente</span>
-                      </div>
-                    </div>
-
-                    <div className="tech-mission-card">
-                      <div className="mission-details">
-                        <h3 className="mission-name">Noria Principal</h3>
-                        <div className="mission-location">
-                          <MapPin size={14} />
-                          <span>Sector Central</span>
-                        </div>
-                      </div>
-                      <div className="mission-meta">
-                        <div className="mission-time">
-                          <Clock size={14} />
-                          <span>14:00</span>
-                        </div>
-                        <span className="mission-badge badge-progress">En progreso 🚁</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Ready to Fly Card */}
                   <div className="tech-ready-card">
                     <Plane size={32} className="ready-icon" />
                     <div className="ready-content">
@@ -466,9 +454,11 @@ export function Home({
                     Ver pronóstico <ArrowRight size={14} />
                   </button>
                   <div className="weather-display">
-                    <Sun size={80} className="weather-main-icon" />
-                    <div className="weather-main-temp">23°C</div>
-                    <div className="weather-main-desc">Parcialmente nublado</div>
+                    <img className="weather-main-image" src="/src/assets/clima.jpg" alt="Clima parcialmente nublado" />
+                    <div>
+                      <div className="weather-main-temp">23°C</div>
+                      <div className="weather-main-desc">Parcialmente nublado</div>
+                    </div>
                   </div>
                   <div className="weather-details-grid">
                     <div className="weather-detail-item">
@@ -500,7 +490,7 @@ export function Home({
                   <h2 className="section-title">Estado del dron</h2>
                   <span className="drone-status-badge">Conectado</span>
                   <div className="drone-image-container">
-                    <img src="/src/assets/aeroinspect-drone.png" alt="Dron" className="drone-image" />
+                    <img src="/src/assets/drone-image.png" alt="Dron" className="drone-image" />
                   </div>
                   <div className="drone-battery">
                     <Battery size={20} />
@@ -528,9 +518,9 @@ export function Home({
                 </div>
               </div>
             </div>
-          </>
+          </Fragment>
         ) : (
-          <>
+          <Fragment>
             <header className="dashboard-header">
               <div>
                 <p className="eyebrow">Bienvenido, {user.name}</p>
@@ -672,66 +662,9 @@ export function Home({
                 </div>
               </div>
             </div>
-          </>
+          </Fragment>
         )}
       </section>
     </main>
-  );
-}
-
-function NotificationButton({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) {
-  const notifications = [
-    { tone: "danger", title: "Hallazgo critico detectado", text: "Se detecto corrosion severa en Silo Norte.", time: "Hace 5 min", icon: <AlertTriangle size={18} /> },
-    { tone: "info", title: "Mision en progreso", text: "Inspeccion Cinta Transportadora 2 completada al 40%.", time: "Hace 12 min", icon: <DroneGlyph size={18} /> },
-    { tone: "success", title: "Reporte generado", text: "El reporte mensual de mayo esta listo para descargar.", time: "Hace 1 hora", icon: <CheckCircle2 size={18} /> },
-    { tone: "warning", title: "Mantenimiento programado", text: "El mantenimiento del dron esta programado para 10/06/2025.", time: "Hace 3 horas", icon: <Calendar size={18} /> },
-    { tone: "purple", title: "Nueva mision asignada", text: "Se te asigno la mision Inspeccion Noria Principal.", time: "Hace 1 dia", icon: <Plane size={18} /> }
-  ];
-
-  return (
-    <div className="notifications-menu-wrap">
-      <button className="tech-notification-button" onClick={onToggle} type="button" aria-label="Notificaciones">
-        <Bell size={20} />
-        <span>3</span>
-      </button>
-
-      {isOpen && (
-        <section className="notifications-popover" aria-label="Notificaciones">
-          <header>
-            <h2>Notificaciones</h2>
-            <button type="button">Marcar todas como leidas</button>
-          </header>
-          <div className="notifications-list">
-            {notifications.map((item) => (
-              <article className="notification-item" key={item.title}>
-                <span className={`notification-icon ${item.tone}`}>{item.icon}</span>
-                <div>
-                  <strong>{item.title}</strong>
-                  <p>{item.text}</p>
-                  <small>{item.time}</small>
-                </div>
-                <i />
-              </article>
-            ))}
-          </div>
-          <button className="notifications-all-button" type="button">
-            Ver todas las notificaciones
-            <ArrowRight size={14} />
-          </button>
-        </section>
-      )}
-    </div>
-  );
-}
-
-function DroneGlyph({ size = 20 }: { size?: number }) {
-  return (
-    <svg aria-hidden="true" fill="none" height={size} viewBox="0 0 24 24" width={size} xmlns="http://www.w3.org/2000/svg">
-      <path d="M7 8h10M12 8v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-      <path d="M9.5 13h5l1.6 3H7.9L9.5 13Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-      <circle cx="5" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="19" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M5 5.8V4M19 5.8V4M9.5 18h-2M14.5 18h2" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
-    </svg>
   );
 }

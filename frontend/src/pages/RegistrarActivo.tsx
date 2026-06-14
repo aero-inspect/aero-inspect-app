@@ -7,9 +7,6 @@ import {
   Info,
   Lightbulb,
   MapPin,
-  Sun,
-  Bell,
-  UserRound,
   Warehouse,
   Wrench
 } from "lucide-react";
@@ -18,6 +15,7 @@ import { ASSET_TYPES, ASSET_TYPE_COLORS } from "../constants";
 import { LeafletSatelliteMap } from "../components/LeafletSatelliteMap";
 import { FieldError } from "../components/FieldError";
 import { SuccessModal } from "../components/SuccessModal";
+import { AppTopActions } from "../components/AppTopActions";
 
 export function RegistrarActivoView({
   assets,
@@ -97,22 +95,7 @@ export function RegistrarActivoView({
           </div>
         </div>
 
-        <div className="register-top-actions">
-          <div className="profile-weather">
-            <Sun size={30} />
-            <div>
-              <strong>23°C</strong>
-              <span>Parcialmente nublado</span>
-            </div>
-          </div>
-          <button className="tech-notification-button" type="button" aria-label="Notificaciones">
-            <Bell size={20} />
-            <span>3</span>
-          </button>
-          <button className="tech-user-button" type="button" aria-label="Perfil">
-            <UserRound size={21} />
-          </button>
-        </div>
+        <AppTopActions />
       </header>
 
       <form className="register-asset-layout" onSubmit={handleSubmit}>

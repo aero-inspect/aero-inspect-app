@@ -1,24 +1,6 @@
 import { useEffect, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import {
-  Battery,
-  Bell,
-  Check,
-  CheckCircle2,
-  Gauge,
-  Home,
-  Map,
-  Mountain,
-  Pause,
-  Play,
-  Radio,
-  Route,
-  Satellite,
-  ShieldCheck,
-  Sun,
-  Thermometer,
-  UserRound,
-  Wind
-} from "lucide-react";
+import { Battery, Check, CheckCircle2, Gauge, Home, Map, Mountain, Pause, Play, Radio, Route, Satellite, ShieldCheck, Thermometer, UserRound, Wind } from "lucide-react";
+import { AppTopActions } from "../components/AppTopActions";
 
 export function DroneTelemetryView({
   droneConnected,
@@ -65,22 +47,7 @@ export function DroneTelemetryView({
           <h1>Drones</h1>
           <p>Monitorea el estado, la telemetria y el historial de tu dron.</p>
         </div>
-        <div className="drones-top-actions">
-          <div className="drones-weather">
-            <Sun size={31} />
-            <div>
-              <strong>23°C</strong>
-              <span>Parcialmente nublado</span>
-            </div>
-          </div>
-          <button className="tech-notification-button" type="button" aria-label="Notificaciones">
-            <Bell size={20} />
-            <span>3</span>
-          </button>
-          <button className="tech-user-button" type="button" aria-label="Perfil">
-            <UserRound size={21} />
-          </button>
-        </div>
+        <AppTopActions />
       </header>
 
       <section className="drones-layout">

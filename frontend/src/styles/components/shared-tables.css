@@ -78,7 +78,7 @@
 
 .asset-detail-modal {
   width: min(680px, 100%);
-  max-height: calc(100vh - 48px);
+  max-height: calc(var(--app-canvas-height) - 48px);
   overflow: auto;
   padding: 28px;
   border: 1px solid rgba(11, 95, 137, 0.14);

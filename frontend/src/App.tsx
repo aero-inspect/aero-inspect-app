@@ -116,35 +116,39 @@ export function App() {
 
   if (!user) {
     return (
-      <Login
-        username={username}
-        password={password}
-        error={error}
-        showPassword={showPassword}
-        onUsernameChange={setUsername}
-        onPasswordChange={setPassword}
-        onToggleShowPassword={() => setShowPassword((current) => !current)}
-        onSubmit={handleLogin}
-      />
+      <div className="app-scale-root">
+        <Login
+          username={username}
+          password={password}
+          error={error}
+          showPassword={showPassword}
+          onUsernameChange={setUsername}
+          onPasswordChange={setPassword}
+          onToggleShowPassword={() => setShowPassword((current) => !current)}
+          onSubmit={handleLogin}
+        />
+      </div>
     );
   }
 
   return (
-    <Home
-      currentPath={currentPath}
-      navigateTo={navigateTo}
-      user={user}
-      onLogout={() => setUser(null)}
-      assets={assets}
-      missions={missions}
-      users={users}
-      droneConnected={droneConnected}
-      battery={battery}
-      setDroneConnected={setDroneConnected}
-      setBattery={setBattery}
-      setAssets={setAssets}
-      setMissions={setMissions}
-      setUsers={setUsers}
-    />
+    <div className="app-scale-root">
+      <Home
+        currentPath={currentPath}
+        navigateTo={navigateTo}
+        user={user}
+        onLogout={() => setUser(null)}
+        assets={assets}
+        missions={missions}
+        users={users}
+        droneConnected={droneConnected}
+        battery={battery}
+        setDroneConnected={setDroneConnected}
+        setBattery={setBattery}
+        setAssets={setAssets}
+        setMissions={setMissions}
+        setUsers={setUsers}
+      />
+    </div>
   );
 }

@@ -1,5 +1,5 @@
 ﻿.profile-dashboard {
-  height: 100vh;
+  height: var(--app-canvas-height);
   overflow: hidden;
   padding: 16px 20px;
   background: #f8fafc;
@@ -59,7 +59,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: 12px;
-  height: calc(100vh - 62px);
+  height: calc(var(--app-canvas-height) - 62px);
   min-height: 0;
 }
 
@@ -92,6 +92,7 @@
 .profile-account-card,
 .profile-activity-card {
   padding: 14px 16px;
+  height: fit-content;
 }
 
 .profile-card-heading {

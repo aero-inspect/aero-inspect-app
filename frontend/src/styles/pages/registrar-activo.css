@@ -1,5 +1,5 @@
 .register-asset-dashboard {
-  height: 100vh;
+  height: var(--app-canvas-height);
   overflow: hidden;
   padding: 10px 13px;
   background: #f8fafc;
@@ -86,7 +86,7 @@
   display: grid;
   grid-template-columns: minmax(310px, 0.94fr) minmax(292px, 1fr) 188px;
   gap: 9px;
-  height: calc(100vh - 48px);
+  height: calc(var(--app-canvas-height) - 48px);
   min-height: 0;
   align-items: start;
 }
@@ -109,7 +109,7 @@
 .register-map-card {
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 58px);
+  max-height: calc(var(--app-canvas-height) - 58px);
 }
 
 .register-card h2 {

@@ -2,15 +2,15 @@
 .home-shell-no-header {
   display: grid;
   grid-template-columns: 214px minmax(0, 1fr);
-  width: 100vw;
-  height: 100vh;
+  width: var(--app-canvas-width);
+  height: var(--app-canvas-height);
   overflow: hidden;
   background: #f8fafc;
 }
 
 .workspace-no-header {
   min-width: 0;
-  height: 100vh;
+  height: var(--app-canvas-height);
   overflow: hidden;
   padding: 0;
 }
@@ -22,7 +22,7 @@
 .sidebar-full {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: var(--app-canvas-height);
   padding: 0 12px;
   border-right: 1px solid #e2e8f0;
   background: #ffffff;
@@ -31,25 +31,46 @@
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 18px 0;
+  /* El padding original es 18px 0. Si el dron se corta arriba, 
+     puedes aumentar el padding superior un poco, ej: padding: 25px 0 18px 0; */
+  padding: 18px 0; 
+  
+  /* 1. FUNDAMENTAL: Punto de referencia para el dron */
+  position: relative; 
 }
 
 .sidebar-brand-drone {
+  /* Mantiene las propiedades anteriores */
+  position: absolute;
   width: 32px;
   height: auto;
-  margin-right: 4px;
   filter: drop-shadow(0 4px 8px rgba(0, 135, 191, 0.14));
+  
+  /* IMPORTANTE: z-index para asegurar que flote arriba */
+  z-index: 10; 
+
+  /* --- AJUSTES DE POSICIÓN --- */
+  
+  /* 1. BAJAR: Cambia de negativo a positivo */
+  top: 8px; /* Aumenta este número para que baje más */
+  
+  /* 2. IZQUIERDA: Disminuye este valor */
+  left: 31px; /* Ajusta este número hasta centrarlo sobre la 'I' */
 }
 
 .sidebar-brand-text {
   color: #10253a;
   font-size: 1rem;
   font-weight: 700;
+  
+  /* Como el dron ya no ocupa espacio físico a la izquierda por ser "absolute", 
+     puedes agregar un pequeño margen si no quieres que el texto quede 
+     totalmente pegado al borde izquierdo del sidebar */
+  margin-left: 8px; 
 }
 
 .sidebar-brand-text strong {
-  color: #0b8f49;
+  color: #00d7c7;
 }
 
 .nav-list {

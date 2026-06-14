@@ -1,4 +1,7 @@
 ﻿:root {
+  --app-scale: 0.8;
+  --app-canvas-width: calc(100vw / var(--app-scale));
+  --app-canvas-height: calc(100vh / var(--app-scale));
   color: #10253a;
   background: #eef6f5;
   font-family:
@@ -15,7 +18,21 @@
 body {
   margin: 0;
   min-width: 320px;
-  overflow-x: hidden;
+  overflow: hidden;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+.app-scale-root {
+  width: var(--app-canvas-width);
+  height: var(--app-canvas-height);
+  transform: scale(var(--app-scale));
+  transform-origin: top left;
 }
 
 button,

@@ -18,6 +18,7 @@ import {
 import type { Asset, AssetType, Plant } from "../types";
 import { ASSET_TYPE_COLORS } from "../constants";
 import { LeafletSatelliteMap } from "../components/LeafletSatelliteMap";
+import { AppTopActions } from "../components/AppTopActions";
 
 type AssetStatus = "Operativo" | "Mantenimiento" | "Fuera de servicio";
 
@@ -86,19 +87,20 @@ export function MisActivosView({
           <h1>Mis activos</h1>
           <p>Consulta y gestiona los activos registrados en la planta.</p>
         </div>
-
-        <div className="assets-dashboard-actions">
-          <label className="assets-search">
-            <Search size={15} aria-hidden="true" />
-            <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar activo..." value={searchTerm} />
-          </label>
-
-          <button className="assets-new-button" onClick={onRegisterAsset} type="button">
-            <Plus size={16} aria-hidden="true" />
-            Nuevo activo
-          </button>
-        </div>
+        <AppTopActions />
       </header>
+
+      <div className="assets-dashboard-actions">
+        <label className="assets-search">
+          <Search size={15} aria-hidden="true" />
+          <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar activo..." value={searchTerm} />
+        </label>
+
+        <button className="assets-new-button" onClick={onRegisterAsset} type="button">
+          <Plus size={16} aria-hidden="true" />
+          Nuevo activo
+        </button>
+      </div>
 
       <section className="assets-stats-row" aria-label="Resumen de activos">
         <AssetStatCard icon={<PackagePlus size={20} />} label="Total de activos" tone="green" value={stats.total} />
@@ -112,8 +114,6 @@ export function MisActivosView({
           <div className="assets-list-header">
             <h2>Lista de activos</h2>
             <button type="button">
-              Ordenar por: <strong>Nombre (A-Z)</strong>
-              <SlidersHorizontal size={13} aria-hidden="true" />
             </button>
           </div>
 

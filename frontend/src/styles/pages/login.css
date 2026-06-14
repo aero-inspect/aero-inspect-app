@@ -1,7 +1,7 @@
 ﻿.login-shell {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
-  min-height: 100vh;
+  min-height: var(--app-canvas-height);
 }
 
 .login-visual {

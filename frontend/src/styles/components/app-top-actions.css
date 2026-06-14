@@ -1,0 +1,31 @@
+.app-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.app-weather {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-weather svg {
+  color: #f5b400;
+}
+
+.app-weather strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.app-weather span {
+  display: block;
+  margin-top: 3px;
+  color: #334155;
+  font-size: 0.62rem;
+}

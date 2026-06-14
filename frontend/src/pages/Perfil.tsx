@@ -1,7 +1,6 @@
 import { useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import {
   ArrowRight,
-  Bell,
   BriefcaseBusiness,
   CalendarDays,
   Camera,
@@ -14,11 +13,11 @@ import {
   MapPin,
   Pencil,
   Shield,
-  Sun,
   User,
   UserRound
 } from "lucide-react";
 import type { MockUser, SessionUser } from "../types";
+import { AppTopActions } from "../components/AppTopActions";
 
 export function ProfileView({
   users,
@@ -72,25 +71,9 @@ export function ProfileView({
       <header className="profile-topbar">
         <div>
           <h1>Mi perfil</h1>
-          <p>Inicio &gt; Mi perfil</p>
         </div>
 
-        <div className="profile-top-actions">
-          <div className="profile-weather">
-            <Sun size={34} />
-            <div>
-              <strong>23°C</strong>
-              <span>Parcialmente nublado</span>
-            </div>
-          </div>
-          <button className="tech-notification-button" type="button" aria-label="Notificaciones">
-            <Bell size={20} />
-            <span>3</span>
-          </button>
-          <button className="tech-user-button" type="button" aria-label="Perfil">
-            <UserRound size={21} />
-          </button>
-        </div>
+        <AppTopActions />
       </header>
 
       <div className="profile-layout">
