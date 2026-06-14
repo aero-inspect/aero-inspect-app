@@ -1,0 +1,611 @@
+﻿.tech-dashboard {
+  height: 100vh;
+  overflow: auto;
+  padding: 18px 20px;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.tech-topbar,
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.tech-topbar {
+  margin-bottom: 13px;
+}
+
+.tech-greeting h1 {
+  margin: 0;
+  font-size: 1.36rem;
+  line-height: 1.1;
+}
+
+.tech-subtitle {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.tech-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tech-weather {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.weather-icon,
+.weather-main-icon {
+  color: #f5b400;
+}
+
+.weather-info,
+.stat-content,
+.ready-content {
+  display: grid;
+  gap: 2px;
+}
+
+.weather-temp {
+  color: #0f172a;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.weather-desc {
+  color: #334155;
+  font-size: 0.62rem;
+}
+
+.tech-notification-button,
+.tech-user-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e5eaf0;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.tech-notification-button span {
+  position: absolute;
+  top: -5px;
+  right: -2px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0b8f49;
+  color: #ffffff;
+  font-size: 0.56rem;
+  font-weight: 800;
+}
+
+.notifications-menu-wrap {
+  position: relative;
+}
+
+.notifications-popover {
+  position: absolute;
+  z-index: 900;
+  top: 46px;
+  right: -44px;
+  width: 336px;
+  overflow: hidden;
+  border: 1px solid #e5eaf0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.16);
+}
+
+.notifications-popover header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.notifications-popover h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.notifications-popover header button,
+.notifications-all-button {
+  border: 0;
+  background: transparent;
+  color: #047a3f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.notifications-list {
+  display: grid;
+}
+
+.notification-item {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 10px;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.notification-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.notification-icon.danger {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.notification-icon.info {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.notification-icon.success {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.notification-icon.warning {
+  background: #fff1cf;
+  color: #f59e0b;
+}
+
+.notification-icon.purple {
+  background: #f3e8ff;
+  color: #9333ea;
+}
+
+.notification-item strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.notification-item p {
+  margin: 4px 0 3px;
+  color: #475569;
+  font-size: 0.62rem;
+  line-height: 1.35;
+}
+
+.notification-item small {
+  color: #64748b;
+  font-size: 0.58rem;
+}
+
+.notification-item i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #1976ff;
+}
+
+.notifications-all-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 42px;
+}
+
+.tech-user-button {
+  background: #0b8f49;
+  color: #ffffff;
+}
+
+.tech-stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.tech-stat-card,
+.tech-map-section,
+.tech-missions-section,
+.tech-recent-section,
+.tech-weather-section,
+.tech-drone-section {
+  border: 1px solid #e5eaf0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.tech-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 74px;
+  padding: 12px;
+}
+
+.stat-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.stat-icon-green {
+  background: #dcfce7;
+  color: #079246;
+}
+
+.stat-icon-red {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.stat-label {
+  color: #0f172a;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.stat-value {
+  color: #0f172a;
+  font-size: 1.35rem;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.stat-link,
+.view-all-btn,
+.weather-forecast-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #047a3f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.stat-link-text {
+  color: #047a3f;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.tech-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(290px, 0.82fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tech-map-section,
+.tech-missions-section,
+.tech-recent-section,
+.tech-weather-section,
+.tech-drone-section {
+  padding: 10px;
+}
+
+.section-title {
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.tech-map-container {
+  position: relative;
+  height: 295px;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.tech-map-container .leaflet-map-shell,
+.tech-map-container .leaflet-map,
+.tech-map-container .leaflet-container {
+  height: 100%;
+  min-height: 100%;
+}
+
+.tech-missions-list {
+  display: grid;
+  gap: 8px;
+}
+
+.tech-mission-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 54px;
+  padding: 6px;
+  border: 1px solid #edf2f7;
+  border-radius: 10px;
+}
+
+.mission-name {
+  margin: 0 0 5px;
+  color: #0f172a;
+  font-size: 0.68rem;
+}
+
+.mission-location,
+.mission-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #64748b;
+  font-size: 0.6rem;
+}
+
+.mission-meta {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.mission-badge,
+.table-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 0.56rem;
+  font-weight: 800;
+}
+
+.badge-pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.badge-progress {
+  background: #dcfce7;
+  color: #047a3f;
+}
+
+.tech-ready-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #0b8f49;
+  color: #ffffff;
+}
+
+.ready-content h3 {
+  margin: 0;
+  font-size: 0.84rem;
+}
+
+.ready-content p {
+  margin: 0;
+  font-size: 0.66rem;
+}
+
+.ready-btn {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #047a3f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.tech-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(205px, 0.7fr) minmax(205px, 0.7fr);
+  gap: 12px;
+}
+
+.tech-table table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.tech-table th,
+.tech-table td {
+  height: 34px;
+  padding: 0 8px;
+  border-bottom: 1px solid #edf2f7;
+  color: #334155;
+  font-size: 0.62rem;
+  text-align: left;
+}
+
+.tech-table th {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.table-mission-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+  border-radius: 6px;
+  background: #dcfce7;
+  color: #047a3f;
+  vertical-align: middle;
+}
+
+.table-status.status-finalizada {
+  background: #dcfce7;
+  color: #047a3f;
+}
+
+.table-status.status-pendiente {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.table-action-btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid #e5eaf0;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.weather-display {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.weather-main-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.weather-main-temp {
+  color: #0f172a;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.weather-main-desc {
+  color: #64748b;
+  font-size: 0.62rem;
+}
+
+.weather-details-grid,
+.drone-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 8px;
+  overflow: hidden;
+  border: 1px solid #edf2f7;
+  border-radius: 9px;
+}
+
+.weather-detail-item,
+.drone-detail-item {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 7px 4px;
+  border-right: 1px solid #edf2f7;
+  text-align: center;
+}
+
+.weather-detail-item:last-child,
+.drone-detail-item:last-child {
+  border-right: 0;
+}
+
+.detail-value {
+  color: #0f172a;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.detail-label {
+  color: #64748b;
+  font-size: 0.56rem;
+}
+
+.drone-status-badge {
+  float: right;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #047a3f;
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+
+.drone-image-container {
+  display: grid;
+  place-items: center;
+  min-height: 58px;
+}
+
+.drone-image {
+  width: 96px;
+  filter: drop-shadow(0 8px 16px rgba(0, 135, 191, 0.2));
+}
+
+.drone-battery {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 8px 0;
+}
+
+.battery-bar {
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.battery-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #16a34a;
+}
+
+.battery-percent,
+.detail-value-green {
+  color: #047a3f;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.drone-details-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detail-icon-green {
+  color: #047a3f;
+}
+

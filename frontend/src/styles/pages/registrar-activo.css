@@ -1,0 +1,369 @@
+.register-asset-dashboard {
+  height: 100vh;
+  overflow: hidden;
+  padding: 10px 13px;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.register-asset-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 7px;
+}
+
+.register-asset-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.register-back-button {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  margin-top: 2px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.register-back-button:hover {
+  background: #eef2f7;
+}
+
+.register-asset-header h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.08rem;
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.register-asset-header p {
+  margin: 3px 0 0;
+  color: #475569;
+  font-size: 0.58rem;
+}
+
+.register-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.register-top-actions .profile-weather svg {
+  width: 21px;
+  height: 21px;
+}
+
+.register-top-actions .profile-weather strong {
+  font-size: 0.62rem;
+}
+
+.register-top-actions .profile-weather span {
+  font-size: 0.5rem;
+}
+
+.register-top-actions .tech-notification-button,
+.register-top-actions .tech-user-button {
+  width: 26px;
+  height: 26px;
+}
+
+.register-top-actions .tech-notification-button svg,
+.register-top-actions .tech-user-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.register-asset-layout {
+  display: grid;
+  grid-template-columns: minmax(310px, 0.94fr) minmax(292px, 1fr) 188px;
+  gap: 9px;
+  height: calc(100vh - 48px);
+  min-height: 0;
+  align-items: start;
+}
+
+.register-card {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid #e5eaf0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+}
+
+.register-map-card,
+.register-form-card,
+.register-help-card {
+  padding: 12px;
+}
+
+.register-map-card {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 58px);
+}
+
+.register-card h2 {
+  margin: 0 0 4px;
+  color: #0f172a;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.register-card > p {
+  margin: 0 0 7px;
+  color: #64748b;
+  font-size: 0.56rem;
+}
+
+.register-map-frame {
+  position: relative;
+  flex: 0 0 clamp(190px, 34vh, 238px);
+  height: clamp(190px, 34vh, 238px);
+  max-height: 238px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #0f172a;
+}
+
+.register-map-frame .leaflet-map-shell,
+.register-map-frame .leaflet-map,
+.register-map-frame .leaflet-container {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  max-height: 238px;
+  border-radius: 10px;
+}
+
+.selected-coordinates-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px;
+  margin-top: 7px;
+  padding: 8px;
+  border: 1px solid #dcfce7;
+  border-radius: 10px;
+  background: #f0fdf4;
+}
+
+.selected-coordinates-card > span {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.selected-coordinates-card strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #0f172a;
+  font-size: 0.58rem;
+}
+
+.selected-coordinates-card p {
+  margin: 1px 0;
+  color: #475569;
+  font-size: 0.54rem;
+}
+
+.register-info-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  padding: 8px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #334155;
+  font-size: 0.54rem;
+}
+
+.register-map-card .field-error {
+  margin-top: 5px;
+}
+
+.register-info-note svg {
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.register-form-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.register-field {
+  display: grid;
+  gap: 4px;
+}
+
+.register-field span {
+  color: #0f172a;
+  font-size: 0.56rem;
+  font-weight: 800;
+}
+
+.register-field input,
+.register-field textarea,
+.register-select-wrap {
+  width: 100%;
+  border: 1px solid #dbe3ea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  font: inherit;
+  font-size: 0.58rem;
+  outline: 0;
+}
+
+.register-field input,
+.register-select-wrap {
+  min-height: 34px;
+}
+
+.register-field input {
+  padding: 0 8px;
+}
+
+.register-field textarea {
+  min-height: 110px;
+  resize: none;
+  padding: 7px 8px;
+  line-height: 1.45;
+}
+
+.register-field small {
+  justify-self: end;
+  margin-top: -3px;
+  color: #64748b;
+  font-size: 0.5rem;
+}
+
+.register-field .field-invalid {
+  border-color: #da1e28;
+}
+
+.register-select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 11px;
+}
+
+.register-select-wrap select {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #334155;
+  font: inherit;
+  appearance: none;
+  cursor: pointer;
+}
+
+.register-select-wrap svg {
+  color: #64748b;
+  pointer-events: none;
+}
+
+.register-form-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.45fr;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.register-cancel-button,
+.register-submit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 34px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+
+.register-cancel-button {
+  border: 1px solid #dbe3ea;
+  background: #ffffff;
+  color: #334155;
+}
+
+.register-submit-button {
+  border: 1px solid #05863f;
+  background: #05863f;
+  color: #ffffff;
+}
+
+.register-help-card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 11px;
+}
+
+.register-help-intro {
+  padding-bottom: 11px;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.register-help-intro svg {
+  color: #16a34a;
+  margin-bottom: 5px;
+}
+
+.register-help-intro p {
+  margin: 5px 0 0;
+  color: #475569;
+  font-size: 0.54rem;
+  line-height: 1.55;
+}
+
+.register-type-list h3 {
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-size: 0.6rem;
+}
+
+.register-type-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  color: #334155;
+  font-size: 0.54rem;
+}
+
+@media (max-width: 1280px) {
+  .register-asset-dashboard {
+    overflow: auto;
+  }
+
+  .register-asset-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .register-map-frame {
+    height: 420px;
+  }
+}

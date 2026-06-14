@@ -1,0 +1,245 @@
+﻿.home-shell {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-rows: 58px minmax(0, 1fr);
+  overflow-x: hidden;
+  min-height: 100vh;
+  background: #eef6f5;
+}
+
+.app-header {
+  grid-column: 1 / -1;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 58px;
+  padding: 0 22px 0 10px;
+  border-bottom: 1px solid rgba(11, 95, 137, 0.12);
+  background: rgba(251, 253, 252, 0.88);
+  color: #10253a;
+  backdrop-filter: blur(18px);
+}
+
+.app-brand {
+  position: relative;
+  min-width: 138px;
+  min-height: 38px;
+  gap: 0;
+}
+
+.app-brand-drone {
+  position: absolute;
+  top: -7px;
+  left: 12px;
+  width: 62px;
+  height: auto;
+  z-index: 2;
+  filter: drop-shadow(0 8px 16px rgba(0, 135, 191, 0.14));
+}
+
+.app-brand-text {
+  position: relative;
+  z-index: 1;
+  margin-top: 16px;
+  font-size: 1.12rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.app-brand-text strong {
+  color: #00d7c7;
+  font-weight: 700;
+}
+
+.header-actions {
+  gap: 20px;
+}
+
+.notification-button,
+.user-menu {
+  border: 0;
+  background: transparent;
+  color: #405464;
+  cursor: pointer;
+}
+
+.notification-button {
+  position: relative;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+}
+
+.notification-button span {
+  position: absolute;
+  top: 7px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #00d7c7;
+}
+
+.user-menu {
+  gap: 10px;
+  min-height: 42px;
+  padding: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(0, 215, 199, 0.35);
+  border-radius: 50%;
+  background: rgba(0, 215, 199, 0.14);
+  color: #0b5f89;
+  font-weight: 700;
+}
+
+.sidebar {
+  padding: 28px 20px;
+  background: #fbfdfc;
+  border-right: 1px solid #d8e2eb;
+}
+
+.nav-list {
+  display: grid;
+  gap: 6px;
+}
+
+.nav-list a,
+.nav-list button {
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #405464;
+  cursor: pointer;
+  font-weight: 800;
+  text-align: left;
+  text-decoration: none;
+}
+
+.nav-list a.active,
+.nav-list a:hover,
+.nav-list button.active,
+.nav-list button:hover {
+  background: #dcefeb;
+  color: #0b5f89;
+}
+
+.workspace {
+  min-width: 0;
+  overflow-x: hidden;
+  padding: 34px;
+}
+
+.register-workspace {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(24, 212, 170, 0.12), transparent 32%),
+    radial-gradient(circle at 92% 18%, rgba(0, 135, 191, 0.12), transparent 28%),
+    #eef6f5;
+}
+
+.topbar {
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.topbar h1 {
+  margin-bottom: 0;
+  font-size: 2.4rem;
+}
+
+.role-label {
+  margin: 8px 0 0;
+  color: #405464;
+  font-weight: 700;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  min-height: 150px;
+  padding: 22px;
+  border: 1px solid #d8e2eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.metric-card svg {
+  color: #1e8f76;
+}
+
+.metric-card span {
+  margin-top: 24px;
+  color: #405464;
+}
+
+.metric-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.7rem;
+}
+
+.content-band {
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px;
+  border: 1px solid #d8e2eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.content-band h2 {
+  margin-bottom: 8px;
+}
+
+.content-band p {
+  max-width: 640px;
+  margin-bottom: 0;
+  color: #405464;
+}
+
+.plant-view {
+  display: grid;
+  gap: 22px;
+}
+
+.plant-summary {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.plant-summary h2 {
+  margin: 0 0 6px;
+  color: #10253a;
+  font-size: 2rem;
+}
+
+.plant-summary p:not(.eyebrow) {
+  margin: 0;
+  color: #52677a;
+}
+
+.plant-map-shell {
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid rgba(11, 95, 137, 0.15);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 22px 60px rgba(16, 37, 58, 0.08);
+}
+

@@ -1,0 +1,93 @@
+﻿.mission-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
+  gap: 22px;
+  align-items: stretch;
+}
+
+.mission-route-panel {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.mission-route-panel p {
+  margin: 4px 0 0;
+  color: #52677a;
+  font-size: 0.84rem;
+}
+
+.mission-empty {
+  margin: 0 !important;
+  padding: 18px;
+  border: 1px solid rgba(11, 95, 137, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.mission-point-list {
+  display: grid;
+  gap: 8px;
+}
+
+.mission-point-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 8px;
+  border: 1px solid rgba(11, 95, 137, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.mission-point-row > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #111827;
+  color: #ffffff;
+  font-size: 0.74rem;
+}
+
+.mission-point-row p {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mission-point-row button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #52677a;
+  cursor: pointer;
+}
+
+.mission-point-row button:hover {
+  background: #eef3f4;
+  color: #10253a;
+}
+
+.asset-message {
+  grid-column: 1 / -1;
+}
+
+.success-message {
+  margin: -12px 0 0;
+  color: #08745f;
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+

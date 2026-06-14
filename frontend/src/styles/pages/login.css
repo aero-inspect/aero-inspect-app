@@ -1,0 +1,236 @@
+﻿.login-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+  min-height: 100vh;
+}
+
+.login-visual {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 56px;
+  background:
+    linear-gradient(135deg, rgba(7, 33, 55, 0.9), rgba(38, 165, 125, 0.66)),
+    url("https://www.sofoval.com/wp2018/wordpress/wp-content/uploads/2018/01/Silos-Miguelete-editada.jpg")
+      center / cover;
+  color: #ffffff;
+}
+
+.brand-lockup,
+.panel-header,
+.topbar,
+.app-header,
+.app-brand,
+.header-actions,
+.notification-button,
+.user-menu,
+.content-band,
+.input-wrap,
+.primary-button,
+.secondary-button,
+.icon-button,
+.ghost-button {
+  display: flex;
+  align-items: center;
+}
+
+.brand-lockup {
+  align-items: center;
+  flex-direction: column;
+  gap: 0;
+  max-width: 720px;
+  text-align: center;
+}
+
+.hero-brand {
+  margin: -66px 0 2px;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 5.2rem;
+  font-weight: 700;
+  line-height: 0.95;
+  text-shadow: 0 20px 48px rgba(5, 24, 40, 0.36);
+}
+
+.hero-brand strong {
+  color: #00d7c7;
+  font-weight: 700;
+}
+
+.hero-drone {
+  width: 286px;
+  max-width: 42vw;
+  height: auto;
+  margin-top: -18px;
+  margin-bottom: -28px;
+  transform: translateX(-34px);
+  filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.3));
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  opacity: 0.74;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+.login-visual h1 {
+  max-width: 680px;
+  margin: 19px 0 0;
+  color: rgba(238, 247, 250, 0.86);
+  font-size: 1.42rem;
+  font-weight: 300;
+  line-height: 1.35;
+}
+
+.metric-card span {
+  display: block;
+  color: inherit;
+  font-size: 0.88rem;
+  opacity: 0.72;
+}
+
+.login-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 52px;
+  background: #fbfdfc;
+}
+
+.login-heading {
+  margin-bottom: 34px;
+}
+
+.login-heading h2 {
+  margin: 0;
+  color: #10253a;
+  font-size: 1.72rem;
+  font-weight: 900;
+}
+
+.login-heading span {
+  display: block;
+  width: 40px;
+  height: 2px;
+  margin-top: 12px;
+  border-radius: 999px;
+  background: #17d4b0;
+}
+
+.login-form {
+  display: grid;
+  gap: 22px;
+}
+
+.login-form label span {
+  display: block;
+  margin-bottom: 10px;
+  color: #173955;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.input-wrap {
+  gap: 12px;
+  height: 58px;
+  padding: 0 18px;
+  border: 1px solid #d7e0ea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #8192a5;
+  box-shadow: 0 10px 28px rgba(16, 37, 58, 0.04);
+}
+
+.input-wrap:focus-within {
+  border-color: #1e8f76;
+  box-shadow: 0 0 0 3px rgba(30, 143, 118, 0.14);
+}
+
+.input-wrap input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #10253a;
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.input-wrap input::placeholder {
+  color: #8b9caf;
+  font-weight: 400;
+}
+
+.icon-button {
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #8192a5;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: #eef6f5;
+  color: #0b5f89;
+}
+
+.form-error {
+  margin: -12px 0 0;
+  color: #b42318;
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.primary-button,
+.secondary-button,
+.ghost-button {
+  justify-content: center;
+  gap: 10px;
+  min-height: 46px;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.primary-button {
+  min-height: 58px;
+  margin-top: 4px;
+  background: linear-gradient(90deg, #18d4aa, #0087bf);
+  color: #ffffff;
+  box-shadow: 0 14px 28px rgba(0, 135, 191, 0.2);
+}
+
+.primary-button:hover,
+.secondary-button:hover {
+  filter: brightness(0.96);
+}
+
+.secondary-button {
+  padding: 0 18px;
+  background: #0b5f89;
+  color: #ffffff;
+}
+
+.ghost-button {
+  padding: 0 16px;
+  border: 1px solid #cdd9e3;
+  background: #ffffff;
+  color: #405464;
+}
+

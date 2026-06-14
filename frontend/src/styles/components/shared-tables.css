@@ -1,0 +1,116 @@
+﻿.assets-table-panel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(11, 95, 137, 0.15);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 22px 60px rgba(16, 37, 58, 0.08);
+}
+
+.assets-table-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.assets-table-toolbar p {
+  margin: 0;
+}
+
+.assets-table-toolbar p:last-child {
+  margin-top: 4px;
+  color: #52677a;
+  font-size: 0.84rem;
+}
+
+.empty-assets {
+  margin: 0;
+  padding: 24px;
+  border: 1px solid rgba(11, 95, 137, 0.15);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #52677a;
+}
+
+.assets-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(11, 95, 137, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.assets-table {
+  width: 100%;
+  min-width: 500px;
+  border-collapse: collapse;
+}
+
+.assets-table th,
+.assets-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid rgba(11, 95, 137, 0.1);
+  color: #10253a;
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.assets-table th {
+  background: rgba(238, 246, 245, 0.72);
+  color: #52677a;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.table-detail-button {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0b5f89;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.asset-detail-modal {
+  width: min(680px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 28px;
+  border: 1px solid rgba(11, 95, 137, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 28px 80px rgba(16, 37, 58, 0.2);
+}
+
+.asset-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.asset-detail-header h2 {
+  margin: 0 0 8px;
+  color: #10253a;
+  font-size: 1.45rem;
+  line-height: 1.1;
+}
+
+.asset-detail-header p,
+.asset-detail-section p {
+  margin: 4px 0 0;
+  color: #52677a;
+}
+
+.asset-detail-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+

@@ -1,0 +1,113 @@
+﻿.leaflet-map-shell {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 360px;
+  min-height: 300px;
+  border-radius: 8px;
+  background: #0f172a;
+  isolation: isolate;
+}
+
+.cesium-map-shell {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 360px;
+  min-height: 300px;
+  border-radius: 8px;
+  background: #d8e2eb;
+}
+
+.cesium-map-shell .cesium-widget,
+.cesium-map-shell .cesium-widget canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.cesium-map-shell .cesium-viewer-bottom {
+  font-size: 0.62rem;
+}
+
+.leaflet-map {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  background: #0f172a;
+}
+
+.leaflet-tile-container,
+.leaflet-pane,
+.leaflet-map-pane {
+  will-change: transform;
+}
+
+.leaflet-tile {
+  max-width: none !important;
+}
+
+.leaflet-map .leaflet-control-attribution {
+  font-size: 0.62rem;
+}
+
+.leaflet-map .leaflet-control-zoom {
+  overflow: hidden;
+  border: 1px solid rgba(11, 95, 137, 0.18);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(16, 37, 58, 0.14);
+}
+
+.leaflet-map .leaflet-control-zoom a {
+  border: 0;
+  color: #0b5f89;
+  font-weight: 500;
+}
+
+.leaflet-asset-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaflet-asset-marker span {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  background: #00d7c7;
+  box-shadow: 0 5px 12px rgba(2, 18, 30, 0.28);
+}
+
+.leaflet-asset-marker.selected span {
+  width: 8px;
+  height: 8px;
+  border: 0;
+  background: #111827;
+  box-shadow: 0 5px 12px rgba(2, 18, 30, 0.2);
+}
+
+.leaflet-route-marker span {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #111827;
+  box-shadow: 0 5px 12px rgba(2, 18, 30, 0.24);
+}
+
+.plant-map-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 14px 18px;
+  color: #52677a;
+  font-size: 0.86rem;
+}
+
