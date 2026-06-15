@@ -2,40 +2,40 @@
   height: var(--app-canvas-height);
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 18px 24px 0;
+  padding: 12px 16px 0;
   background: #f8fafc;
   color: #0f172a;
 }
 
 .register-asset-topbar {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .register-title-group {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 10px;
 }
 
 .register-title-group h1 {
   margin: 0;
   color: #0f172a;
-  font-size: 1.52rem;
+  font-size: 1.22rem;
   line-height: 1.1;
   font-weight: 800;
 }
 
 .register-title-group p {
-  margin: 5px 0 0;
+  margin: 3px 0 0;
   color: #64748b;
-  font-size: 0.72rem;
+  font-size: 0.62rem;
 }
 
 .register-back-button {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   margin-top: 1px;
   border: 0;
   border-radius: 10px;
@@ -50,17 +50,17 @@
 
 .register-asset-layout {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(330px, 1fr);
-  gap: 24px;
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 0.9fr);
+  gap: 14px;
   align-items: start;
-  min-height: calc(var(--app-canvas-height) - 98px);
-  padding-bottom: 18px;
+  min-height: calc(var(--app-canvas-height) - 76px);
+  padding-bottom: 12px;
 }
 
 .register-card {
   min-width: 0;
   border: 1px solid #e5eaf0;
-  border-radius: 20px;
+  border-radius: 16px;
   background: #ffffff;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
@@ -68,42 +68,43 @@
 .register-map-card {
   display: flex;
   flex-direction: column;
-  min-height: calc(var(--app-canvas-height) - 120px);
-  padding: 24px;
+  min-height: 0;
+  padding: 14px;
 }
 
 .register-side-column {
   display: grid;
-  gap: 16px;
+  gap: 10px;
   min-width: 0;
 }
 
 .register-preview-card,
 .register-form-card,
 .suggested-missions-card {
-  padding: 20px;
+  padding: 13px;
 }
 
 .register-section-heading h2,
 .register-card h2 {
   margin: 0;
   color: #0f172a;
-  font-size: 0.92rem;
+  font-size: 0.78rem;
   font-weight: 800;
 }
 
 .register-section-heading p {
-  margin: 6px 0 16px;
+  margin: 4px 0 10px;
   color: #64748b;
-  font-size: 0.68rem;
+  font-size: 0.58rem;
 }
 
 .register-map-frame {
   position: relative;
-  flex: 1;
-  min-height: 520px;
+  flex: 0 0 auto;
+  height: 420px;
+  min-height: 420px;
   overflow: hidden;
-  border-radius: 18px;
+  border-radius: 14px;
   background: #0f172a;
 }
 
@@ -112,20 +113,20 @@
 .register-map-frame .leaflet-container {
   width: 100%;
   height: 100%;
-  min-height: 520px;
-  border-radius: 18px;
+  min-height: 420px;
+  border-radius: 14px;
 }
 
 .selected-location-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
-  min-height: 78px;
-  margin-top: 16px;
-  padding: 14px 16px;
+  gap: 9px;
+  min-height: 58px;
+  margin-top: 10px;
+  padding: 10px 12px;
   border: 1px solid #e5eaf0;
-  border-radius: 16px;
+  border-radius: 12px;
   background: #ffffff;
   color: #334155;
 }
@@ -138,8 +139,8 @@
 .selected-location-icon {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: #eef2f7;
   color: #64748b;
@@ -153,14 +154,14 @@
 .selected-location-card strong {
   display: block;
   color: #0f172a;
-  font-size: 0.76rem;
+  font-size: 0.66rem;
   font-weight: 800;
 }
 
 .selected-location-card p {
   margin: 3px 0 0;
   color: #475569;
-  font-size: 0.66rem;
+  font-size: 0.56rem;
 }
 
 .register-map-card .field-error {
@@ -169,14 +170,14 @@
 
 .register-preview-card {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .register-preview-image,
 .register-preview-placeholder {
   width: 100%;
-  height: 152px;
-  border-radius: 14px;
+  height: 108px;
+  border-radius: 12px;
 }
 
 .register-preview-image {
@@ -201,7 +202,7 @@
 .register-preview-title strong {
   overflow: hidden;
   color: #0f172a;
-  font-size: 0.82rem;
+  font-size: 0.7rem;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -209,7 +210,7 @@
 
 .register-preview-list {
   display: grid;
-  gap: 10px;
+  gap: 7px;
 }
 
 .register-preview-item {
@@ -229,31 +230,31 @@
   display: block;
   margin-bottom: 3px;
   color: #64748b;
-  font-size: 0.62rem;
+  font-size: 0.54rem;
 }
 
 .register-preview-item p {
   margin: 0;
   overflow: hidden;
   color: #334155;
-  font-size: 0.66rem;
+  font-size: 0.58rem;
   line-height: 1.35;
   text-overflow: ellipsis;
 }
 
 .register-form-card {
   display: grid;
-  gap: 14px;
+  gap: 9px;
 }
 
 .register-field {
   display: grid;
-  gap: 7px;
+  gap: 5px;
 }
 
 .register-field > span {
   color: #0f172a;
-  font-size: 0.66rem;
+  font-size: 0.58rem;
   font-weight: 800;
 }
 
@@ -265,18 +266,18 @@
   background: #ffffff;
   color: #334155;
   font: inherit;
-  font-size: 0.68rem;
+  font-size: 0.6rem;
   outline: 0;
 }
 
 .register-field input {
-  min-height: 40px;
-  padding: 0 12px;
+  min-height: 32px;
+  padding: 0 10px;
 }
 
 .register-field textarea {
-  min-height: 120px;
-  padding: 10px 12px;
+  min-height: 84px;
+  padding: 8px 10px;
   resize: vertical;
   line-height: 1.5;
 }
@@ -291,7 +292,7 @@
   justify-self: end;
   margin-top: -4px;
   color: #64748b;
-  font-size: 0.56rem;
+  font-size: 0.5rem;
 }
 
 .register-field .field-invalid {
@@ -301,7 +302,7 @@
 .asset-type-card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 7px;
 }
 
 .asset-type-card {
@@ -309,16 +310,16 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: 8px;
-  height: 80px;
-  padding: 12px;
+  gap: 5px;
+  height: 58px;
+  padding: 8px;
   border: 1px solid #dbe3ea;
   border-radius: 12px;
   background: #ffffff;
   color: #334155;
   cursor: pointer;
   font: inherit;
-  font-size: 0.66rem;
+  font-size: 0.58rem;
   font-weight: 800;
   text-align: left;
   transition: border 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
@@ -338,22 +339,22 @@
 .asset-status-picker {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .asset-status-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 34px;
-  padding: 0 11px;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 9px;
   border: 1px solid #dbe3ea;
   border-radius: 999px;
   background: #ffffff;
   cursor: pointer;
   font: inherit;
-  font-size: 0.62rem;
+  font-size: 0.54rem;
   font-weight: 800;
 }
 
@@ -387,10 +388,10 @@
 .register-dropzone {
   display: grid;
   place-items: center;
-  min-height: 120px;
-  padding: 16px;
+  min-height: 82px;
+  padding: 10px;
   border: 1px dashed #cbd5e1;
-  border-radius: 16px;
+  border-radius: 12px;
   background: #f8fafc;
   color: #334155;
   cursor: pointer;
@@ -408,16 +409,16 @@
 }
 
 .register-dropzone strong {
-  margin-top: 8px;
+  margin-top: 5px;
   color: #0f172a;
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 800;
 }
 
 .register-dropzone p {
   margin: 3px 0 0;
   color: #64748b;
-  font-size: 0.62rem;
+  font-size: 0.54rem;
 }
 
 .image-preview-grid {
@@ -471,7 +472,7 @@
 
 .suggested-missions-card {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .suggested-missions-card > div:first-child {
@@ -487,19 +488,19 @@
 .suggested-mission-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .suggested-mission-chips span {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  min-height: 28px;
-  padding: 0 10px;
+  min-height: 24px;
+  padding: 0 8px;
   border-radius: 999px;
   background: #dcfce7;
   color: #047a3f;
-  font-size: 0.62rem;
+  font-size: 0.54rem;
   font-weight: 800;
 }
 
@@ -510,9 +511,9 @@
   grid-column: 1 / -1;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
   margin-top: 0;
-  padding: 14px 0 18px;
+  padding: 9px 0 11px;
   border-top: 1px solid rgba(226, 232, 240, 0.86);
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.78), #f8fafc 42%);
   backdrop-filter: blur(8px);
@@ -523,24 +524,24 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 38px;
-  border-radius: 10px;
+  gap: 6px;
+  min-height: 32px;
+  border-radius: 8px;
   cursor: pointer;
   font: inherit;
-  font-size: 0.68rem;
+  font-size: 0.58rem;
   font-weight: 800;
 }
 
 .register-cancel-button {
-  min-width: 112px;
+  min-width: 96px;
   border: 1px solid #dbe3ea;
   background: #ffffff;
   color: #334155;
 }
 
 .register-submit-button {
-  min-width: 164px;
+  min-width: 138px;
   border: 1px solid #16a34a;
   background: #16a34a;
   color: #ffffff;
@@ -590,7 +591,7 @@
   cursor: pointer;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 900px) {
   .register-asset-layout {
     grid-template-columns: 1fr;
   }
