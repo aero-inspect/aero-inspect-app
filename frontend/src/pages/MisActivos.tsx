@@ -5,7 +5,10 @@ import {
   Building2,
   Camera,
   CheckCircle2,
+  ChevronDown,
+  CircleHelp,
   MapPin,
+  MoreVertical,
   PackagePlus,
   Pencil,
   Plus,
@@ -17,7 +20,7 @@ import {
   X
 } from "lucide-react";
 import type { Asset, AssetType, Plant } from "../types";
-import { ASSET_TYPE_COLORS } from "../constants";
+import { ASSET_TYPE_COLORS, ASSET_TYPES } from "../constants";
 import { LeafletSatelliteMap } from "../components/LeafletSatelliteMap";
 import { AppTopActions } from "../components/AppTopActions";
 
@@ -31,24 +34,35 @@ const STATUS_META: Record<AssetStatus, { className: string; label: string }> = {
 
 export function MisActivosView({
   assets,
+  onDeleteAsset,
   onRegisterAsset,
+  onUpdateAsset,
   plant
 }: {
   assets: Asset[];
   onBack: () => void;
+  onDeleteAsset: (assetId: number) => void;
   onRegisterAsset: () => void;
   onUpdateAsset: (asset: Asset) => void;
   plant: Plant;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
-
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [statusOverrides, setStatusOverrides] = useState<Record<number, AssetStatus>>({});
+  const [openActionId, setOpenActionId] = useState<number | null>(null);
+  const [isTypeFilterOpen, setIsTypeFilterOpen] = useState(false);
+  const [typeFilters, setTypeFilters] = useState<AssetType[]>([]);
+  const [editingAssetId, setEditingAssetId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editImages, setEditImages] = useState<NonNullable<Asset["images"]>>([]);
+  const [deleteTarget, setDeleteTarget] = useState<Asset | null>(null);
 
   const plantAssets = useMemo(() => assets.filter((asset) => asset.plantId === plant.id), [assets, plant.id]);
 
   const filteredAssets = useMemo(() => {
     return plantAssets.filter((asset) => {
+      const matchesType = typeFilters.length === 0 || typeFilters.includes(asset.type);
       const normalizedSearch = searchTerm.trim().toLowerCase();
       const matchesSearch =
         !normalizedSearch ||
@@ -56,9 +70,9 @@ export function MisActivosView({
         asset.type.toLowerCase().includes(normalizedSearch) ||
         asset.description.toLowerCase().includes(normalizedSearch);
 
-      return matchesSearch;
+      return matchesType && matchesSearch;
     });
-  }, [plantAssets, searchTerm]);
+  }, [plantAssets, searchTerm, typeFilters]);
 
   useEffect(() => {
     if (selectedAssetId !== null && !filteredAssets.some((asset) => asset.id === selectedAssetId)) {
@@ -67,7 +81,7 @@ export function MisActivosView({
   }, [filteredAssets, selectedAssetId]);
 
   const selectedAsset = selectedAssetId === null ? null : filteredAssets.find((asset) => asset.id === selectedAssetId) ?? null;
-  const selectedStatus = selectedAsset ? getAssetStatus(selectedAsset) : "Operativo";
+  const selectedStatus = selectedAsset ? getAssetStatus(selectedAsset, statusOverrides) : "Operativo";
   const markers = filteredAssets.map((asset) => ({
     id: asset.id,
     latitude: asset.latitude,
@@ -78,9 +92,55 @@ export function MisActivosView({
 
   const stats = {
     total: plantAssets.length,
-    operative: plantAssets.filter((asset) => getAssetStatus(asset) === "Operativo").length,
-    maintenance: plantAssets.filter((asset) => getAssetStatus(asset) === "Mantenimiento").length,
-    offline: plantAssets.filter((asset) => getAssetStatus(asset) === "Fuera de servicio").length
+    operative: plantAssets.filter((asset) => getAssetStatus(asset, statusOverrides) === "Operativo").length,
+    maintenance: plantAssets.filter((asset) => getAssetStatus(asset, statusOverrides) === "Mantenimiento").length,
+    offline: plantAssets.filter((asset) => getAssetStatus(asset, statusOverrides) === "Fuera de servicio").length
+  };
+
+  const toggleTypeFilter = (type: AssetType) => {
+    setTypeFilters((current) => (current.includes(type) ? current.filter((item) => item !== type) : [...current, type]));
+  };
+
+  const startEdit = (asset: Asset) => {
+    setEditingAssetId(asset.id);
+    setEditName(asset.name);
+    setEditImages(getAssetImages(asset));
+  };
+
+  const cancelEdit = () => {
+    setEditingAssetId(null);
+    setEditName("");
+    setEditImages([]);
+  };
+
+  const saveEdit = () => {
+    if (!selectedAsset || !editName.trim()) return;
+    onUpdateAsset({
+      ...selectedAsset,
+      name: editName.trim(),
+      images: editImages,
+      imageName: editImages[0]?.name,
+      imagePreview: editImages[0]?.preview
+    });
+    cancelEdit();
+  };
+
+  const addEditImages = (files: FileList | null) => {
+    if (!files) return;
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setEditImages((current) => [...current, { id: Date.now() + current.length, name: file.name, preview: String(reader.result ?? "") }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    onDeleteAsset(deleteTarget.id);
+    if (selectedAssetId === deleteTarget.id) setSelectedAssetId(null);
+    setDeleteTarget(null);
   };
 
   return (
@@ -94,6 +154,26 @@ export function MisActivosView({
       </header>
 
       <div className="assets-dashboard-actions">
+        <div className="assets-type-filter">
+          <button className="assets-type-filter-button" onClick={() => setIsTypeFilterOpen((current) => !current)} type="button">
+            {typeFilters.length === 0 ? "Todos" : `Tipos: ${typeFilters.length}`}
+            <ChevronDown size={14} />
+          </button>
+          {isTypeFilterOpen && (
+            <div className="assets-type-filter-menu">
+              <button className={typeFilters.length === 0 ? "active" : undefined} onClick={() => setTypeFilters([])} type="button">
+                <span />
+                Todos
+              </button>
+              {ASSET_TYPES.map((type) => (
+                <button className={typeFilters.includes(type) ? "active" : undefined} key={type} onClick={() => toggleTypeFilter(type)} type="button">
+                  <span style={{ "--asset-type-color": ASSET_TYPE_COLORS[type] } as CSSProperties} />
+                  {type}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <label className="assets-search">
           <Search size={15} aria-hidden="true" />
           <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar activo..." value={searchTerm} />
@@ -138,7 +218,7 @@ export function MisActivosView({
                 </thead>
                 <tbody>
                   {filteredAssets.map((asset) => {
-                    const status = getAssetStatus(asset);
+                    const status = getAssetStatus(asset, statusOverrides);
                     const statusMeta = STATUS_META[status];
                     const isSelected = selectedAsset?.id === asset.id;
 
@@ -165,9 +245,24 @@ export function MisActivosView({
                           </span>
                         </td>
                         <td>
-                          <button aria-label={`Eliminar ${asset.name}`} className="assets-row-action" onClick={(event) => event.stopPropagation()} type="button">
-                            <Trash2 size={15} aria-hidden="true" />
-                          </button>
+                          <div className="assets-row-actions">
+                            <button aria-label={`Eliminar ${asset.name}`} className="assets-row-action" onClick={(event) => { event.stopPropagation(); setDeleteTarget(asset); }} type="button">
+                              <Trash2 size={15} aria-hidden="true" />
+                            </button>
+                            <button aria-label={`Mas acciones de ${asset.name}`} className="assets-row-action" onClick={(event) => { event.stopPropagation(); setOpenActionId(openActionId === asset.id ? null : asset.id); }} type="button">
+                              <MoreVertical size={15} aria-hidden="true" />
+                            </button>
+                            {openActionId === asset.id && (
+                              <div className="asset-row-menu" onClick={(event) => event.stopPropagation()}>
+                                <strong>Modificar estado</strong>
+                                {(["Operativo", "Mantenimiento", "Fuera de servicio"] as AssetStatus[]).map((nextStatus) => (
+                                  <button key={nextStatus} onClick={() => { setStatusOverrides((current) => ({ ...current, [asset.id]: nextStatus })); setOpenActionId(null); }} type="button">
+                                    <span className={`assets-status ${STATUS_META[nextStatus].className}`}>{nextStatus}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -211,16 +306,43 @@ export function MisActivosView({
               </button>
             </div>
 
-            <div className="assets-detail-list">
-              <AssetDetailItem icon={<Warehouse size={15} />} label="Tipo" value={selectedAsset.type} />
-              <AssetDetailItem icon={<MapPin size={15} />} label="Ubicacion" value={`${getAssetZone(selectedAsset)}\n${selectedAsset.latitude}, ${selectedAsset.longitude}`} />
-              <AssetDetailItem icon={<Building2 size={15} />} label="Descripcion" value={selectedAsset.description || "Sin descripcion cargada."} />
-              <AssetDetailItem icon={<CalendarIcon />} label="Fecha de registro" value="12/03/2026" />
-              <AssetDetailItem icon={<CheckCircle2 size={15} />} label="Ultima inspeccion" value="28/05/2026" />
-            </div>
+            {editingAssetId === selectedAsset.id ? (
+              <div className="asset-edit-panel">
+                <label>
+                  <span>Nombre</span>
+                  <input maxLength={100} onChange={(event) => setEditName(event.target.value)} value={editName} />
+                </label>
+                <div className="asset-edit-files">
+                  <span>Archivos</span>
+                  <label className="asset-upload-button">
+                    <Camera size={14} />
+                    Subir imagen
+                    <input accept="image/*" multiple onChange={(event) => addEditImages(event.target.files)} type="file" />
+                  </label>
+                  <div className="asset-edit-thumbs">
+                    {editImages.map((image) => (
+                      <div key={image.id}>
+                        <img alt={image.name} src={image.preview} />
+                        <button onClick={() => setEditImages((current) => current.filter((item) => item.id !== image.id))} type="button">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="assets-detail-list">
+                <AssetDetailItem icon={<Warehouse size={15} />} label="Tipo" value={selectedAsset.type} />
+                <AssetDetailItem icon={<MapPin size={15} />} label="Ubicacion" value={`${getAssetZone(selectedAsset)}\n${selectedAsset.latitude}, ${selectedAsset.longitude}`} />
+                <AssetDetailItem icon={<Building2 size={15} />} label="Descripcion" value={selectedAsset.description || "Sin descripcion cargada."} />
+                <AssetDetailItem icon={<CalendarIcon />} label="Fecha de registro" value="12/03/2026" />
+                <AssetDetailItem icon={<CheckCircle2 size={15} />} label="Ultima inspeccion" value="28/05/2026" />
+              </div>
+            )}
 
 
-            <div className="assets-detail-item" style={{ marginTop: "12px" }}>
+            {editingAssetId !== selectedAsset.id && <div className="assets-detail-item" style={{ marginTop: "12px" }}>
                 <Camera size={15} />
                 <div>
                   <span>Archivos</span>
@@ -236,6 +358,7 @@ export function MisActivosView({
                   )}
                 </div>
               </div>
+            }
 
             <button className="assets-missions-link" type="button">
               Misiones asociadas
@@ -244,14 +367,27 @@ export function MisActivosView({
             </button>
 
             <div className="assets-detail-actions">
-              <button className="assets-edit-button" type="button">
+              {editingAssetId === selectedAsset.id ? (
+                <>
+                  <button className="assets-edit-button" onClick={saveEdit} type="button">
+                    Guardar
+                  </button>
+                  <button className="assets-delete-button neutral" onClick={cancelEdit} type="button">
+                    Cancelar
+                  </button>
+                </>
+              ) : (
+                <>
+              <button className="assets-edit-button" onClick={() => startEdit(selectedAsset)} type="button">
                 <Pencil size={13} aria-hidden="true" />
                 Editar activo
               </button>
-              <button className="assets-delete-button" type="button">
+              <button className="assets-delete-button" onClick={() => setDeleteTarget(selectedAsset)} type="button">
                 <Trash2 size={13} aria-hidden="true" />
                 Eliminar activo
               </button>
+                </>
+              )}
             </div>
           </aside>
         )}
@@ -270,6 +406,22 @@ export function MisActivosView({
               alt={`Foto de ${selectedAsset.name}`} 
             />
           </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="modal-backdrop" role="presentation">
+          <section className="success-modal delete-confirm-modal" role="dialog" aria-modal="true">
+            <div className="success-icon delete-confirm-icon">
+              <CircleHelp size={24} aria-hidden="true" />
+            </div>
+            <h2>Eliminar activo</h2>
+            <p>¿Estas seguro que deseas eliminar "{deleteTarget.name}"?</p>
+            <div className="modal-actions">
+              <button className="modal-link-button" onClick={() => setDeleteTarget(null)} type="button">Cancelar</button>
+              <button className="register-button delete-confirm-button" onClick={confirmDelete} type="button">Si, eliminar</button>
+            </div>
+          </section>
         </div>
       )}
 
@@ -312,7 +464,32 @@ function CalendarIcon() {
   );
 }
 
-function getAssetStatus(asset: Asset): AssetStatus {
+function getAssetImages(asset: Asset): NonNullable<Asset["images"]> {
+  const images: NonNullable<Asset["images"]> = [];
+
+  asset.images?.forEach((image, index) => {
+    const preview = image.preview;
+    if (!preview) return;
+    images.push({
+      id: image.id ?? Date.now() + index,
+      name: image.name ?? `Imagen ${index + 1}`,
+      preview
+    });
+  });
+
+  if (asset.imagePreview && !images.some((image) => image.preview === asset.imagePreview)) {
+    images.push({
+      id: Date.now() + images.length,
+      name: asset.imageName ?? "Imagen del activo",
+      preview: asset.imagePreview
+    });
+  }
+
+  return images;
+}
+
+function getAssetStatus(asset: Asset, overrides: Record<number, AssetStatus>): AssetStatus {
+  if (overrides[asset.id]) return overrides[asset.id];
   if (asset.name.toLowerCase().includes("sur") || asset.id % 7 === 0) return "Fuera de servicio";
   if (asset.type === "Tuberia" || asset.id % 4 === 0) return "Mantenimiento";
   return "Operativo";

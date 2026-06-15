@@ -219,7 +219,7 @@ export function Home({
         ) : isDronePath && DRONE_OPERATION_ROLES.includes(user.role) ? (
           <DroneTelemetryView onBack={() => navigateTo("/")} droneConnected={droneConnected} setDroneConnected={setDroneConnected} battery={battery} setBattery={setBattery} />
         ) : isAssetsPath && userCanConsultAssets ? (
-          <MisActivosView assets={assets} onBack={() => navigateTo("/")} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} plant={MOCK_PLANT} />
+          <MisActivosView assets={assets} onBack={() => navigateTo("/")} onDeleteAsset={(assetId) => setAssets((current) => current.filter((asset) => asset.id !== assetId))} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} plant={MOCK_PLANT} />
         ) : isReportsPath ? (
           <ReportesView assets={assets} />
         ) : user.role === "Jefe de Planta" ? (
