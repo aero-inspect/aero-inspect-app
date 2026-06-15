@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { useState, type CSSProperties, type ChangeEvent, type DragEvent, type FormEvent, type ReactNode } from "react";
 import {
   ArrowLeft,
   Building2,
@@ -63,8 +63,7 @@ export function RegistrarActivoView({
   const selectedLocation = latitude && longitude ? { latitude, longitude } : undefined;
   const primaryImage = images[0]?.preview;
 
-  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
+  const appendImageFiles = (files: FileList | File[]) => {
     if (!files) return;
 
     const newImages = Array.from(files).map((file, index) => ({
@@ -74,7 +73,16 @@ export function RegistrarActivoView({
     }));
 
     setImages((current) => [...current, ...newImages]);
+  };
+
+  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) appendImageFiles(event.target.files);
     event.target.value = "";
+  };
+
+  const handleImageDrop = (event: DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    appendImageFiles(Array.from(event.dataTransfer.files).filter((file) => file.type.startsWith("image/")));
   };
 
   const removeImage = (imageId: number) => {
@@ -109,6 +117,7 @@ export function RegistrarActivoView({
     onCreateAsset({
       name: name.trim(),
       type,
+      status,
       latitude: latitude.trim(),
       longitude: longitude.trim(),
       description: description.trim(),
@@ -238,7 +247,7 @@ export function RegistrarActivoView({
 
             <div className="register-field">
               <span>Fotografias</span>
-              <label className="register-dropzone">
+              <label className="register-dropzone" onDragOver={(event) => event.preventDefault()} onDrop={handleImageDrop}>
                 <UploadCloud size={24} aria-hidden="true" />
                 <strong>Agregar fotografias</strong>
                 <p>Arrastra imagenes o haz clic para seleccionar</p>

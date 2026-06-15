@@ -33,6 +33,7 @@ export type Asset = {
   id: number;
   name: string;
   type: AssetType;
+  status?: "Operativo" | "Mantenimiento" | "Fuera de servicio";
   latitude: string;
   longitude: string;
   description: string;

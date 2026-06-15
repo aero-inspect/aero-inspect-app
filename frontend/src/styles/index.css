@@ -13,6 +13,7 @@
 @import "./components/shared-tables.css";
 @import "./pages/mis-activos.css";
 @import "./pages/reportes.css";
+@import "./pages/centro-ayuda.css";
 @import "./responsive.css";
 @import "./layouts/app-shell.css";
 @import "./pages/home-tecnico.css";

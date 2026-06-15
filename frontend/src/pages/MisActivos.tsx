@@ -490,6 +490,7 @@ function getAssetImages(asset: Asset): NonNullable<Asset["images"]> {
 
 function getAssetStatus(asset: Asset, overrides: Record<number, AssetStatus>): AssetStatus {
   if (overrides[asset.id]) return overrides[asset.id];
+  if (asset.status) return asset.status;
   if (asset.name.toLowerCase().includes("sur") || asset.id % 7 === 0) return "Fuera de servicio";
   if (asset.type === "Tuberia" || asset.id % 4 === 0) return "Mantenimiento";
   return "Operativo";

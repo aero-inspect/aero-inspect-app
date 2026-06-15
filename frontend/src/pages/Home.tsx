@@ -16,6 +16,7 @@ import { RoleManagementView } from "./GestionRoles";
 import { JefePlantaView } from "./JefePlanta";
 import { MonitorMissionView } from "./MonitorMission";
 import { ReportesView } from "./Reportes";
+import { CentroAyudaView } from "./CentroAyuda";
 import { AppTopActions, DroneGlyph } from "../components/AppTopActions";
 import { WeatherWidget } from "../components/WeatherWidget";
 
@@ -76,6 +77,7 @@ export function Home({
   const isRoleMgmtPath = currentPath === "/gestion-roles";
   const isMonitorPath = currentPath === "/monitorear-mision";
   const isReportsPath = currentPath === "/reportes";
+  const isHelpPath = currentPath === "/centro-ayuda";
   const userCanConsultAssets = canConsultAssets(user.role);
   const currentUser = users.find((u) => u.name === user.name);
   const currentProfileImage = currentUser?.profileImage ?? "";
@@ -90,7 +92,7 @@ export function Home({
           </span>
         </div>
         <nav className="nav-list" aria-label="Principal">
-          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isDronePath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isProfilePath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
+          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isDronePath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isProfilePath && !isHelpPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
             <HomeIcon size={20} />
             <span>Inicio</span>
           </button>
@@ -158,14 +160,14 @@ export function Home({
           </div>
           <ArrowRight className="sidebar-user-arrow" size={15} aria-hidden="true" />
         </button>
-        <button className="sidebar-help-button" type="button">
+        <button className={isHelpPath ? "sidebar-help-button active" : "sidebar-help-button"} onClick={() => navigateTo("/centro-ayuda")} type="button">
           <HelpCircle size={18} />
           <span>Centro de ayuda</span>
         </button>
       </aside>
 
-      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isReportsPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
-        {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && user.role !== "Tecnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
+      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isReportsPath || isHelpPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
+        {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isHelpPath && user.role !== "Tecnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">
             <div>
               <p className="eyebrow">Bienvenida, {user.name}</p>
@@ -186,7 +188,9 @@ export function Home({
           </header>
         )}
 
-        {isProfilePath ? (
+        {isHelpPath ? (
+          <CentroAyudaView />
+        ) : isProfilePath ? (
           <ProfileView user={user} users={users} setUsers={setUsers} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onLogout={() => { navigateTo("/"); onLogout(); }} />
         ) : isRegisterAssetPath && (userCanConsultAssets || user.role === "Jefe de Planta") ? (
           <RegistrarActivoView assets={assets} onBack={() => navigateTo("/mis-activos")} onCreateAsset={(asset) => setAssets((current) => [...current, { ...asset, id: Date.now(), plantId: MOCK_PLANT.id }])} onGoHome={() => navigateTo("/")} onViewAssets={() => navigateTo("/mis-activos")} plant={MOCK_PLANT} />
