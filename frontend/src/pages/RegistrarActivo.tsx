@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ChangeEvent, type DragEvent, type FormEvent, type ReactNode } from "react";
+﻿import { useState, type CSSProperties, type ChangeEvent, type DragEvent, type FormEvent, type ReactNode } from "react";
 import {
   ArrowLeft,
   Building2,
@@ -358,3 +358,4 @@ function getStatusPillClass(status: AssetStatus) {
   if (status === "Fuera de servicio") return "offline";
   return "operative";
 }
+

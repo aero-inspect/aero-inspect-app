@@ -1,4 +1,4 @@
-.register-asset-dashboard {
+﻿.register-asset-dashboard {
   height: var(--app-canvas-height);
   overflow-y: auto;
   overflow-x: hidden;
@@ -600,3 +600,4 @@
     min-height: auto;
   }
 }
+

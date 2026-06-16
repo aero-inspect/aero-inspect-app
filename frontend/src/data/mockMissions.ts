@@ -1,4 +1,4 @@
-import type { InspectionMission } from "../types";
+﻿import type { InspectionMission } from "../types";
 
 export const MOCK_MISSIONS: InspectionMission[] = [
   {
@@ -86,4 +86,4 @@ export const MOCK_MISSIONS: InspectionMission[] = [
   }
 ];
 
-// Made with Bob
+

@@ -1,38 +1,23 @@
-import { useState, useEffect } from "react";
+﻿import { useEffect, useState } from "react";
 import { AlertTriangle, ArrowRight, Bell, Calendar, CheckCircle2, Plane, UserRound } from "lucide-react";
+import climaImage from "../assets/clima.jpg";
+import { emptyWeather, fetchWeather } from "../services/weather";
 
 export function AppTopActions() {
   const [isOpen, setIsOpen] = useState(false);
-  
-  // 1. Agregamos el estado para el clima compacto
-  const [weather, setWeather] = useState({
-    temp: 0,
-    desc: "Cargando..."
-  });
+  const [weather, setWeather] = useState(emptyWeather);
 
-  // 2. Usamos useEffect para buscar la temperatura de Bragado al cargar
   useEffect(() => {
-    const fetchWeather = async () => {
+    const loadWeather = async () => {
       try {
-        const API_KEY = "8d76bb9c20d4f03ef9743edaf4a74828";
-        const url = `https://api.openweathermap.org/data/2.5/weather?q=Bragado,AR&units=metric&lang=es&appid=${API_KEY}`;
-        
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Error en la petición del clima");
-        
-        const data = await response.json();
-
-        setWeather({
-          temp: Math.round(data.main.temp),
-          desc: data.weather[0].description
-        });
+        setWeather(await fetchWeather());
       } catch (error) {
         console.error("Error fetching weather:", error);
-        setWeather({ temp: 0, desc: "Sin conexión" });
+        setWeather({ ...emptyWeather, desc: "Sin conexión", loading: false });
       }
     };
 
-    fetchWeather();
+    loadWeather();
   }, []);
 
   const goToProfile = () => {
@@ -50,21 +35,18 @@ export function AppTopActions() {
 
   return (
     <div className="app-top-actions">
-      
-      {/* --- SECCIÓN DE CLIMA DINÁMICO --- */}
       <div className="app-weather">
-        <img 
-          src="/src/assets/clima.jpg" 
-          alt="Clima actual" 
+        <img
+          alt="Clima actual"
           className="weather-icon"
-          style={{ width: '34px', height: '34px', objectFit: 'cover', borderRadius: '4px' }} 
+          src={climaImage}
+          style={{ width: "34px", height: "34px", objectFit: "cover", borderRadius: "4px" }}
         />
         <div>
           <strong>{weather.temp}°C</strong>
           <span style={{ textTransform: "capitalize" }}>{weather.desc}</span>
         </div>
       </div>
-      {/* --------------------------------- */}
 
       <div className="notifications-menu-wrap">
         <button className="tech-notification-button" onClick={() => setIsOpen((current) => !current)} type="button" aria-label="Notificaciones">
@@ -117,3 +99,4 @@ export function DroneGlyph({ size = 20 }: { size?: number }) {
     </svg>
   );
 }
+

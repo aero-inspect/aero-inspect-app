@@ -102,7 +102,6 @@ export function App() {
         return;
       }
     } catch {
-      // fallback to local mock data
     }
 
     const mockUser = getMockLoginResult(normalizedUsername, password);
@@ -152,3 +151,5 @@ export function App() {
     </div>
   );
 }
+
+

@@ -1,4 +1,4 @@
-﻿/* Restored app shell, sidebar, technician home and profile */
+﻿
 .home-shell-no-header {
   display: grid;
   grid-template-columns: 214px minmax(0, 1fr);
@@ -31,31 +31,30 @@
 .sidebar-brand {
   display: flex;
   align-items: center;
-  /* El padding original es 18px 0. Si el dron se corta arriba, 
-     puedes aumentar el padding superior un poco, ej: padding: 25px 0 18px 0; */
+  
   padding: 18px 0; 
   
-  /* 1. FUNDAMENTAL: Punto de referencia para el dron */
+  
   position: relative; 
 }
 
 .sidebar-brand-drone {
-  /* Mantiene las propiedades anteriores */
+  
   position: absolute;
   width: 32px;
   height: auto;
   filter: drop-shadow(0 4px 8px rgba(0, 135, 191, 0.14));
   
-  /* IMPORTANTE: z-index para asegurar que flote arriba */
+  
   z-index: 10; 
 
-  /* --- AJUSTES DE POSICIÓN --- */
   
-  /* 1. BAJAR: Cambia de negativo a positivo */
-  top: 8px; /* Aumenta este número para que baje más */
   
-  /* 2. IZQUIERDA: Disminuye este valor */
-  left: 31px; /* Ajusta este número hasta centrarlo sobre la 'I' */
+  
+  top: 8px; 
+  
+  
+  left: 31px; 
 }
 
 .sidebar-brand-text {
@@ -63,9 +62,7 @@
   font-size: 1rem;
   font-weight: 700;
   
-  /* Como el dron ya no ocupa espacio físico a la izquierda por ser "absolute", 
-     puedes agregar un pequeño margen si no quieres que el texto quede 
-     totalmente pegado al borde izquierdo del sidebar */
+  
   margin-left: 8px; 
 }
 
@@ -207,4 +204,6 @@
   font-size: 0.72rem;
   font-weight: 500;
 }
+
+
 

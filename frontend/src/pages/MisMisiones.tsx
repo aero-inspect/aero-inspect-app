@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+﻿import { useMemo, useState, type ReactNode } from "react";
 import { CalendarCheck, CheckCircle2, Clock3, Pause, Play, Plus, Search, Trash2, X, XCircle } from "lucide-react";
 import type { Asset, InspectionMission, Plant } from "../types";
 import { MissionRouteMap } from "../components/MissionRouteMap";
@@ -153,10 +153,10 @@ export function MisMisionesView({
           </div>
           <div className="missions-table-footer">
             <div className="missions-pagination">
-              <button type="button">‹</button>
+              <button type="button">â€¹</button>
               <button className="active" type="button">1</button>
               <button type="button">2</button>
-              <button type="button">›</button>
+              <button type="button">â€º</button>
             </div>
             <span>Mostrando {filteredMissions.length} de {missionRows.length} misiones</span>
           </div>
@@ -311,3 +311,4 @@ function statusClass(status: MissionDisplayStatus) {
   if (status === "Cancelada") return "cancelled";
   return "pending";
 }
+

@@ -1,4 +1,4 @@
-import type { Asset } from "../types";
+﻿import type { Asset } from "../types";
 
 export const MOCK_ASSETS: Asset[] = [
   {
@@ -48,4 +48,4 @@ export const MOCK_ASSETS: Asset[] = [
   }
 ];
 
-// Made with Bob
+

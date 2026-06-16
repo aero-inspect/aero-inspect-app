@@ -1,4 +1,4 @@
-import type { Asset, InspectionMission } from "../types";
+﻿import type { Asset, InspectionMission } from "../types";
 import { ASSETS_STORAGE_KEY, MISSIONS_STORAGE_KEY } from "../constants";
 
 export function loadStoredAssets() {
@@ -20,3 +20,4 @@ export function loadStoredMissions() {
     return [];
   }
 }
+

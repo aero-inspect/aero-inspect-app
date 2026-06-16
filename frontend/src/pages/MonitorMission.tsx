@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { ArrowLeft, MapPin, Navigation, Clock, CheckCircle2, XCircle, Pause } from "lucide-react";
 import type { InspectionMission, Asset, Plant } from "../types";
 import { MissionMonitorMap } from "../components/MissionMonitorMap";
@@ -11,24 +11,15 @@ type MonitorMissionViewProps = {
 };
 
 export function MonitorMissionView({ missions, assets, plant, onBack }: MonitorMissionViewProps) {
-  // Find active mission (En ejecución)
   const [simulatedMission, setSimulatedMission] = useState<InspectionMission | null>(null);
   const activeMission = simulatedMission || missions.find((m) => m.status === "En ejecución");
-  
-  // Simulated drone position (in real app, this would come from telemetry)
   const [dronePosition, setDronePosition] = useState<{ lat: number; lng: number } | null>(null);
   const [completedPoints, setCompletedPoints] = useState<number>(0);
   const [missionProgress, setMissionProgress] = useState<number>(0);
-
-  // Function to simulate an active mission
   const startSimulation = () => {
     const centerLat = parseFloat(plant.center.latitude);
     const centerLng = parseFloat(plant.center.longitude);
-    
-    // Try to use existing mission first
     let missionToSimulate: InspectionMission | null = null;
-    
-    // 1. Try pending mission
     const pendingMission = missions.find((m) => m.status === "Pendiente");
     if (pendingMission && pendingMission.routePoints.length > 0) {
       missionToSimulate = {
@@ -37,7 +28,6 @@ export function MonitorMissionView({ missions, assets, plant, onBack }: MonitorM
         startedAt: new Date().toISOString()
       };
     }
-    // 2. Try any mission with route points
     else if (missions.length > 0) {
       const missionWithRoute = missions.find((m) => m.routePoints && m.routePoints.length > 0);
       if (missionWithRoute) {
@@ -48,8 +38,6 @@ export function MonitorMissionView({ missions, assets, plant, onBack }: MonitorM
         };
       }
     }
-    
-    // 3. Create demo mission if no suitable mission found
     if (!missionToSimulate) {
       const demoAssetName = assets.length > 0 ? assets[0].name : "Activo Demo";
       const demoAssetId = assets.length > 0 ? assets[0].id : 1;
@@ -85,8 +73,6 @@ export function MonitorMissionView({ missions, assets, plant, onBack }: MonitorM
     setMissionProgress(0);
     setDronePosition(null);
   };
-
-  // Simulate drone movement along the route
   useEffect(() => {
     if (!activeMission || activeMission.routePoints.length === 0) return;
 
@@ -97,23 +83,17 @@ export function MonitorMissionView({ missions, assets, plant, onBack }: MonitorM
           clearInterval(interval);
           return activeMission.routePoints.length;
         }
-        
-        // Update drone position to current point
         const currentPoint = activeMission.routePoints[next];
         setDronePosition({
           lat: parseFloat(currentPoint.latitude),
           lng: parseFloat(currentPoint.longitude)
         });
-        
-        // Update progress percentage
         const progress = Math.round((next / activeMission.routePoints.length) * 100);
         setMissionProgress(progress);
         
         return next;
       });
     }, 3000); // Move to next point every 3 seconds
-
-    // Initialize drone at first point
     if (activeMission.routePoints.length > 0) {
       const firstPoint = activeMission.routePoints[0];
       setDronePosition({
@@ -178,7 +158,6 @@ export function MonitorMissionView({ missions, assets, plant, onBack }: MonitorM
         </div>
       ) : (
         <div className="monitor-layout">
-          {/* Mission Info Panel */}
           <aside className="mission-info-panel">
             <div className="info-card">
               <div className="info-header">
@@ -262,8 +241,6 @@ export function MonitorMissionView({ missions, assets, plant, onBack }: MonitorM
               </div>
             </div>
           </aside>
-
-          {/* Map View */}
           <div className="map-container">
             <MissionMonitorMap
               plant={plant}
@@ -278,4 +255,5 @@ export function MonitorMissionView({ missions, assets, plant, onBack }: MonitorM
   );
 }
 
-// Made with Bob
+
+

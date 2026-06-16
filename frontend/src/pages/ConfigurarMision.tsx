@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+﻿import { useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import {
   ArrowLeft,
   Check,
@@ -18,7 +18,7 @@ import type { Asset, InspectionMission, InspectionPoint, Plant } from "../types"
 import { ASSET_TYPE_COLORS } from "../constants";
 import { AppTopActions } from "../components/AppTopActions";
 import { FieldError } from "../components/FieldError";
-import { MissionRouteMap, type MissionMapMode } from "../components/MissionRouteMap";
+import { MissionRouteMap } from "../components/MissionRouteMap";
 
 type AssetStatus = "Operativo" | "Mantenimiento" | "Fuera de servicio";
 
@@ -43,18 +43,17 @@ export function ConfigurarMisionView({
 }) {
   const plantAssets = assets.filter((asset) => asset.plantId === plant.id);
   const [missionName, setMissionName] = useState("");
-  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(plantAssets[0]?.id ?? null);
+  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
   const [routePoints, setRoutePoints] = useState<InspectionPoint[]>([]);
   const [flightHeight, setFlightHeight] = useState("20");
   const [flightSpeed, setFlightSpeed] = useState("5");
   const [overlap, setOverlap] = useState("80");
-  const [mapMode, setMapMode] = useState<MissionMapMode>("satellite");
   const [centerSignal, setCenterSignal] = useState(0);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<"name" | "asset" | "route", string>>>({});
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const selectedAsset = plantAssets.find((asset) => asset.id === selectedAssetId) ?? null;
-  const selectedStatus = getAssetStatus(selectedAsset);
+  const selectedStatus = selectedAsset ? getAssetStatus(selectedAsset) : null;
   const estimatedDistance = useMemo(() => getRouteDistance(routePoints), [routePoints]);
   const estimatedMinutes = routePoints.length === 0 ? 0 : Math.max(1, Math.ceil(estimatedDistance / 75 + routePoints.length * 0.7));
 
@@ -101,7 +100,7 @@ export function ConfigurarMisionView({
     });
 
     setMissionName("");
-    setSelectedAssetId(plantAssets[0]?.id ?? null);
+    setSelectedAssetId(null);
     setRoutePoints([]);
     setIsSuccessOpen(true);
   };
@@ -148,7 +147,7 @@ export function ConfigurarMisionView({
               onClick={() => setIsAssetOpen((current) => !current)}
               type="button"
             >
-              <strong>{selectedAsset?.name || "Activo"}</strong>
+              <strong>{selectedAsset?.name || "Seleccionar"}</strong>
               <ChevronDown size={16} aria-hidden="true" />
             </button>
 
@@ -176,7 +175,7 @@ export function ConfigurarMisionView({
           </div>
 
           <QuickInfoCard label="Tipo de activo" value={selectedAsset?.type || "-"} />
-          <QuickInfoCard label="Estado" value={selectedStatus} status={selectedStatus} />
+          <QuickInfoCard label="Estado" value={selectedStatus || "-"} status={selectedStatus} />
         </section>
 
         {plantAssets.length === 0 && <p className="mission-empty-assets">No hay activos registrados. Primero debe darse de alta un activo.</p>}
@@ -191,14 +190,6 @@ export function ConfigurarMisionView({
             </div>
 
             <div className="mission-map-toolbar">
-              <div className="mission-map-tabs">
-                <button className={mapMode === "satellite" ? "active" : ""} onClick={() => setMapMode("satellite")} type="button">
-                  Satelite
-                </button>
-                <button className={mapMode === "map" ? "active" : ""} onClick={() => setMapMode("map")} type="button">
-                  Mapa
-                </button>
-              </div>
               <button className="mission-map-tool" disabled={!selectedAsset} onClick={() => setCenterSignal((current) => current + 1)} type="button">
                 <Navigation size={15} aria-hidden="true" />
                 Centrar activo
@@ -214,7 +205,6 @@ export function ConfigurarMisionView({
                 asset={selectedAsset}
                 centerSignal={centerSignal}
                 disabled={plantAssets.length === 0}
-                mapMode={mapMode}
                 onAddPoint={(point) => {
                   setRoutePoints((current) => [...current, { ...point, id: Date.now() + current.length }]);
                   setFieldErrors((current) => ({ ...current, route: undefined }));
@@ -231,7 +221,7 @@ export function ConfigurarMisionView({
               <h2>Resumen de mision</h2>
               <MissionSummaryItem label="Activo seleccionado" value={selectedAsset?.name || "Sin activo"} icon={<MapPin size={16} />} />
               <MissionSummaryItem label="Tipo" value={selectedAsset?.type || "-"} icon={<Layers size={16} />} />
-              <MissionSummaryItem label="Estado" value={selectedStatus} status={selectedStatus} icon={<CheckCircle2 size={16} />} />
+              <MissionSummaryItem label="Estado" value={selectedStatus || "-"} status={selectedStatus} icon={<CheckCircle2 size={16} />} />
               <MissionSummaryItem label="Puntos definidos" value={String(routePoints.length)} icon={<MapPin size={16} />} />
               <MissionSummaryItem label="Distancia estimada" value={`${estimatedDistance} m`} icon={<Ruler size={16} />} />
               <MissionSummaryItem label="Tiempo estimado" value={`${estimatedMinutes} min`} icon={<Clock3 size={16} />} />
@@ -301,7 +291,7 @@ export function ConfigurarMisionView({
   );
 }
 
-function QuickInfoCard({ label, status, value }: { label: string; status?: AssetStatus; value: string }) {
+function QuickInfoCard({ label, status, value }: { label: string; status?: AssetStatus | null; value: string }) {
   return (
     <div className="mission-quick-card">
       <span>{label}</span>
@@ -318,7 +308,7 @@ function MissionSummaryItem({
 }: {
   icon: ReactNode;
   label: string;
-  status?: AssetStatus;
+  status?: AssetStatus | null;
   value: string;
 }) {
   return (
@@ -416,3 +406,4 @@ function getDistanceMeters(first: InspectionPoint, second: InspectionPoint) {
 function toRadians(value: number) {
   return (value * Math.PI) / 180;
 }
+

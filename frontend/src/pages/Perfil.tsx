@@ -1,7 +1,6 @@
-import { useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
+﻿import { useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import {
   ArrowRight,
-  BriefcaseBusiness,
   CalendarDays,
   Camera,
   ClipboardCheck,
@@ -11,8 +10,8 @@ import {
   Lock,
   LogOut,
   MapPin,
-  Pencil,
   Shield,
+  Trash2,
   User,
   UserRound
 } from "lucide-react";
@@ -22,6 +21,7 @@ import { AppTopActions } from "../components/AppTopActions";
 export function ProfileView({
   users,
   setUsers,
+  onViewActivity,
   onLogout
 }: {
   user: SessionUser;
@@ -29,6 +29,7 @@ export function ProfileView({
   setUsers: Dispatch<SetStateAction<MockUser[]>>;
   onBack: () => void;
   onAssignRoles: () => void;
+  onViewActivity: () => void;
   onLogout: () => void;
 }) {
   const userEntry = users.find((item) => item.name === "Emilia Andersen") ?? users[0] ?? null;
@@ -41,6 +42,9 @@ export function ProfileView({
   const [isEditing, setIsEditing] = useState(false);
   const [profileImage, setProfileImage] = useState(userEntry?.profileImage ?? "");
   const [formData, setFormData] = useState({ firstName, lastName, phone, email, company, location });
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [passwordData, setPasswordData] = useState({ current: "", next: "", repeat: "" });
 
   const handleProfileImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -65,6 +69,10 @@ export function ProfileView({
   };
 
   const displayName = `${formData.firstName} ${formData.lastName}`.trim();
+  const closePasswordModal = () => {
+    setPasswordData({ current: "", next: "", repeat: "" });
+    setIsPasswordModalOpen(false);
+  };
 
   return (
     <section className="profile-dashboard">
@@ -91,10 +99,6 @@ export function ProfileView({
               <div className="profile-photo-block">
                 <div className="profile-photo">
                   {profileImage ? <img alt={displayName} src={profileImage} /> : <UserRound size={72} />}
-                  <label className="profile-photo-edit">
-                    <Pencil size={16} />
-                    <input accept="image/*" hidden onChange={handleProfileImageChange} type="file" />
-                  </label>
                 </div>
                 <label className="profile-photo-button">
                   <Camera size={16} />
@@ -123,7 +127,7 @@ export function ProfileView({
               <h3>Seguridad de la cuenta</h3>
               <p>Mantén tu información actualizada para asegurar el acceso a la plataforma.</p>
             </div>
-            <button className="profile-outline-button" type="button">
+            <button className="profile-outline-button" onClick={() => setIsPasswordModalOpen(true)} type="button">
               <Lock size={16} />
               Cambiar contraseña
             </button>
@@ -145,7 +149,7 @@ export function ProfileView({
               <h2>Eliminar cuenta</h2>
               <p>Esta acción desactivará el acceso del usuario a la plataforma.</p>
             </div>
-            <button className="profile-delete-button" type="button">
+            <button className="profile-delete-button" onClick={() => setIsDeleteModalOpen(true)} type="button">
               Eliminar cuenta
             </button>
           </section>
@@ -156,7 +160,7 @@ export function ProfileView({
             <h2>Información de la cuenta</h2>
             <ProfileInfoRow icon={<User size={17} />} label="Usuario" value="emilia.andersen" />
             <ProfileInfoRow icon={<CalendarDays size={17} />} label="Fecha de registro" value="12/03/2025" />
-            <ProfileInfoRow icon={<Clock3 size={17} />} label="Último acceso" value="Hoy, 08:42" />
+            <ProfileInfoRow icon={<Clock3 size={17} />} label="Ãšltimo acceso" value="Hoy, 08:42" />
             <ProfileInfoRow icon={<MapPin size={17} />} label="Estado de la cuenta" value="Activa" badge />
           </section>
 
@@ -165,14 +169,79 @@ export function ProfileView({
             <ProfileActivity icon={<ClipboardCheck size={20} />} title="Misión completada" detail="Inspección Silo Norte" time="Hoy, 08:15" tone="green" />
             <ProfileActivity icon={<Shield size={20} />} title="Hallazgo validado" detail="Corrosión en unión" time="Ayer, 16:30" tone="yellow" />
             <ProfileActivity icon={<FileUp size={20} />} title="Reporte generado" detail="Reporte mensual - Mayo" time="Ayer, 10:45" tone="green" />
-            <ProfileActivity icon={<BriefcaseBusiness size={20} />} title="Misión creada" detail="Noria Principal" time="27/05/2026" tone="purple" />
-            <button className="profile-activity-link" type="button">
+            <button className="profile-activity-link" onClick={onViewActivity} type="button">
               Ver toda la actividad
               <ArrowRight size={15} />
             </button>
           </section>
         </aside>
       </div>
+
+      {isPasswordModalOpen && (
+        <div className="modal-backdrop" role="presentation">
+          <section aria-modal="true" className="profile-modal" role="dialog">
+            <div className="profile-modal-icon">
+              <Lock size={22} aria-hidden="true" />
+            </div>
+            <h2>Cambiar contrasena</h2>
+            <p>Ingresa tu contrasena actual y define una nueva clave de acceso.</p>
+            <div className="profile-modal-fields">
+              <label>
+                <span>Contrasena actual</span>
+                <input
+                  onChange={(event) => setPasswordData((current) => ({ ...current, current: event.target.value }))}
+                  type="password"
+                  value={passwordData.current}
+                />
+              </label>
+              <label>
+                <span>Nueva contrasena</span>
+                <input
+                  onChange={(event) => setPasswordData((current) => ({ ...current, next: event.target.value }))}
+                  type="password"
+                  value={passwordData.next}
+                />
+              </label>
+              <label>
+                <span>Repetir nueva contrasena</span>
+                <input
+                  onChange={(event) => setPasswordData((current) => ({ ...current, repeat: event.target.value }))}
+                  type="password"
+                  value={passwordData.repeat}
+                />
+              </label>
+            </div>
+            <div className="profile-modal-actions">
+              <button className="profile-modal-secondary" onClick={closePasswordModal} type="button">
+                Cancelar
+              </button>
+              <button className="profile-modal-primary" onClick={closePasswordModal} type="button">
+                Guardar
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {isDeleteModalOpen && (
+        <div className="modal-backdrop" role="presentation">
+          <section aria-modal="true" className="profile-modal profile-delete-modal" role="dialog">
+            <div className="profile-modal-icon delete">
+              <Trash2 size={22} aria-hidden="true" />
+            </div>
+            <h2>Eliminar cuenta</h2>
+            <p>Estas seguro que deseas eliminar tu cuenta? Esta accion es irreversible.</p>
+            <div className="profile-modal-actions">
+              <button className="profile-modal-secondary" onClick={() => setIsDeleteModalOpen(false)} type="button">
+                Cancelar
+              </button>
+              <button className="profile-modal-danger" onClick={() => setIsDeleteModalOpen(false)} type="button">
+                Eliminar
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
@@ -218,3 +287,4 @@ function ProfileActivity({ detail, icon, time, title, tone }: { detail: string; 
     </div>
   );
 }
+

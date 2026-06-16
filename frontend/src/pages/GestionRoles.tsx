@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { ArrowLeft, UserMinus, UserPlus, Users } from "lucide-react";
 import type { MockUser } from "../types";
 
@@ -139,3 +139,4 @@ export function RoleManagementView({
     </section>
   );
 }
+

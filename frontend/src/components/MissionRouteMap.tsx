@@ -1,4 +1,4 @@
-import { MapContainer, Marker, Polyline, TileLayer } from "react-leaflet";
+﻿import { MapContainer, Marker, Polyline, TileLayer } from "react-leaflet";
 import type { Asset, InspectionPoint, Plant } from "../types";
 import { SATELLITE_LAYER, ASSET_TYPE_COLORS } from "../constants";
 import { createAssetMarkerIcon, missionRoutePointIcon, MapClickHandler, MapSizeController } from "./LeafletHelpers";
@@ -78,3 +78,4 @@ export function MissionRouteMap({
     </div>
   );
 }
+

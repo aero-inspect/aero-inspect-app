@@ -1,4 +1,4 @@
-.drones-dashboard {
+﻿.drones-dashboard {
   height: var(--app-canvas-height);
   overflow-x: hidden;
   overflow-y: auto;
@@ -583,3 +583,4 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+

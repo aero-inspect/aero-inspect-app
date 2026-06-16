@@ -1,5 +1,5 @@
-import { Fragment } from "react";
-import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, Calendar, AlertTriangle, Battery, Navigation, Signal, Eye, Wind, Droplets, HelpCircle, UserRound } from "lucide-react";
+﻿import { Fragment, useEffect, useState } from "react";
+import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, Calendar, AlertTriangle, Battery, Navigation, Signal, Eye, Wind, Droplets, HelpCircle, UserRound, Search, Download, FileText } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { MockUser, InspectionMission, Asset, Plant, SessionUser } from "../types";
 import { canConsultAssets, getRoleHomeTitle, getUserInitials } from "../utils/helpers";
@@ -17,8 +17,12 @@ import { JefePlantaView } from "./JefePlanta";
 import { MonitorMissionView } from "./MonitorMission";
 import { ReportesView } from "./Reportes";
 import { CentroAyudaView } from "./CentroAyuda";
+import { ActividadRecienteView } from "./ActividadReciente";
 import { AppTopActions, DroneGlyph } from "../components/AppTopActions";
 import { WeatherWidget } from "../components/WeatherWidget";
+import droneImage from "../assets/drone-image.png";
+import climaImage from "../assets/clima.jpg";
+import { emptyWeather, fetchWeather } from "../services/weather";
 
 const MOCK_PLANT = {
   id: "planta-principal",
@@ -78,6 +82,7 @@ export function Home({
   const isMonitorPath = currentPath === "/monitorear-mision";
   const isReportsPath = currentPath === "/reportes";
   const isHelpPath = currentPath === "/centro-ayuda";
+  const isActivityPath = currentPath === "/actividad-reciente";
   const userCanConsultAssets = canConsultAssets(user.role);
   const currentUser = users.find((u) => u.name === user.name);
   const currentProfileImage = currentUser?.profileImage ?? "";
@@ -92,7 +97,7 @@ export function Home({
           </span>
         </div>
         <nav className="nav-list" aria-label="Principal">
-          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isDronePath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isProfilePath && !isHelpPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
+          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isDronePath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isProfilePath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
             <HomeIcon size={20} />
             <span>Inicio</span>
           </button>
@@ -142,9 +147,7 @@ export function Home({
             </button>
           )}
         </nav>
-
-        {/* User Profile Section at Bottom */}
-        <button className={isProfilePath ? "sidebar-user active" : "sidebar-user"} onClick={() => navigateTo("/perfil")} type="button">
+        <button className={isProfilePath || isActivityPath ? "sidebar-user active" : "sidebar-user"} onClick={() => navigateTo("/perfil")} type="button">
           {currentProfileImage ? (
             <img className="sidebar-user-avatar" src={currentProfileImage} alt="Foto de perfil" />
           ) : (
@@ -166,8 +169,8 @@ export function Home({
         </button>
       </aside>
 
-      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isReportsPath || isHelpPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
-        {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isHelpPath && user.role !== "Tecnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
+      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isReportsPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
+        {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isHelpPath && !isActivityPath && user.role !== "Tecnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">
             <div>
               <p className="eyebrow">Bienvenida, {user.name}</p>
@@ -188,10 +191,12 @@ export function Home({
           </header>
         )}
 
-        {isHelpPath ? (
+        {isActivityPath ? (
+          <ActividadRecienteView />
+        ) : isHelpPath ? (
           <CentroAyudaView />
         ) : isProfilePath ? (
-          <ProfileView user={user} users={users} setUsers={setUsers} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onLogout={() => { navigateTo("/"); onLogout(); }} />
+          <ProfileView user={user} users={users} setUsers={setUsers} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onViewActivity={() => navigateTo("/actividad-reciente")} onLogout={() => { navigateTo("/"); onLogout(); }} />
         ) : isRegisterAssetPath && (userCanConsultAssets || user.role === "Jefe de Planta") ? (
           <RegistrarActivoView assets={assets} onBack={() => navigateTo("/mis-activos")} onCreateAsset={(asset) => setAssets((current) => [...current, { ...asset, id: Date.now(), plantId: MOCK_PLANT.id }])} onGoHome={() => navigateTo("/")} onViewAssets={() => navigateTo("/mis-activos")} plant={MOCK_PLANT} />
         ) : isRoleMgmtPath && user.role === "Jefe de Planta" ? (
@@ -207,7 +212,7 @@ export function Home({
             plant={MOCK_PLANT}
           />
         ) : isMissionPath && user.role === "Tecnico de Mantenimiento" ? (
-          <ConfigurarMisionView assets={assets} missions={missions} onBack={() => navigateTo("/")} onCreateMission={(mission) => {
+          <ConfigurarMisionView assets={assets} missions={missions} onBack={() => navigateTo("/mis-misiones")} onCreateMission={(mission) => {
             setMissions((current) => [...current, { ...mission, id: Date.now(), status: "Pendiente" }]);
           }} plant={MOCK_PLANT} />
         ) : isLaunchPath && DRONE_OPERATION_ROLES.includes(user.role) ? (
@@ -229,268 +234,7 @@ export function Home({
         ) : user.role === "Jefe de Planta" ? (
           <JefePlantaView assets={assets} missions={missions} onRegisterAsset={() => navigateTo("/registro-activo")} plant={MOCK_PLANT} />
         ) : user.role === "Tecnico de Mantenimiento" ? (
-          <Fragment>
-            {/* New Maintenance Technician Dashboard */}
-            <div className="tech-dashboard">
-              <div className="tech-topbar">
-                <div className="tech-greeting">
-                  <h1>¡Buenos días, Emilia! 👋</h1>
-                  <p className="tech-subtitle">Aquí tienes un resumen de la operación actual.</p>
-                </div>
-
-                <AppTopActions />
-              </div>
-
-              {/* Stats Cards Row */}
-              <div className="tech-stats-row">
-                <div className="tech-stat-card">
-                  <div className="stat-icon stat-icon-green">
-                    <Package size={24} />
-                  </div>
-                  <div className="stat-content">
-                    <span className="stat-label">Activos registrados</span>
-                    <span className="stat-value">{assets.length}</span>
-                    <button className="stat-link" onClick={() => navigateTo("/mis-activos")}>
-                      Ver activos <ArrowRight size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="tech-stat-card">
-                  <div className="stat-icon stat-icon-green">
-                    <Plane size={24} />
-                  </div>
-                  <div className="stat-content">
-                    <span className="stat-label">Misiones totales</span>
-                    <span className="stat-value">{missions.length}</span>
-                    <button className="stat-link" onClick={() => navigateTo("/mis-misiones")}>
-                      Ver misiones <ArrowRight size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="tech-stat-card">
-                  <div className="stat-icon stat-icon-green">
-                    <Calendar size={24} />
-                  </div>
-                  <div className="stat-content">
-                    <span className="stat-label">Misiones hoy</span>
-                    <span className="stat-value">3</span>
-                    <button className="stat-link">
-                      Ver detalle <ArrowRight size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="tech-stat-card">
-                  <div className="stat-icon stat-icon-red">
-                    <AlertTriangle size={24} />
-                  </div>
-                  <div className="stat-content">
-                    <span className="stat-label">Alertas activas</span>
-                    <span className="stat-value">2</span>
-                    <button className="stat-link">
-                      Ver alertas <ArrowRight size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="tech-stat-card">
-                  <div className="stat-icon stat-icon-green">
-                    <Battery size={24} />
-                  </div>
-                  <div className="stat-content">
-                    <span className="stat-label">Dron conectado</span>
-                    <span className="stat-value">98%</span>
-                    <span className="stat-link-text">Estado batería</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Main Content Grid */}
-              <div className="tech-main-grid">
-                {/* Plant Map */}
-                <div className="tech-map-section">
-                  <h2 className="section-title">Mapa de la planta</h2>
-                  <div className="tech-map-container">
-                    <LeafletSatelliteMap
-                      markers={assets.map(asset => ({
-                        id: asset.id,
-                        latitude: asset.latitude,
-                        longitude: asset.longitude,
-                        label: asset.name,
-                        type: asset.type
-                      }))}
-                      plant={MOCK_PLANT}
-                    />
-                  </div>
-                </div>
-
-                {/* Upcoming Missions */}
-                <div className="tech-missions-column">
-                  <div className="tech-missions-section">
-                    <div className="section-header">
-                      <h2 className="section-title">Misiones próximas</h2>
-                      <button className="view-all-btn" onClick={() => navigateTo("/mis-misiones")}>
-                        Ver todas <ArrowRight size={14} />
-                      </button>
-                    </div>
-                    <div className="tech-missions-list">
-                      <div className="tech-mission-card">
-                        <div className="mission-details">
-                          <h3 className="mission-name">Inspección Silo Norte</h3>
-                          <div className="mission-location">
-                            <MapPin size={14} />
-                            <span>Silo Norte</span>
-                          </div>
-                        </div>
-                        <div className="mission-meta">
-                          <div className="mission-time">
-                            <Clock size={14} />
-                            <span>09:30</span>
-                          </div>
-                          <span className="mission-badge badge-pending">Pendiente</span>
-                        </div>
-                      </div>
-
-                      <div className="tech-mission-card">
-                        <div className="mission-details">
-                          <h3 className="mission-name">Cinta Transportadora 2</h3>
-                          <div className="mission-location">
-                            <MapPin size={14} />
-                            <span>Sector Este</span>
-                          </div>
-                        </div>
-                        <div className="mission-meta">
-                          <div className="mission-time">
-                            <Clock size={14} />
-                            <span>11:15</span>
-                          </div>
-                          <span className="mission-badge badge-pending">Pendiente</span>
-                        </div>
-                      </div>
-
-                      <div className="tech-mission-card">
-                        <div className="mission-details">
-                          <h3 className="mission-name">Noria Principal</h3>
-                          <div className="mission-location">
-                            <MapPin size={14} />
-                            <span>Sector Central</span>
-                          </div>
-                        </div>
-                        <div className="mission-meta">
-                          <div className="mission-time">
-                            <Clock size={14} />
-                            <span>14:00</span>
-                          </div>
-                          <span className="mission-badge badge-progress">En progreso</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="tech-ready-card">
-                    <Plane size={32} className="ready-icon" />
-                    <div className="ready-content">
-                      <h3>¿Listo para volar?</h3>
-                      <p>Verifica el estado del dron</p>
-                    </div>
-                    <button className="ready-btn" onClick={() => navigateTo("/dron")}>
-                      Ir a Telemetría <ArrowRight size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Section */}
-              <div className="tech-bottom-grid">
-                {/* Recent Missions Table */}
-                <div className="tech-recent-section">
-                  <div className="section-header">
-                    <h2 className="section-title">Misiones recientes</h2>
-                    <button className="view-all-btn" onClick={() => navigateTo("/mis-misiones")}>
-                      Ver historial <ArrowRight size={14} />
-                    </button>
-                  </div>
-                  <div className="tech-table">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Misión</th>
-                          <th>Activo</th>
-                          <th>Fecha</th>
-                          <th>Estado</th>
-                          <th></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {missions.slice(0, 3).map((mission) => (
-                          <tr key={mission.id}>
-                            <td>
-                              <div className="table-mission-icon">
-                                <Package size={16} />
-                              </div>
-                              <span>Inspección Silos</span>
-                            </td>
-                            <td>{mission.assetName}</td>
-                            <td>{mission.startedAt ? new Date(mission.startedAt).toLocaleDateString('es-ES') : '-'}</td>
-                            <td>
-                              <span className={`table-status status-${mission.status?.toLowerCase().replace(" ", "-")}`}>
-                                <CheckCircle2 size={14} />
-                                {mission.status}
-                              </span>
-                            </td>
-                            <td>
-                              <button className="table-action-btn">
-                                <ArrowRight size={16} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Weather Details */}
-                <WeatherWidget city="Bragado" province={MOCK_PLANT.province} />
-
-                {/* Drone Status */}
-                <div className="tech-drone-section">
-                  <h2 className="section-title">Estado del dron</h2>
-                  <span className="drone-status-badge">Conectado</span>
-                  <div className="drone-image-container">
-                    <img src="/src/assets/drone-image.png" alt="Dron" className="drone-image" />
-                  </div>
-                  <div className="drone-battery">
-                    <Battery size={20} />
-                    <div className="battery-bar">
-                      <div className="battery-fill" style={{ width: '98%' }}></div>
-                    </div>
-                    <span className="battery-percent">98%</span>
-                  </div>
-                  <div className="drone-details-grid">
-                    <div className="drone-detail-item">
-                      <Navigation size={18} className="detail-icon-green" />
-                      <div>
-                        <span className="detail-label">GPS</span>
-                         <span> </span>
-                        <span className="detail-value-green">Bueno</span>
-                      </div>
-                    </div>
-                    <div className="drone-detail-item">
-                      <Signal size={18} className="detail-icon-green" />
-                      <div>
-                        <span className="detail-label">Señal</span>
-                         <span> </span>
-                        <span className="detail-value-green">Excelente</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Fragment>
+          <InspectionHomeView navigateTo={navigateTo} />
         ) : (
           <Fragment>
             <header className="dashboard-header">
@@ -502,7 +246,6 @@ export function Home({
             </header>
 
             <div className="dashboard-grid">
-              {/* Quick Stats */}
               <div className="dashboard-card stats-card">
                 <div className="card-header">
                   <h3>Resumen General</h3>
@@ -531,8 +274,6 @@ export function Home({
                   </div>
                 </div>
               </div>
-
-              {/* Recent Missions */}
               <div className="dashboard-card missions-card">
                 <div className="card-header">
                   <h3>Misiones Recientes</h3>
@@ -567,8 +308,6 @@ export function Home({
                   )}
                 </div>
               </div>
-
-              {/* Quick Actions */}
               <div className="dashboard-card actions-card">
                 <div className="card-header">
                   <h3>Acciones Rápidas</h3>
@@ -612,8 +351,6 @@ export function Home({
                   )}
                 </div>
               </div>
-
-              {/* Plant Info */}
               <div className="dashboard-card plant-card">
                 <div className="card-header">
                   <h3>Información de Planta</h3>
@@ -640,3 +377,184 @@ export function Home({
     </main>
   );
 }
+
+type InspectionHomeViewProps = {
+  navigateTo: (path: string) => void;
+};
+
+const inspectionItems = [
+  {
+    name: "Inspección Silo Norte",
+    asset: "Silo Norte",
+    datetime: "14/06/2026 - 14:32",
+    findings: 14,
+    severity: "Crítica",
+    severityClass: "critical"
+  },
+  {
+    name: "Inspección Cinta Transportadora 2",
+    asset: "Cinta Transportadora 2",
+    datetime: "14/06/2026 - 11:15",
+    findings: 9,
+    severity: "Alta",
+    severityClass: "high"
+  },
+  {
+    name: "Inspección Noria Principal",
+    asset: "Noria Principal",
+    datetime: "13/06/2026 - 16:48",
+    findings: 6,
+    severity: "Media",
+    severityClass: "medium"
+  },
+  {
+    name: "Inspección Techo Almacén 2",
+    asset: "Techo Almacén 2",
+    datetime: "12/06/2026 - 10:12",
+    findings: 0,
+    severity: "Sin hallazgos",
+    severityClass: "low"
+  }
+];
+
+function InspectionHomeView({ navigateTo }: InspectionHomeViewProps) {
+  const [weather, setWeather] = useState(emptyWeather);
+
+  useEffect(() => {
+    const loadWeather = async () => {
+      try {
+        setWeather(await fetchWeather());
+      } catch (error) {
+        console.error("Error fetching weather:", error);
+        setWeather((current) => ({ ...current, desc: "Sin conexión", loading: false }));
+      }
+    };
+
+    loadWeather();
+  }, []);
+
+  return (
+    <div className="tech-dashboard inspection-home">
+      <div className="inspection-home-header">
+        <div>
+          <h1>Inicio</h1>
+          <p>Resumen de inspecciones y hallazgos detectados.</p>
+        </div>
+        <AppTopActions />
+      </div>
+
+      <div className="inspection-home-layout">
+        <main className="inspection-home-main">
+          <section className="findings-overview-card" aria-label="Resumen de hallazgos detectados">
+            <div className="findings-overview-total">
+              <span>Hallazgos detectados</span>
+              <strong>126</strong>
+              <p>Total</p>
+            </div>
+            <div className="findings-overview-breakdown">
+              <span className="severity-summary critical"><i />8 Críticos</span>
+              <span className="severity-summary high"><i />21 Altos</span>
+              <span className="severity-summary medium"><i />47 Medios</span>
+              <span className="severity-summary low"><i />50 Bajos</span>
+            </div>
+          </section>
+
+          <section className="inspection-console-card">
+            <div className="inspection-console-toolbar">
+              <div className="inspection-filter-tabs" aria-label="Filtros de inspecciones">
+                <button className="active" type="button">Todas</button>
+                <button type="button">Críticas</button>
+                <button type="button">Con hallazgos</button>
+                <button type="button">Sin hallazgos</button>
+              </div>
+              <label className="inspection-search-box">
+                <Search size={18} />
+                <input type="search" placeholder="Buscar inspección..." />
+              </label>
+            </div>
+
+            <div className="inspection-card-list">
+              {inspectionItems.map((inspection) => (
+                <article className="inspection-result-card" key={inspection.name}>
+                  <div className="inspection-result-main">
+                    <div className={`inspection-severity-line ${inspection.severityClass}`} />
+                    <div>
+                      <h2>{inspection.name}</h2>
+                      <p>{inspection.asset}</p>
+                    </div>
+                  </div>
+
+                  <div className="inspection-result-meta">
+                    <span>{inspection.findings} hallazgos detectados</span>
+                    <span className={`severity-pill ${inspection.severityClass}`}>{inspection.severity}</span>
+                    <span>{inspection.datetime}</span>
+                  </div>
+
+                  <div className="inspection-result-actions">
+                    <button type="button" onClick={() => navigateTo("/monitorear-mision")}>
+                      <Eye size={16} />
+                      Ver detalle
+                    </button>
+                    <button type="button" onClick={() => navigateTo("/reportes")}>
+                      <FileText size={16} />
+                      Ver reporte
+                    </button>
+                    <button className="download" type="button">
+                      <Download size={16} />
+                      Descargar reporte
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </main>
+
+        <aside className="inspection-home-side">
+          <section className="inspection-side-card drone-status-card">
+            <div className="inspection-side-heading">
+              <h2>Estado del dron</h2>
+              <span className="side-status ok">Operativo</span>
+            </div>
+            <img className="inspection-side-image drone" src={droneImage} alt="Drone principal" />
+            <div className="side-drone-title">
+              <Plane size={22} />
+              <strong>Drone principal</strong>
+            </div>
+            <div className="side-info-row">
+              <span>Batería</span>
+              <strong>87%</strong>
+            </div>
+            <div className="inspection-battery-track"><span style={{ width: "87%" }} /></div>
+            <div className="side-info-row compact">
+              <span><Navigation size={16} /> GPS conectado</span>
+            </div>
+          </section>
+
+          <section className="inspection-side-card weather-status-card">
+            <div className="inspection-side-heading">
+              <h2>Clima actual</h2>
+            </div>
+            <img className="inspection-side-image weather" src={climaImage} alt="Clima actual" />
+            <div className="weather-main-value">{weather.temp}°C</div>
+            <p className="weather-current-desc">{weather.desc}</p>
+            <div className="weather-side-grid">
+              <span><Wind size={16} /> Viento: {weather.wind} km/h</span>
+              <span><Droplets size={16} /> Humedad: {weather.humidity}%</span>
+            </div>
+            <div className={`flight-ready-badge ${weather.loading ? "loading" : ""}`}>
+              <CheckCircle2 size={16} />
+              {weather.loading ? "Consultando clima" : "Apto para vuelo"}
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+
+
+
+
+

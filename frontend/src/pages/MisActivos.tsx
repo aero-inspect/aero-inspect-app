@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+﻿import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -511,3 +511,4 @@ function getAssetIcon(type: AssetType) {
   if (type === "Tuberia") return "T";
   return "Te";
 }
+

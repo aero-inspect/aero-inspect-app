@@ -1,4 +1,4 @@
-.missions-dashboard {
+﻿.missions-dashboard {
   height: var(--app-canvas-height);
   overflow-x: hidden;
   overflow-y: auto;
@@ -562,3 +562,4 @@
     grid-template-columns: 1fr;
   }
 }
+

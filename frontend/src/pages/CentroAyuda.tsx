@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -176,3 +176,4 @@ function HelpContact({ icon, label }: { icon: React.ReactNode; label: string }) 
     </div>
   );
 }
+

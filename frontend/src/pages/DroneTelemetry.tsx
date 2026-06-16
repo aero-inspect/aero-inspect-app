@@ -1,4 +1,4 @@
-import { useEffect, type Dispatch, type ReactNode, type SetStateAction } from "react";
+﻿import { useEffect, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { Battery, Check, CheckCircle2, Gauge, Home, Map, Mountain, Pause, Play, Radio, Route, Satellite, ShieldCheck, Thermometer, UserRound, Wind } from "lucide-react";
 import { AppTopActions } from "../components/AppTopActions";
 
@@ -248,3 +248,4 @@ function MissionStat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+

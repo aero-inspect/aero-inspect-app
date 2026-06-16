@@ -1,4 +1,4 @@
-import L from "leaflet";
+﻿import L from "leaflet";
 import { useEffect } from "react";
 import { useMap, useMapEvents } from "react-leaflet";
 
@@ -75,3 +75,4 @@ export function MapSizeController({ center, invalidateSignal }: { center?: [numb
 
   return null;
 }
+

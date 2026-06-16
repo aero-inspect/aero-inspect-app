@@ -1,41 +1,41 @@
-.mission-config-dashboard {
+﻿.mission-config-dashboard {
   height: var(--app-canvas-height);
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 10px 16px 0;
+  padding: 16px 20px 0;
   background: #f8fafc;
   color: #0f172a;
 }
 
 .mission-config-header {
-  margin-bottom: 8px;
+  margin-bottom: 14px;
 }
 
 .mission-title-group {
   display: flex;
   align-items: flex-start;
-  gap: 9px;
+  gap: 12px;
 }
 
 .mission-title-group h1 {
   margin: 0;
   color: #0f172a;
-  font-size: 1.16rem;
+  font-size: 1.46rem;
   line-height: 1.1;
   font-weight: 800;
 }
 
 .mission-title-group p {
-  margin: 2px 0 0;
+  margin: 5px 0 0;
   color: #64748b;
-  font-size: 0.58rem;
+  font-size: 0.7rem;
 }
 
 .mission-back-button {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   margin-top: 1px;
   border: 0;
   border-radius: 10px;
@@ -50,17 +50,17 @@
 
 .mission-config-form {
   display: grid;
-  gap: 8px;
-  min-height: calc(var(--app-canvas-height) - 62px);
-  padding-bottom: 10px;
+  gap: 12px;
+  min-height: calc(var(--app-canvas-height) - 88px);
+  padding-bottom: 14px;
 }
 
 .mission-quick-config {
   position: relative;
   z-index: 800;
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 190px 130px 130px;
-  gap: 8px;
+  grid-template-columns: minmax(320px, 1fr) 230px 160px 150px;
+  gap: 12px;
   align-items: start;
 }
 
@@ -69,7 +69,7 @@
 .mission-quick-card {
   min-width: 0;
   border: 1px solid #e5eaf0;
-  border-radius: 12px;
+  border-radius: 14px;
   background: #ffffff;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
@@ -77,26 +77,26 @@
 .mission-field,
 .mission-asset-selector {
   display: grid;
-  gap: 4px;
-  padding: 7px 10px;
+  gap: 7px;
+  padding: 11px 13px;
 }
 
 .mission-field > span,
 .mission-asset-selector > span,
 .mission-quick-card > span {
   color: #64748b;
-  font-size: 0.52rem;
+  font-size: 0.62rem;
   font-weight: 800;
 }
 
 .mission-field input {
   width: 100%;
-  min-height: 25px;
+  min-height: 34px;
   border: 0;
   background: transparent;
   color: #0f172a;
   font: inherit;
-  font-size: 0.62rem;
+  font-size: 0.74rem;
   font-weight: 800;
   outline: 0;
 }
@@ -115,7 +115,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 25px;
+  min-height: 34px;
   border: 0;
   background: transparent;
   color: #0f172a;
@@ -125,7 +125,7 @@
 
 .mission-asset-trigger strong {
   overflow: hidden;
-  font-size: 0.62rem;
+  font-size: 0.74rem;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -179,15 +179,15 @@
 .mission-quick-card {
   display: grid;
   align-content: center;
-  gap: 4px;
-  min-height: 55px;
-  padding: 7px 10px;
+  gap: 7px;
+  min-height: 76px;
+  padding: 11px 13px;
 }
 
 .mission-quick-card strong {
   overflow: hidden;
   color: #0f172a;
-  font-size: 0.62rem;
+  font-size: 0.74rem;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -206,15 +206,15 @@
 
 .mission-config-layout {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(285px, 0.82fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 2fr) minmax(330px, 0.9fr);
+  gap: 18px;
   align-items: start;
 }
 
 .mission-card {
   min-width: 0;
   border: 1px solid #e5eaf0;
-  border-radius: 16px;
+  border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
@@ -223,7 +223,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 11px;
+  padding: 18px;
 }
 
 .mission-card-heading {
@@ -237,61 +237,40 @@
 .mission-card-heading h2 {
   margin: 0;
   color: #0f172a;
-  font-size: 0.74rem;
+  font-size: 0.92rem;
   font-weight: 800;
 }
 
 .mission-card-heading p {
-  margin: 3px 0 0;
+  margin: 6px 0 0;
   color: #64748b;
-  font-size: 0.55rem;
+  font-size: 0.68rem;
 }
 
 .mission-map-toolbar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 8px 0 8px;
+  gap: 9px;
+  margin: 14px 0 12px;
 }
 
-.mission-map-tabs {
-  display: inline-flex;
-  overflow: hidden;
-  border: 1px solid #e5eaf0;
-  border-radius: 9px;
-  background: #ffffff;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
-}
-
-.mission-map-tabs button,
 .mission-map-tool {
-  min-height: 25px;
+  min-height: 34px;
   border: 0;
   cursor: pointer;
   font: inherit;
-  font-size: 0.54rem;
+  font-size: 0.66rem;
   font-weight: 800;
-}
-
-.mission-map-tabs button {
-  min-width: 58px;
-  background: #ffffff;
-  color: #64748b;
-}
-
-.mission-map-tabs button.active {
-  background: #f0fdf4;
-  color: #047a3f;
 }
 
 .mission-map-tool {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 0 8px;
+  gap: 6px;
+  padding: 0 12px;
   border: 1px solid #dbe3ea;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #ffffff;
   color: #334155;
 }
@@ -312,10 +291,10 @@
 .mission-map-frame {
   position: relative;
   flex: 0 0 auto;
-  min-height: 396px;
-  height: 396px;
+  min-height: 520px;
+  height: 520px;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: 16px;
   background: #0f172a;
 }
 
@@ -324,8 +303,8 @@
 .mission-map-frame .leaflet-container {
   width: 100%;
   height: 100%;
-  min-height: 396px;
-  border-radius: 14px;
+  min-height: 520px;
+  border-radius: 16px;
 }
 
 .mission-map-card .field-error {
@@ -334,25 +313,25 @@
 
 .mission-side-column {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
 }
 
 .mission-summary-card,
 .mission-points-card,
 .flight-params-card {
-  padding: 12px;
+  padding: 16px;
 }
 
 .mission-summary-card {
   display: grid;
-  gap: 6px;
+  gap: 10px;
 }
 
 .mission-summary-item {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
-  gap: 6px;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 8px;
   color: #64748b;
 }
 
@@ -367,14 +346,14 @@
   display: block;
   margin-bottom: 3px;
   color: #64748b;
-  font-size: 0.5rem;
+  font-size: 0.62rem;
 }
 
 .mission-summary-item p {
   margin: 0;
   overflow: hidden;
   color: #334155;
-  font-size: 0.56rem;
+  font-size: 0.68rem;
   font-weight: 700;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -388,12 +367,12 @@
 
 .mission-points-card {
   display: grid;
-  gap: 6px;
+  gap: 10px;
 }
 
 .mission-no-points {
-  min-height: 58px;
-  padding: 9px;
+  min-height: 86px;
+  padding: 14px;
   border: 1px dashed #cbd5e1;
   border-radius: 16px;
   background: #f8fafc;
@@ -402,20 +381,20 @@
 .mission-no-points strong {
   display: block;
   color: #0f172a;
-  font-size: 0.58rem;
+  font-size: 0.72rem;
   font-weight: 800;
 }
 
 .mission-no-points p {
   margin: 5px 0 0;
   color: #64748b;
-  font-size: 0.52rem;
+  font-size: 0.64rem;
 }
 
 .mission-point-list {
   display: grid;
-  gap: 6px;
-  max-height: 135px;
+  gap: 8px;
+  max-height: 210px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -423,9 +402,9 @@
 .mission-point-card {
   position: relative;
   display: grid;
-  gap: 3px;
-  min-height: 40px;
-  padding: 6px 30px 6px 9px;
+  gap: 4px;
+  min-height: 54px;
+  padding: 9px 36px 9px 12px;
   border: 1px solid #e5eaf0;
   border-radius: 14px;
   background: #ffffff;
@@ -433,7 +412,7 @@
 
 .mission-point-card span {
   color: #0f172a;
-  font-size: 0.56rem;
+  font-size: 0.68rem;
   font-weight: 800;
 }
 
@@ -441,19 +420,19 @@
   overflow: hidden;
   margin: 0;
   color: #64748b;
-  font-size: 0.5rem;
+  font-size: 0.6rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .mission-point-card button {
   position: absolute;
-  top: 8px;
-  right: 7px;
+  top: 14px;
+  right: 10px;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -468,18 +447,20 @@
 
 .flight-params-card {
   display: grid;
-  gap: 6px;
+  gap: 10px;
 }
 
 .flight-param-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: 1fr;
+  gap: 9px;
 }
 
 .flight-param {
   display: grid;
-  gap: 4px;
+  grid-template-columns: minmax(92px, 1fr) minmax(96px, 1.05fr);
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -488,15 +469,18 @@
   align-items: center;
   gap: 5px;
   color: #64748b;
-  font-size: 0.47rem;
+  font-size: 0.62rem;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .flight-param > div {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  min-height: 28px;
-  padding: 0 6px;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 10px;
   border: 1px solid #dbe3ea;
   border-radius: 12px;
   background: #ffffff;
@@ -509,22 +493,24 @@
   background: transparent;
   color: #0f172a;
   font: inherit;
-  font-size: 0.56rem;
+  font-size: 0.68rem;
   font-weight: 800;
   outline: 0;
+  text-align: left;
 }
 
 .flight-param small {
   color: #64748b;
-  font-size: 0.47rem;
+  font-size: 0.58rem;
   font-weight: 800;
   white-space: nowrap;
+  text-align: right;
 }
 
 .mission-side-actions {
   display: grid;
   grid-template-columns: 1fr 1.35fr;
-  gap: 6px;
+  gap: 8px;
 }
 
 .mission-cancel-button,
@@ -532,12 +518,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 31px;
-  border-radius: 8px;
+  gap: 8px;
+  min-height: 38px;
+  border-radius: 10px;
   cursor: pointer;
   font: inherit;
-  font-size: 0.56rem;
+  font-size: 0.68rem;
   font-weight: 800;
 }
 
@@ -573,3 +559,4 @@
     min-height: auto;
   }
 }
+

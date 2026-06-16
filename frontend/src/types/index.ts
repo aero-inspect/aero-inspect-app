@@ -1,4 +1,4 @@
-export type SessionUser = {
+﻿export type SessionUser = {
   name: string;
   role: string;
 };
@@ -102,3 +102,4 @@ export type Anomaly = {
   description: string;
   location?: string;
 };
+

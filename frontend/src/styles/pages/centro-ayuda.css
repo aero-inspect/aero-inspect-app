@@ -1,4 +1,4 @@
-.help-dashboard {
+﻿.help-dashboard {
   height: var(--app-canvas-height);
   overflow-y: auto;
   overflow-x: hidden;
@@ -353,3 +353,4 @@
     grid-template-columns: 1fr;
   }
 }
+

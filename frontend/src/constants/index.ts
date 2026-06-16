@@ -1,4 +1,4 @@
-import type { AssetType } from "../types";
+﻿import type { AssetType } from "../types";
 
 export const MAX_LOGIN_ATTEMPTS = 5;
 export const LOCK_TIME_MS = 15 * 60 * 1000;
@@ -44,3 +44,4 @@ export const SATELLITE_LAYER = MAPTILER_KEY
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       zoomOffset: 0
     };
+

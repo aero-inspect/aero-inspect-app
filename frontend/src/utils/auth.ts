@@ -1,4 +1,4 @@
-import type { MockUser, SessionUser } from "../types";
+﻿import type { MockUser, SessionUser } from "../types";
 import { REGISTERED_USERS } from "../data/mockUsers";
 
 export function validateLoginFields(username: string, password: string) {
@@ -40,3 +40,4 @@ export function getMockLoginResult(username: string, password: string) {
     role: registeredUser.role
   } as SessionUser;
 }
+

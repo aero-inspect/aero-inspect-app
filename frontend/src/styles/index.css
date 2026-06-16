@@ -14,8 +14,10 @@
 @import "./pages/mis-activos.css";
 @import "./pages/reportes.css";
 @import "./pages/centro-ayuda.css";
+@import "./pages/actividad-reciente.css";
 @import "./responsive.css";
 @import "./layouts/app-shell.css";
 @import "./pages/home-tecnico.css";
 @import "./pages/perfil.css";
 @import "./pages/drones.css";
+

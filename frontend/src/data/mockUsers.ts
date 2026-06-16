@@ -1,4 +1,4 @@
-import type { MockUser } from "../types";
+﻿import type { MockUser } from "../types";
 
 export const REGISTERED_USERS: MockUser[] = [
   {
@@ -23,3 +23,4 @@ export const REGISTERED_USERS: MockUser[] = [
     active: false
   }
 ];
+

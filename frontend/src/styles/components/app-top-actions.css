@@ -1,4 +1,4 @@
-.app-top-actions {
+﻿.app-top-actions {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -29,3 +29,4 @@
   color: #334155;
   font-size: 0.62rem;
 }
+

@@ -1,4 +1,4 @@
-export function getUserInitials(name: string) {
+﻿export function getUserInitials(name: string) {
   return name
     .split(" ")
     .filter(Boolean)
@@ -19,3 +19,4 @@ export function getRoleHomeTitle(role: string) {
 export function canConsultAssets(role: string) {
   return ["Jefe de Planta", "Tecnico de Mantenimiento"].includes(role);
 }
+

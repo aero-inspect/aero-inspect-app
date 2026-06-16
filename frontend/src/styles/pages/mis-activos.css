@@ -1,4 +1,4 @@
-﻿/* Assets dashboard restored */
+﻿
 .assets-dashboard {
   height: var(--app-canvas-height);
   overflow: hidden;
@@ -808,4 +808,6 @@
   color: #64748b;
   font-size: 0.72rem;
 }
+
+
 
