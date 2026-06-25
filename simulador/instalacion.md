@@ -20,7 +20,7 @@ Verificá que funciona:
 docker --version
 ```
 
-![alt text](img\image.png)
+![alt text](img/image.png)
 
 ### 2. Correr el simulador
 
@@ -28,14 +28,14 @@ docker --version
 docker run --rm -it -e PX4_SIM_HOST_ADDR=host-gateway jonasvautherin/px4-gazebo-headless:latest
 ```
 
-![alt text](img\image-1.png)
-![alt text](img\image-2.png)
+![alt text](img/image-1.png)
+![alt text](img/image-2.png)
 
 ### 3. Abrir QGroundControl
 
 Abrilo y esperá. El dron debería aparecer solo en el mapa (conecta automáticamente por UDP 14550).
 
-![alt text](image-3.png)
+![alt text](img/image-3.png)
 
 ## Parámetros útiles para el simulador
 
