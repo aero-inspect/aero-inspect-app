@@ -8,6 +8,10 @@ _PX4 Development Kit — X500 v2 (Holybro)_
 
 ---
 
+## Diagrama de Arquitectura
+
+![Diagrama de arquitectura](img/image.png)
+
 ## Índice
 
 1. [Resumen de componentes](#1-resumen-de-componentes)
@@ -22,16 +26,16 @@ _PX4 Development Kit — X500 v2 (Holybro)_
 ## 1. Resumen de componentes
 
 | #   | Componente                                                                 | Rol                                                              | Ubicación            |
-| --- | -------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------- |
-| 1   | **Frame Holybro X500 V2** (con motores, ESCs, hélices y PDB preinstalados) | Estructura del dron                                              | Dron                  |
-| 2   | **Pixhawk 6C**                                                             | Controladora de vuelo (FMU) — corre PX4                          | Dron                  |
-| 3   | **Power Module PM02 V3 (12S)**                                             | Alimentación regulada 5.2V al Pixhawk + sensado de batería       | Dron                  |
-| 4   | **GPS M8N (u-blox NEO-M8N)**                                               | Posicionamiento GNSS + brújula                                   | Dron (mástil)         |
-| 5   | **SiK Telemetry Radio V3 (433/915 MHz)**                                   | Telemetría MAVLink dron ↔ estación de tierra                     | Dron + Tierra (par)   |
-| 6   | **Power Distribution Board (PDB)**                                         | Distribución de energía (XT60 batería / XT30 ESCs y periféricos) | Dron                  |
-| 7   | **Batería LiPo 4S**                                                        | Fuente de energía principal                                      | Dron                  |
-| 8   | **Raspberry Pi 3 Model B**                                                 | Companion computer — Módulo de Control de Vuelo (Python/MAVSDK)  | Dron                  |
-| 9   | **Cámara Gimbal SIYI A8 mini**                                             | Captura de imágenes/video 4K estabilizado                        | Dron (riel inferior)  |
+| --- | -------------------------------------------------------------------------- | ---------------------------------------------------------------- | -------------------- |
+| 1   | **Frame Holybro X500 V2** (con motores, ESCs, hélices y PDB preinstalados) | Estructura del dron                                              | Dron                 |
+| 2   | **Pixhawk 6C**                                                             | Controladora de vuelo (FMU) — corre PX4                          | Dron                 |
+| 3   | **Power Module PM02 V3 (12S)**                                             | Alimentación regulada 5.2V al Pixhawk + sensado de batería       | Dron                 |
+| 4   | **GPS M8N (u-blox NEO-M8N)**                                               | Posicionamiento GNSS + brújula                                   | Dron (mástil)        |
+| 5   | **SiK Telemetry Radio V3 (433/915 MHz)**                                   | Telemetría MAVLink dron ↔ estación de tierra                     | Dron + Tierra (par)  |
+| 6   | **Power Distribution Board (PDB)**                                         | Distribución de energía (XT60 batería / XT30 ESCs y periféricos) | Dron                 |
+| 7   | **Batería LiPo 4S**                                                        | Fuente de energía principal                                      | Dron                 |
+| 8   | **Raspberry Pi 3 Model B**                                                 | Companion computer — Módulo de Control de Vuelo (Python/MAVSDK)  | Dron                 |
+| 9   | **Cámara Gimbal SIYI A8 mini**                                             | Captura de imágenes/video 4K estabilizado                        | Dron (riel inferior) |
 
 ---
 
@@ -184,7 +188,7 @@ Computadora de misión embarcada. En nuestra arquitectura ejecuta el **Módulo d
 | Conectividad   | WiFi 802.11n **(solo 2.4 GHz)**, Bluetooth 4.1, Ethernet 10/100 |
 | Puertos        | 4× USB 2.0, HDMI, CSI (cámara), 40 pines GPIO (incluye UART)    |
 | Alimentación   | 5V / 2.5A por micro-USB o GPIO                                  |
-| Almacenamiento | microSD                                                          |
+| Almacenamiento | microSD                                                         |
 
 > Para el MVP alcanza. Si el manejo de video / sincronización a S3 se vuelve cuello de botella, evaluar upgrade a Raspberry Pi 4/5 (mismo footprint de montaje).
 
@@ -208,7 +212,7 @@ Cámara gimbal estabilizada en 3 ejes para la captura de la evidencia visual de 
 | Rango pitch / yaw  | −135°~+45° / −160°~+160°                                                      |
 | Salidas de video   | **Ethernet**, HDMI, CVBS (AV)                                                 |
 | Control            | UART / S.Bus / UDP — soporta protocolo de gimbal SIYI y modos Follow/Lock/FPV |
-| Alimentación       | 11–16.8 V (se alimenta **directo de la 4S** vía XT30 de la PDB)              |
+| Alimentación       | 11–16.8 V (se alimenta **directo de la 4S** vía XT30 de la PDB)               |
 | Dimensiones / Peso | 55 × 55 × 70 mm / ~95 g                                                       |
 | Almacenamiento     | microSD (fotos con geotag si recibe datos del FC)                             |
 
