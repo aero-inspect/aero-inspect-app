@@ -5,3 +5,9 @@ dist/
 *.log
 .idea/
 
+# Python (controlador_de_vuelo)
+__pycache__/
+*.pyc
+controlador_de_vuelo/venv/
+controlador_de_vuelo/.venv/
+
