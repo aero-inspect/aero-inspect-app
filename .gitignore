@@ -10,4 +10,5 @@ __pycache__/
 *.pyc
 controlador_de_vuelo/venv/
 controlador_de_vuelo/.venv/
+controlador_de_vuelo/mavsdk_server.exe
 

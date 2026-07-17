@@ -25,27 +25,14 @@ Ver `.env.example`. Las variables clave:
 - `MQTT_BROKER_HOST`/`MQTT_BROKER_PORT`: broker MQTT (Mosquitto local en dev, AWS IoT Core en producción).
 - `DRONE_ID`: identifica al dron y sirve de namespace para los tópicos MQTT (equivale a `Dron.mqttClientId` del modelo de dominio).
 - `MAVLINK_CONNECTION`: `udp://:14540` contra el simulador SITL, `serial:///dev/ttyAMA0:<baud>` en la Raspberry Pi real conectada al Pixhawk.
-- `MAVSDK_SERVER_MODE`: `embedded` (por defecto, `mavsdk.System()` levanta su propio binario `mavsdk_server`) o `external` (se asume un `mavsdk_server` corriendo aparte, necesario si no hay wheel de MAVSDK con binario para la arquitectura ARM de la Pi — ver nota abajo).
+- `MAVSDK_SERVER_MODE`: `embedded` (por defecto, `mavsdk.System()` levanta su propio binario `mavsdk_server`) o `external` (se asume un `mavsdk_server` corriendo aparte). Ver "Riesgo conocido" abajo — en la práctica, hoy hace falta `external` tanto en Windows como en la Raspberry Pi.
 
-## Correr contra el simulador (dev)
+## Correr contra el simulador (dev) / en la Raspberry Pi real
 
-1. Levantar un broker Mosquitto local, por ejemplo: `docker run --rm -it -p 1883:1883 eclipse-mosquitto`.
-2. Levantar el simulador PX4 SITL siguiendo `simulador/instalacion.md`.
-3. Verificar que los paquetes MAVLink lleguen al host en el puerto UDP 14540 (no solo 14550,
-   que ya usa QGroundControl) — si el `docker run` del simulador no expone ese puerto, agregar
-   `-p 14540:14540/udp -p 14550:14550/udp` al comando.
-4. Con el `.env` apuntando a `MQTT_BROKER_HOST=localhost` y `MAVLINK_CONNECTION=udp://:14540`:
-
-   ```bash
-   python main.py
-   ```
-
-5. Desde otra terminal, observar los tópicos y enviar comandos de prueba:
-
-   ```bash
-   mosquitto_sub -t 'aeroinspect/dron/dron-x500-01/#' -v
-   mosquitto_pub -t 'aeroinspect/dron/dron-x500-01/comandos' -m '{"comandoId":"1","tipo":"ARMAR","timestamp":"2026-07-17T00:00:00Z","payload":null}'
-   ```
+Guía paso a paso completa, con troubleshooting, en **[PRUEBA_E2E.md](PRUEBA_E2E.md)**:
+levantar Mosquitto + PX4 SITL en Windows, correr el módulo, mandar comandos de prueba, y qué
+cambia (cableado UART, `mavsdk_server` para ARM, broker remoto) para probarlo en la Raspberry
+Pi conectada al Pixhawk 6C real.
 
 ## Tests
 
@@ -56,13 +43,51 @@ pytest
 Los tests son unitarios y no requieren hardware ni simulador: mockean `mavsdk.System` y
 validan el parseo de comandos, la traducción de waypoints y el dispatcher.
 
-## Riesgo conocido: `mavsdk_server` en Raspberry Pi
+## Por qué paho-mqtt en modo threaded y no un cliente asyncio-nativo
 
-El paquete `mavsdk` de PyPI incluye un binario `mavsdk_server` que `mavsdk.System()` levanta
-automáticamente. Existen wheels con ese binario para x86_64 (por eso el modo `embedded`
-funciona sin problema en una PC de desarrollo contra el simulador), pero no siempre hay wheels
-para arquitecturas ARM de Raspberry Pi (más aún si el SO es de 32 bits, `armv7l`, en vez de 64
-bits, `aarch64`). Si al correr esto en la Pi real no hay wheel compatible, hay que compilar
-`mavsdk_server` desde el código fuente de MAVSDK para esa arquitectura y correrlo como proceso
-aparte (`MAVSDK_SERVER_MODE=external`). Se recomienda validar esto con una prueba mínima en la
-Raspberry Pi real antes de depender del resto de este módulo.
+`mqtt_client.py` usa `paho-mqtt` con su modelo threaded (`loop_start()`, un hilo de red propio)
+en vez de un cliente 100% asyncio-nativo como `aiomqtt`. Ambos fueron probados y **ambos
+funcionan correctamente** una vez resuelto el problema de puerto descripto arriba — la elección
+final es por robustez/simplicidad (el modelo threaded de paho-mqtt es el más usado y probado de
+la librería, y no depende de que `asyncio.add_reader()`/`add_writer()` funcionen bien sobre un
+socket handle nativo de Windows, que es una fuente conocida de dolores de cabeza multiplataforma),
+no porque `aiomqtt` esté roto. Los mensajes entrantes se puentean al event loop de asyncio vía una
+`asyncio.Queue` con `loop.call_soon_threadsafe()`.
+
+## Riesgo conocido: `mavsdk_server` no viene embebido (Windows y Raspberry Pi)
+
+El paquete `mavsdk` de PyPI debería incluir un binario `mavsdk_server` que `mavsdk.System()`
+levanta automáticamente (modo `embedded`), pero en la práctica **esto falló tanto en Windows
+como se esperaba que fallara en Raspberry Pi/ARM** — en Windows, el instalador busca un archivo
+llamado `mavsdk_server_win_x64.exe` que no existe en los releases de MAVSDK (el asset real se
+llama `mavsdk_server_win32.exe`, un bug de nomenclatura entre MAVSDK-Python y las releases de
+MAVSDK), así que `mavsdk/bin/` queda vacío tras el `pip install`.
+
+**Solución usada (modo `external`):**
+
+1. Descargar el binario que corresponda a la versión de `mavsdk` instalada. Para
+   `mavsdk==1.4.8` (revisar `pip show mavsdk`), el server pineado es `v1.4.16`
+   (`MAVSDK_SERVER_VERSION` en el repo de MAVSDK-Python):
+
+   ```
+   https://github.com/mavlink/MAVSDK/releases/download/v1.4.16/mavsdk_server_win32.exe
+   ```
+
+   (En Linux/Raspberry Pi, los assets equivalentes son `mavsdk_server_linux-armv7l-musl` /
+   `mavsdk_server_linux-arm64-musl` según la arquitectura del SO — no verificado aún en
+   hardware real, ver nota abajo.)
+
+2. Guardarlo como `mavsdk_server.exe` en `controlador_de_vuelo/` (gitignored — no se commitea
+   el binario) y correrlo aparte:
+
+   ```bash
+   ./mavsdk_server.exe -p 50051
+   ```
+
+3. En `.env`: `MAVSDK_SERVER_MODE=external`, `MAVSDK_SERVER_HOST=localhost`, `MAVSDK_SERVER_PORT=50051`.
+
+Sigue pendiente confirmar esto en la Raspberry Pi 3B real (arquitectura ARM, posiblemente
+32 bits `armv7l`): puede hacer falta compilar `mavsdk_server` desde el código fuente de MAVSDK
+si tampoco hay un asset prebuilt para esa combinación exacta de arquitectura/libc. Se recomienda
+una prueba mínima de "conectar + armar contra el Pixhawk real" en la Pi antes de depender del
+resto de este módulo.

@@ -3,10 +3,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import ssl
 from typing import Any, Awaitable, Callable
 
-import aiomqtt
+import paho.mqtt.client as paho
 
 import topics
 from config import Config
@@ -20,81 +19,118 @@ OnMessage = Callable[[bytes], Awaitable[None]]
 
 
 class MqttClient:
-    """Envoltorio sobre aiomqtt: conexión con Last Will, publish/subscribe y reconexión
-    con backoff exponencial. Todo corre en el mismo event loop que MAVSDK (aiomqtt es
-    asyncio-nativo, no hace falta puentear hilos)."""
+    """Envoltorio sobre paho-mqtt en modo threaded (loop_start()): un hilo de red propio de
+    paho maneja el socket, y los mensajes entrantes se puentean al event loop de asyncio vía
+    una asyncio.Queue thread-safe.
+
+    Se eligió este modelo en vez de un cliente asyncio-nativo (aiomqtt) porque aiomqtt tiene
+    un bug confirmado en Windows nativo: conecta y suscribe sin error, pero nunca entrega
+    mensajes después del handshake inicial, incluso aplicando el workaround documentado de
+    WindowsSelectorEventLoopPolicy (asyncio.add_reader()/add_writer() sobre un socket handle
+    de Windows). El mismo broker, con paho-mqtt en modo threaded (sin pasar por asyncio en
+    absoluto para el I/O de red), funciona sin problemas. Este modelo es además el más usado
+    y probado de la librería, en cualquier SO — por eso se adoptó también para Linux/Raspberry
+    Pi, no sólo como parche para Windows."""
 
     def __init__(self, config: Config):
         self._config = config
-        self._client: aiomqtt.Client | None = None
+        self._comandos_topic = topics.comandos(config.drone_id)
+        self._estado_conexion_topic = topics.estado_conexion(config.drone_id)
+        self._incoming: asyncio.Queue[bytes] = asyncio.Queue()
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._client = self._build_client()
 
-    def _build_tls_context(self) -> ssl.SSLContext | None:
-        if not self._config.mqtt_use_tls:
-            return None
-        context = ssl.create_default_context(cafile=self._config.mqtt_tls_ca_cert or None)
-        if self._config.mqtt_tls_client_cert and self._config.mqtt_tls_client_key:
-            context.load_cert_chain(
-                self._config.mqtt_tls_client_cert, self._config.mqtt_tls_client_key
+    def _build_client(self) -> paho.Client:
+        config = self._config
+        client = paho.Client(
+            paho.CallbackAPIVersion.VERSION2,
+            client_id=config.drone_id,
+            reconnect_on_failure=True,
+        )
+        if config.mqtt_username:
+            client.username_pw_set(config.mqtt_username, config.mqtt_password)
+        if config.mqtt_use_tls:
+            client.tls_set(
+                ca_certs=config.mqtt_tls_ca_cert,
+                certfile=config.mqtt_tls_client_cert,
+                keyfile=config.mqtt_tls_client_key,
             )
-        return context
-
-    async def run(self, on_message: OnMessage) -> None:
-        """Se conecta, se suscribe al tópico de comandos y despacha cada mensaje entrante a
-        on_message. No retorna salvo cancelación; ante errores de MQTT reintenta con backoff
-        exponencial (1s -> 30s)."""
-        backoff = _RECONNECT_MIN_S
-        comandos_topic = topics.comandos(self._config.drone_id)
-        estado_conexion_topic = topics.estado_conexion(self._config.drone_id)
-        will = aiomqtt.Will(
-            topic=estado_conexion_topic,
-            payload=json.dumps({"conectado": False}),
+        client.will_set(
+            self._estado_conexion_topic,
+            json.dumps({"conectado": False}),
             qos=1,
             retain=True,
         )
+        client.reconnect_delay_set(min_delay=_RECONNECT_MIN_S, max_delay=_RECONNECT_MAX_S)
+        client.on_connect = self._on_connect
+        client.on_disconnect = self._on_disconnect
+        client.on_message = self._on_message
+        return client
 
+    # -- callbacks de paho-mqtt: corren en el hilo de red interno de loop_start(), nunca en
+    # el event loop de asyncio. Sólo tocan estado thread-safe (logging, o el puente hacia la
+    # asyncio.Queue vía call_soon_threadsafe). --
+
+    def _on_connect(self, client, userdata, flags, reason_code, properties=None) -> None:
+        if reason_code != 0:
+            logger.warning("Conexión MQTT rechazada por el broker: %s", reason_code)
+            return
+        logger.info(
+            "Conectado a MQTT %s:%s, suscripto a %s",
+            self._config.mqtt_broker_host,
+            self._config.mqtt_broker_port,
+            self._comandos_topic,
+        )
+        client.publish(
+            self._estado_conexion_topic, json.dumps({"conectado": True}), qos=1, retain=True
+        )
+        client.subscribe(self._comandos_topic)
+
+    def _on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties=None) -> None:
+        logger.warning(
+            "Desconectado de MQTT (%s); paho-mqtt reintentará automáticamente", reason_code
+        )
+
+    def _on_message(self, client, userdata, message) -> None:
+        if self._loop is None:
+            return
+        self._loop.call_soon_threadsafe(self._incoming.put_nowait, message.payload)
+
+    async def run(self, on_message: OnMessage) -> None:
+        """Conecta y despacha cada mensaje entrante a on_message. La reconexión tras la
+        conexión inicial la maneja paho-mqtt internamente (loop_start() + reconnect_on_failure);
+        acá sólo se reintenta con backoff el intento de conexión inicial. No retorna salvo
+        cancelación."""
+        self._loop = asyncio.get_running_loop()
+
+        backoff = _RECONNECT_MIN_S
         while True:
             try:
-                async with aiomqtt.Client(
-                    hostname=self._config.mqtt_broker_host,
-                    port=self._config.mqtt_broker_port,
-                    username=self._config.mqtt_username,
-                    password=self._config.mqtt_password,
-                    tls_context=self._build_tls_context(),
-                    will=will,
-                    identifier=self._config.drone_id,
-                ) as client:
-                    self._client = client
-                    backoff = _RECONNECT_MIN_S
-
-                    await client.publish(
-                        estado_conexion_topic,
-                        json.dumps({"conectado": True}),
-                        qos=1,
-                        retain=True,
-                    )
-                    await client.subscribe(comandos_topic)
-                    logger.info(
-                        "Conectado a MQTT %s:%s, suscripto a %s",
-                        self._config.mqtt_broker_host,
-                        self._config.mqtt_broker_port,
-                        comandos_topic,
-                    )
-
-                    async for message in client.messages:
-                        await on_message(message.payload)
-            except aiomqtt.MqttError as exc:
-                logger.warning(
-                    "Error de conexión MQTT (%s), reintentando en %ss", exc, backoff
+                await self._loop.run_in_executor(
+                    None,
+                    self._client.connect,
+                    self._config.mqtt_broker_host,
+                    self._config.mqtt_broker_port,
                 )
-                self._client = None
+                break
+            except OSError as exc:
+                logger.warning(
+                    "No se pudo conectar a MQTT (%s), reintentando en %ss", exc, backoff
+                )
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, _RECONNECT_MAX_S)
 
+        self._client.loop_start()
+        try:
+            while True:
+                payload = await self._incoming.get()
+                await on_message(payload)
+        finally:
+            self._client.loop_stop()
+            self._client.disconnect()
+
     async def publish(self, topic: str, payload: dict[str, Any]) -> None:
-        if self._client is None:
+        if not self._client.is_connected():
             logger.warning("publish() sin conexión MQTT activa, se descarta: %s", topic)
             return
-        try:
-            await self._client.publish(topic, json.dumps(payload), qos=0)
-        except aiomqtt.MqttError:
-            logger.warning("Fallo al publicar en %s, se descarta el mensaje", topic, exc_info=True)
+        self._client.publish(topic, json.dumps(payload), qos=0)
