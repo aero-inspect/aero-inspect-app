@@ -6,13 +6,15 @@ export function DroneTelemetryView({
   droneConnected,
   setDroneConnected,
   battery,
-  setBattery
+  setBattery,
+  onViewTelemetryDetails
 }: {
   onBack: () => void;
   droneConnected: boolean;
   setDroneConnected: Dispatch<SetStateAction<boolean>>;
   battery: number | null;
   setBattery: Dispatch<SetStateAction<number | null>>;
+  onViewTelemetryDetails: () => void;
 }) {
   useEffect(() => {
     let interval: number | undefined;
@@ -140,7 +142,7 @@ export function DroneTelemetryView({
           <article className="drone-panel">
             <div className="drone-card-header">
               <h2>Telemetria en tiempo real</h2>
-              <button className="link-button" type="button">Ver detalles</button>
+              <button className="link-button" type="button" onClick={onViewTelemetryDetails}>Ver detalles</button>
             </div>
             <div className="telemetry-grid-live">
               <TelemetryItem icon={<Mountain size={20} />} label="Altitud" value="48 m" />
