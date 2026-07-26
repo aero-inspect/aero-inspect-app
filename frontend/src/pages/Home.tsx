@@ -9,6 +9,7 @@ import { MisActivosView } from "./MisActivos";
 import { ConfigurarMisionView } from "./ConfigurarMision";
 import { MisMisionesView } from "./MisMisiones";
 import { DroneTelemetryView } from "./DroneTelemetry";
+import { PruebaTelemetriaView } from "./PruebaTelemetria";
 import { LaunchMissionView } from "./LaunchMission";
 import { RegistrarActivoView } from "./RegistrarActivo";
 import { ProfileView } from "./Perfil";
@@ -76,6 +77,7 @@ export function Home({
   const isRoleMgmtPath = currentPath === "/gestion-roles";
   const isMonitorPath = currentPath === "/monitorear-mision";
   const isReportsPath = currentPath === "/reportes";
+  const isPruebaTelemetriaPath = currentPath === "/prueba-telemetria";
   const userCanConsultAssets = canConsultAssets(user.role);
   const currentUser = users.find((u) => u.name === user.name);
   const currentProfileImage = currentUser?.profileImage ?? "";
@@ -186,7 +188,9 @@ export function Home({
           </header>
         )}
 
-        {isProfilePath ? (
+        {isPruebaTelemetriaPath ? (
+          <PruebaTelemetriaView onBack={() => navigateTo("/dron")} />
+        ) : isProfilePath ? (
           <ProfileView user={user} users={users} setUsers={setUsers} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onLogout={() => { navigateTo("/"); onLogout(); }} />
         ) : isRegisterAssetPath && (userCanConsultAssets || user.role === "Jefe de Planta") ? (
           <RegistrarActivoView assets={assets} onBack={() => navigateTo("/mis-activos")} onCreateAsset={(asset) => setAssets((current) => [...current, { ...asset, id: Date.now(), plantId: MOCK_PLANT.id }])} onGoHome={() => navigateTo("/")} onViewAssets={() => navigateTo("/mis-activos")} plant={MOCK_PLANT} />
@@ -217,7 +221,7 @@ export function Home({
             plant={MOCK_PLANT}
           />
         ) : isDronePath && DRONE_OPERATION_ROLES.includes(user.role) ? (
-          <DroneTelemetryView onBack={() => navigateTo("/")} droneConnected={droneConnected} setDroneConnected={setDroneConnected} battery={battery} setBattery={setBattery} />
+          <DroneTelemetryView onBack={() => navigateTo("/")} droneConnected={droneConnected} setDroneConnected={setDroneConnected} battery={battery} setBattery={setBattery} onViewTelemetryDetails={() => navigateTo("/prueba-telemetria")} />
         ) : isAssetsPath && userCanConsultAssets ? (
           <MisActivosView assets={assets} onBack={() => navigateTo("/")} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} plant={MOCK_PLANT} />
         ) : isReportsPath ? (
