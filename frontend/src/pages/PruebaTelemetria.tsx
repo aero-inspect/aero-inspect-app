@@ -4,12 +4,12 @@ import { ArrowLeft } from "lucide-react";
 type TelemetryUpdate = {
   missionId: string;
   timestamp: string;
-  position: { latitude: number; longitude: number; relativeAltitude: number; absoluteAltitude: number };
-  velocity: { groundHorizontalSpeedMs: number; groundVerticalSpeedMs: number; headingDegree: number };
-  battery: { percentage: number; voltageV: number };
-  gps: { fixType: string; satellites: number; hdop: number; vdop: number };
-  flightMode: string;
-  currentWaypoint: number;
+  position: { latitude: number; longitude: number; relativeAltitude: number; absoluteAltitude: number } | null;
+  velocity: { groundHorizontalSpeedMs: number; groundVerticalSpeedMs: number; headingDegree: number } | null;
+  battery: { percentage: number; voltageV: number } | null;
+  gps: { fixType: string; satellites: number; hdop: number; vdop: number } | null;
+  flightMode: string | null;
+  currentWaypoint: number | null;
 };
 
 type StatusEvent = {
@@ -118,33 +118,33 @@ export function PruebaTelemetriaView({ onBack }: { onBack: () => void }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "12px" }}>
         <DashboardCard title="Bateria">
-          <BigValue value={telemetry ? `${telemetry.battery.percentage}%` : "--"} />
-          <SmallValue label="Voltaje" value={telemetry ? `${telemetry.battery.voltageV.toFixed(2)} V` : "--"} />
+          <BigValue value={telemetry?.battery ? `${telemetry.battery.percentage}%` : "--"} />
+          <SmallValue label="Voltaje" value={telemetry?.battery ? `${telemetry.battery.voltageV.toFixed(2)} V` : "--"} />
         </DashboardCard>
 
         <DashboardCard title="Posicion">
-          <SmallValue label="Latitud" value={telemetry ? telemetry.position.latitude.toFixed(6) : "--"} />
-          <SmallValue label="Longitud" value={telemetry ? telemetry.position.longitude.toFixed(6) : "--"} />
-          <SmallValue label="Altitud relativa" value={telemetry ? `${telemetry.position.relativeAltitude.toFixed(1)} m` : "--"} />
-          <SmallValue label="Altitud absoluta" value={telemetry ? `${telemetry.position.absoluteAltitude.toFixed(1)} m` : "--"} />
+          <SmallValue label="Latitud" value={telemetry?.position ? telemetry.position.latitude.toFixed(6) : "--"} />
+          <SmallValue label="Longitud" value={telemetry?.position ? telemetry.position.longitude.toFixed(6) : "--"} />
+          <SmallValue label="Altitud relativa" value={telemetry?.position ? `${telemetry.position.relativeAltitude.toFixed(1)} m` : "--"} />
+          <SmallValue label="Altitud absoluta" value={telemetry?.position ? `${telemetry.position.absoluteAltitude.toFixed(1)} m` : "--"} />
         </DashboardCard>
 
         <DashboardCard title="Velocidad">
-          <SmallValue label="Horizontal" value={telemetry ? `${telemetry.velocity.groundHorizontalSpeedMs.toFixed(1)} m/s` : "--"} />
-          <SmallValue label="Vertical" value={telemetry ? `${telemetry.velocity.groundVerticalSpeedMs.toFixed(1)} m/s` : "--"} />
-          <SmallValue label="Rumbo" value={telemetry ? `${telemetry.velocity.headingDegree.toFixed(0)}°` : "--"} />
+          <SmallValue label="Horizontal" value={telemetry?.velocity ? `${telemetry.velocity.groundHorizontalSpeedMs.toFixed(1)} m/s` : "--"} />
+          <SmallValue label="Vertical" value={telemetry?.velocity ? `${telemetry.velocity.groundVerticalSpeedMs.toFixed(1)} m/s` : "--"} />
+          <SmallValue label="Rumbo" value={telemetry?.velocity ? `${telemetry.velocity.headingDegree.toFixed(0)}°` : "--"} />
         </DashboardCard>
 
         <DashboardCard title="GPS">
-          <SmallValue label="Fix" value={telemetry?.gps.fixType ?? "--"} />
-          <SmallValue label="Satelites" value={telemetry ? String(telemetry.gps.satellites) : "--"} />
-          <SmallValue label="HDOP" value={telemetry ? telemetry.gps.hdop.toFixed(2) : "--"} />
-          <SmallValue label="VDOP" value={telemetry ? telemetry.gps.vdop.toFixed(2) : "--"} />
+          <SmallValue label="Fix" value={telemetry?.gps?.fixType ?? "--"} />
+          <SmallValue label="Satelites" value={telemetry?.gps ? String(telemetry.gps.satellites) : "--"} />
+          <SmallValue label="HDOP" value={telemetry?.gps ? telemetry.gps.hdop.toFixed(2) : "--"} />
+          <SmallValue label="VDOP" value={telemetry?.gps ? telemetry.gps.vdop.toFixed(2) : "--"} />
         </DashboardCard>
 
         <DashboardCard title="Vuelo">
           <SmallValue label="Modo" value={telemetry?.flightMode ?? "--"} />
-          <SmallValue label="Waypoint actual" value={telemetry ? String(telemetry.currentWaypoint) : "--"} />
+          <SmallValue label="Waypoint actual" value={telemetry?.currentWaypoint != null ? String(telemetry.currentWaypoint) : "--"} />
           <SmallValue label="Timestamp" value={telemetry ? new Date(telemetry.timestamp).toLocaleTimeString() : "--"} />
         </DashboardCard>
 
