@@ -20,7 +20,7 @@ type StatusEvent = {
   action: string;
 };
 
-export function PruebaTelemetriaView({ onBack }: { onBack: () => void }) {
+export function PruebaTelemetriaView({ token, onBack }: { token: string; onBack: () => void }) {
   const [missionId, setMissionId] = useState("");
   const [connected, setConnected] = useState(false);
   const [lastError, setLastError] = useState("");
@@ -32,7 +32,7 @@ export function PruebaTelemetriaView({ onBack }: { onBack: () => void }) {
   const connect = () => {
     if (!missionId.trim() || eventSourceRef.current) return;
 
-    const url = `/api/v1/telemetry/missions/${missionId.trim()}/stream`;
+    const url = `/api/v1/telemetry/missions/${missionId.trim()}/stream?token=${encodeURIComponent(token)}`;
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
