@@ -54,12 +54,15 @@ export function MisMisionesView({ onCreateMission }: { onCreateMission: () => vo
 
   const [startingId, setStartingId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
-  const pollTimers = useRef<Set<number>>(new Set());
+  // idMission -> timerId. Evita sondear la misma misión dos veces, y permite arrancar el
+  // sondeo tanto al apretar "Iniciar" acá como al encontrar una misión ya en UPLOADING al
+  // cargar la lista (por ejemplo, si se inició por curl/Postman en otra sesión).
+  const activePolls = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     return () => {
-      pollTimers.current.forEach((timerId) => window.clearInterval(timerId));
-      pollTimers.current.clear();
+      activePolls.current.forEach((timerId) => window.clearInterval(timerId));
+      activePolls.current.clear();
     };
   }, []);
 
@@ -78,6 +81,14 @@ export function MisMisionesView({ onCreateMission }: { onCreateMission: () => vo
   useEffect(() => {
     loadData();
   }, []);
+
+  // Cualquier misión en UPLOADING (la haya iniciado esta pantalla u otra vía, ej. curl/Postman)
+  // se sondea sola hasta que cambie de estado — no hace falta recargar la página.
+  useEffect(() => {
+    (missions ?? [])
+      .filter((mission) => mission.status === "UPLOADING")
+      .forEach((mission) => pollMissionStatus(mission.idMission));
+  }, [missions]);
 
   const missionRows = useMemo(
     () =>
@@ -123,23 +134,27 @@ export function MisMisionesView({ onCreateMission }: { onCreateMission: () => vo
   };
 
   const pollMissionStatus = (idMission: string) => {
+    if (activePolls.current.has(idMission)) return;
+
     let attempts = 0;
     const timerId = window.setInterval(() => {
       attempts += 1;
       getMission(idMission)
         .then((updated) => {
           setMissions((current) => current?.map((item) => (item.idMission === updated.idMission ? updated : item)) ?? current);
-          if (updated.status !== "UPLOADING" || attempts >= 20) {
+          // Sin tope corto: el ack puede tardar (sobre todo si se manda a mano desde Postman).
+          // 300 intentos a 2s son ~10 min, como red de seguridad ante algo que nunca confirma.
+          if (updated.status !== "UPLOADING" || attempts >= 300) {
             window.clearInterval(timerId);
-            pollTimers.current.delete(timerId);
+            activePolls.current.delete(idMission);
           }
         })
         .catch(() => {
           window.clearInterval(timerId);
-          pollTimers.current.delete(timerId);
+          activePolls.current.delete(idMission);
         });
     }, 2000);
-    pollTimers.current.add(timerId);
+    activePolls.current.set(idMission, timerId);
   };
 
   return (
