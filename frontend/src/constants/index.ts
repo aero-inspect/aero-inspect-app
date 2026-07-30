@@ -1,7 +1,5 @@
 import type { AssetType } from "../types";
 
-export const MAX_LOGIN_ATTEMPTS = 5;
-export const LOCK_TIME_MS = 15 * 60 * 1000;
 export const ASSET_TYPES: AssetType[] = ["Silo", "Noria", "Cinta transportadora", "Tuberia", "Techo"];
 export const ASSET_TYPE_COLORS: Record<AssetType, string> = {
   Silo: "#d94b4b",

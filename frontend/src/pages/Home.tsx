@@ -189,7 +189,7 @@ export function Home({
         )}
 
         {isPruebaTelemetriaPath ? (
-          <PruebaTelemetriaView onBack={() => navigateTo("/dron")} />
+          <PruebaTelemetriaView token={user.token} onBack={() => navigateTo("/dron")} />
         ) : isProfilePath ? (
           <ProfileView user={user} users={users} setUsers={setUsers} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onLogout={() => { navigateTo("/"); onLogout(); }} />
         ) : isRegisterAssetPath && (userCanConsultAssets || user.role === "Jefe de Planta") ? (

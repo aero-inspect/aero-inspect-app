@@ -10,7 +10,10 @@ export default defineConfig({
         target: "http://localhost:8080",
         changeOrigin: true
       },
-      "/api": "http://localhost:4000"
+      "/api/v1/auth": {
+        target: "http://localhost:8080",
+        changeOrigin: true
+      },
     }
   }
 });
