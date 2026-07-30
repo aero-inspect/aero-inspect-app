@@ -1,73 +1,145 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { CalendarCheck, CheckCircle2, Clock3, Pause, Play, Plus, Search, Trash2, X, XCircle } from "lucide-react";
-import type { Asset, InspectionMission, Plant } from "../types";
-import { MissionRouteMap } from "../components/MissionRouteMap";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { AlertCircle, CalendarCheck, CheckCircle2, Clock3, Pause, Play, Plus, RefreshCw, Search, X, XCircle } from "lucide-react";
+import type { BackendFlightPlan, BackendMission, BackendMissionStatus } from "../api/types";
+import { getFlightPlans, getMission, getMissions, startMission } from "../api/client";
+import { MissionDetailRouteMap } from "../components/MissionDetailRouteMap";
 import { AppTopActions } from "../components/AppTopActions";
 
-type MissionDisplayStatus = "Pendiente" | "En progreso" | "Completada" | "Cancelada";
+type MissionDisplayStatus = "Pendiente" | "Enviando al dron" | "En progreso" | "Completada" | "Cancelada" | "Fallida";
 
-type MissionRow = InspectionMission & {
-  displayId: string;
-  date: string;
-  time: string;
-  pilot: string;
-  drone: string;
-  duration: string;
-  statusLabel: MissionDisplayStatus;
-};
+function normalizeStatus(status: BackendMissionStatus): MissionDisplayStatus {
+  if (status === "UPLOADING") return "Enviando al dron";
+  if (status === "IN_PROGRESS") return "En progreso";
+  if (status === "COMPLETED") return "Completada";
+  if (status === "CANCELLED") return "Cancelada";
+  if (status === "FAILED") return "Fallida";
+  return "Pendiente";
+}
 
-const MOCK_ROUTE = [
-  { id: 1, latitude: "-35.140110", longitude: "-60.458900" },
-  { id: 2, latitude: "-35.140410", longitude: "-60.458520" },
-  { id: 3, latitude: "-35.140205", longitude: "-60.457920" },
-  { id: 4, latitude: "-35.140760", longitude: "-60.457710" },
-  { id: 5, latitude: "-35.141045", longitude: "-60.458240" },
-  { id: 6, latitude: "-35.140820", longitude: "-60.458760" }
-];
+function statusClass(status: MissionDisplayStatus) {
+  if (status === "Enviando al dron") return "uploading";
+  if (status === "En progreso") return "progress";
+  if (status === "Completada") return "completed";
+  if (status === "Cancelada") return "cancelled";
+  if (status === "Fallida") return "failed";
+  return "pending";
+}
 
-export function MisMisionesView({
-  missions,
-  assets,
-  onCreateMission,
-  plant
-}: {
-  missions: InspectionMission[];
-  assets: Asset[];
-  onBack: () => void;
-  onCreateMission: () => void;
-  plant: Plant;
-}) {
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [activeMissionIds, setActiveMissionIds] = useState<number[]>([]);
+function formatDate(iso: string | null) {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleDateString("es-AR");
+}
+
+function formatTime(iso: string | null) {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDuration(startedAt: string | null, finishedAt: string | null) {
+  if (!startedAt) return "Sin iniciar";
+  if (!finishedAt) return "En curso";
+  const minutes = Math.round((new Date(finishedAt).getTime() - new Date(startedAt).getTime()) / 60000);
+  return `${minutes} min`;
+}
+
+export function MisMisionesView({ onCreateMission }: { onCreateMission: () => void }) {
+  const [missions, setMissions] = useState<BackendMission[] | null>(null);
+  const [flightPlansById, setFlightPlansById] = useState<Map<number, BackendFlightPlan>>(new Map());
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"Todas" | MissionDisplayStatus>("Todas");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const plantAssetIds = assets.filter((asset) => asset.plantId === plant.id).map((asset) => asset.id);
-  const plantMissions = missions.filter((mission) => plantAssetIds.includes(mission.assetId));
+  const [startingId, setStartingId] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+  const pollTimers = useRef<Set<number>>(new Set());
 
-  const missionRows = useMemo(() => buildMissionRows(plantMissions, assets, plant), [plantMissions, assets, plant]);
-  const selectedMission = missionRows.find((mission) => mission.id === selectedId) ?? missionRows[0] ?? null;
-  const selectedAsset = selectedMission ? assets.find((asset) => asset.id === selectedMission.assetId) ?? null : null;
+  useEffect(() => {
+    return () => {
+      pollTimers.current.forEach((timerId) => window.clearInterval(timerId));
+      pollTimers.current.clear();
+    };
+  }, []);
 
-  const filteredMissions = missionRows.filter((mission) => {
-    const currentStatus = activeMissionIds.includes(mission.id) ? "En progreso" : mission.statusLabel;
-    const matchesStatus = statusFilter === "Todas" || currentStatus === statusFilter;
-    const matchesSearch = !searchTerm.trim() || `${mission.name} ${mission.assetName} ${mission.displayId}`.toLowerCase().includes(searchTerm.toLowerCase());
+  const loadData = () => {
+    setIsRefreshing(true);
+    setLoadError(null);
+    Promise.all([getMissions(), getFlightPlans()])
+      .then(([missionList, flightPlans]) => {
+        setMissions(missionList);
+        setFlightPlansById(new Map(flightPlans.map((plan) => [plan.idFlightPlan, plan])));
+      })
+      .catch((error: unknown) => setLoadError(error instanceof Error ? error.message : "No se pudieron cargar las misiones."))
+      .finally(() => setIsRefreshing(false));
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const missionRows = useMemo(
+    () =>
+      (missions ?? []).map((mission) => ({
+        mission,
+        flightPlanName: flightPlansById.get(mission.idFlightPlan)?.name ?? `Plan #${mission.idFlightPlan}`,
+        statusLabel: normalizeStatus(mission.status)
+      })),
+    [missions, flightPlansById]
+  );
+
+  const selectedRow = missionRows.find((row) => row.mission.idMission === selectedId) ?? null;
+
+  const filteredRows = missionRows.filter((row) => {
+    const matchesStatus = statusFilter === "Todas" || row.statusLabel === statusFilter;
+    const matchesSearch =
+      !searchTerm.trim() ||
+      `${row.mission.name} ${row.flightPlanName} ${row.mission.droneId}`.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
   const totals = {
     all: missionRows.length,
-    pending: missionRows.filter((mission) => mission.statusLabel === "Pendiente").length,
-    active: missionRows.filter((mission) => activeMissionIds.includes(mission.id) || mission.statusLabel === "En progreso").length,
-    completed: missionRows.filter((mission) => mission.statusLabel === "Completada").length
+    pending: missionRows.filter((row) => row.statusLabel === "Pendiente").length,
+    active: missionRows.filter((row) => row.statusLabel === "En progreso").length,
+    completed: missionRows.filter((row) => row.statusLabel === "Completada").length
   };
 
-  const isSelectedActive = selectedMission ? activeMissionIds.includes(selectedMission.id) || selectedMission.statusLabel === "En progreso" : false;
+  const handleStart = async (mission: BackendMission) => {
+    setStartError(null);
+    setStartingId(mission.idMission);
+    try {
+      const updated = await startMission(mission.idMission);
+      setMissions((current) => current?.map((item) => (item.idMission === updated.idMission ? updated : item)) ?? current);
+      // El status recién pasa a IN_PROGRESS cuando llega el mission/ack del dron (async, por MQTT),
+      // no en la respuesta de /start. Se sondea la misión unos segundos hasta ver el cambio.
+      pollMissionStatus(mission.idMission);
+    } catch (error) {
+      setStartError(error instanceof Error ? error.message : "No se pudo iniciar la misión.");
+    } finally {
+      setStartingId(null);
+    }
+  };
 
-  const startMission = () => {
-    if (!selectedMission) return;
-    setActiveMissionIds((current) => (current.includes(selectedMission.id) ? current : [...current, selectedMission.id]));
+  const pollMissionStatus = (idMission: string) => {
+    let attempts = 0;
+    const timerId = window.setInterval(() => {
+      attempts += 1;
+      getMission(idMission)
+        .then((updated) => {
+          setMissions((current) => current?.map((item) => (item.idMission === updated.idMission ? updated : item)) ?? current);
+          if (updated.status !== "UPLOADING" || attempts >= 20) {
+            window.clearInterval(timerId);
+            pollTimers.current.delete(timerId);
+          }
+        })
+        .catch(() => {
+          window.clearInterval(timerId);
+          pollTimers.current.delete(timerId);
+        });
+    }, 2000);
+    pollTimers.current.add(timerId);
   };
 
   return (
@@ -75,7 +147,7 @@ export function MisMisionesView({
       <header className="missions-topbar">
         <div>
           <h1>Misiones</h1>
-          <p>Gestiona y monitorea las misiones de inspeccion.</p>
+          <p>Gestiona y monitorea las misiones de inspección.</p>
         </div>
         <AppTopActions />
       </header>
@@ -87,154 +159,208 @@ export function MisMisionesView({
         <MissionSummaryCard icon={<CheckCircle2 size={22} />} label="Completadas" tone="green" value={totals.completed} />
         <button className="missions-new-button" onClick={onCreateMission} type="button">
           <Plus size={18} />
-          Nueva mision
+          Nueva misión
         </button>
       </section>
 
-      <section className="missions-content-grid">
-        <article className="missions-list-card">
-          <div className="missions-list-toolbar">
-            <div className="missions-tabs" role="tablist" aria-label="Filtro de misiones">
-              {(["Todas", "Pendiente", "En progreso", "Completada", "Cancelada"] as const).map((status) => (
-                <button className={statusFilter === status ? "active" : undefined} key={status} onClick={() => setStatusFilter(status)} type="button">
-                  {status === "Todas" ? "Todas" : status === "Completada" ? "Completadas" : status === "Cancelada" ? "Canceladas" : status}
-                </button>
-              ))}
-            </div>
-            <label className="missions-search">
-              <Search size={15} />
-              <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar mision..." value={searchTerm} />
-            </label>
-          </div>
+      {loadError && (
+        <p className="mission-empty">
+          <AlertCircle size={16} aria-hidden="true" /> {loadError}
+        </p>
+      )}
 
-          <div className="missions-table-wrap">
-            <table className="missions-table">
-              <thead>
-                <tr>
-                  <th>Mision</th>
-                  <th>Activo</th>
-                  <th>Fecha</th>
-                  <th>Estado</th>
-                  <th>Piloto asignado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMissions.map((mission) => {
-                  const currentStatus = activeMissionIds.includes(mission.id) ? "En progreso" : mission.statusLabel;
-                  return (
-                    <tr className={selectedMission?.id === mission.id ? "selected" : undefined} key={mission.id} onClick={() => setSelectedId(mission.id)}>
+      {missions === null && !loadError && <p className="mission-empty">Cargando misiones...</p>}
+
+      {missions !== null && missions.length === 0 && !loadError && (
+        <p className="mission-empty">No hay misiones creadas todavía. Empezá por crear una desde "Nueva misión".</p>
+      )}
+
+      {missions !== null && missions.length > 0 && (
+        <section className="missions-content-grid">
+          <article className="missions-list-card">
+            <div className="missions-list-toolbar">
+              <div className="missions-tabs" role="tablist" aria-label="Filtro de misiones">
+                {(["Todas", "Pendiente", "Enviando al dron", "En progreso", "Completada", "Cancelada", "Fallida"] as const).map((status) => (
+                  <button className={statusFilter === status ? "active" : undefined} key={status} onClick={() => setStatusFilter(status)} type="button">
+                    {status}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <label className="missions-search">
+                  <Search size={15} />
+                  <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar misión..." value={searchTerm} />
+                </label>
+                <button className="mission-detail-close" disabled={isRefreshing} onClick={loadData} title="Actualizar" type="button" aria-label="Actualizar">
+                  <RefreshCw size={16} className={isRefreshing ? "spin" : undefined} />
+                </button>
+              </div>
+            </div>
+
+            <div className="missions-table-wrap">
+              <table className="missions-table">
+                <thead>
+                  <tr>
+                    <th>Misión</th>
+                    <th>Plan de vuelo</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map(({ mission, flightPlanName, statusLabel }) => (
+                    <tr
+                      className={selectedRow?.mission.idMission === mission.idMission ? "selected" : undefined}
+                      key={mission.idMission}
+                      onClick={() => setSelectedId(mission.idMission)}
+                    >
                       <td>
                         <strong>{mission.name}</strong>
-                        <small>{mission.displayId}</small>
+                        <small>{mission.idMission.slice(0, 8)}</small>
+                      </td>
+                      <td>{flightPlanName}</td>
+                      <td>
+                        <span>{formatDate(mission.scheduledAt)}</span>
+                        <small>{formatTime(mission.scheduledAt)}</small>
                       </td>
                       <td>
-                        <strong>{mission.assetName}</strong>
-                        <small>{assets.find((asset) => asset.id === mission.assetId)?.type ?? "Activo"}</small>
+                        <span className={`mission-state ${statusClass(statusLabel)}`}>{statusLabel}</span>
                       </td>
                       <td>
-                        <span>{mission.date}</span>
-                        <small>{mission.time}</small>
-                      </td>
-                      <td>
-                        <span className={`mission-state ${statusClass(currentStatus)}`}>{currentStatus}</span>
-                      </td>
-                      <td>{mission.pilot}</td>
-                      <td>
-                        <button className="mission-delete-button" onClick={(event) => event.stopPropagation()} type="button" aria-label="Eliminar mision">
-                          <Trash2 size={15} />
-                        </button>
+                        {mission.status === "PLANNED" && (
+                          <button
+                            className="mission-delete-button"
+                            disabled={startingId === mission.idMission}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleStart(mission);
+                            }}
+                            title="Iniciar misión"
+                            type="button"
+                          >
+                            <Play size={15} />
+                          </button>
+                        )}
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div className="missions-table-footer">
-            <div className="missions-pagination">
-              <button type="button">‹</button>
-              <button className="active" type="button">1</button>
-              <button type="button">2</button>
-              <button type="button">›</button>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <span>Mostrando {filteredMissions.length} de {missionRows.length} misiones</span>
-          </div>
-        </article>
-
-        {selectedMission && (
-          <aside className="mission-detail-card">
-            <div className="mission-detail-header">
-              <div>
-                <h2>{selectedMission.name}</h2>
-                <div className="mission-detail-id">
-                  <span className={`mission-state ${statusClass(isSelectedActive ? "En progreso" : selectedMission.statusLabel)}`}>
-                    {isSelectedActive ? "En progreso" : selectedMission.statusLabel}
-                  </span>
-                  <small>{selectedMission.displayId}</small>
-                </div>
-              </div>
-              <button className="mission-detail-close" onClick={() => setSelectedId(null)} type="button" aria-label="Cerrar detalle">
-                <X size={17} />
-              </button>
+            <div className="missions-table-footer">
+              <span>
+                Mostrando {filteredRows.length} de {missionRows.length} misiones
+              </span>
             </div>
+          </article>
 
-            <div className="mission-detail-map">
-              <MissionRouteMap asset={selectedAsset} disabled={true} onAddPoint={() => {}} plant={plant} routePoints={selectedMission.routePoints} />
-            </div>
-
-            <div className="mission-detail-grid">
-              <MissionInfo label="Activo" value={selectedMission.assetName} />
-              <MissionInfo label="Dron" value={selectedMission.drone} />
-              <MissionInfo label="Fecha y hora" value={`${selectedMission.date} - ${selectedMission.time}`} />
-              <MissionInfo label="Duracion estimada" value={selectedMission.duration} />
-              <MissionInfo label="Piloto asignado" value={selectedMission.pilot} />
-              <MissionInfo label="Puntos del recorrido" value={`${selectedMission.routePoints.length} puntos`} />
-            </div>
-
-            {isSelectedActive && (
-              <div className="mission-progress-box">
+          {selectedRow && (
+            <aside className="mission-detail-card">
+              <div className="mission-detail-header">
                 <div>
-                  <strong>Progreso de la mision</strong>
-                  <span>40%</span>
+                  <h2>{selectedRow.mission.name}</h2>
+                  <div className="mission-detail-id">
+                    <span className={`mission-state ${statusClass(selectedRow.statusLabel)}`}>{selectedRow.statusLabel}</span>
+                    <small>{selectedRow.mission.idMission.slice(0, 8)}</small>
+                  </div>
                 </div>
-                <div className="mission-progress-track">
-                  <i />
-                </div>
+                <button className="mission-detail-close" onClick={() => setSelectedId(null)} type="button" aria-label="Cerrar detalle">
+                  <X size={17} />
+                </button>
               </div>
-            )}
 
-            <div className="mission-quick-actions">
-              <h3>Acciones rapidas</h3>
-              {isSelectedActive ? (
-                <div className="mission-actions-row">
-                  <button className="mission-action telemetry" type="button">Ver telemetria</button>
-                  <button className="mission-action pause" type="button">
-                    <Pause size={14} />
-                    Pausar mision
-                  </button>
-                  <button className="mission-action cancel" type="button">
-                    <XCircle size={14} />
-                    Cancelar mision
-                  </button>
-                </div>
-              ) : (
-                <div className="mission-actions-row">
-                  <button className="mission-action start" onClick={startMission} type="button">
-                    <Play size={14} />
-                    Iniciar
-                  </button>
-                  <button className="mission-action postpone" type="button">Postergar</button>
-                  <button className="mission-action cancel" type="button">
-                    <XCircle size={14} />
-                    Cancelar
-                  </button>
+              <div className="mission-detail-map">
+                <MissionDetailRouteMap
+                  points={
+                    selectedRow.mission.missionWaypoints ??
+                    flightPlansById.get(selectedRow.mission.idFlightPlan)?.route ??
+                    []
+                  }
+                />
+              </div>
+
+              <div className="mission-detail-grid">
+                <MissionInfo label="Plan de vuelo" value={selectedRow.flightPlanName} />
+                <MissionInfo label="Dron" value={selectedRow.mission.droneId} />
+                <MissionInfo label="Fecha y hora" value={`${formatDate(selectedRow.mission.scheduledAt)} - ${formatTime(selectedRow.mission.scheduledAt)}`} />
+                <MissionInfo
+                  label="Duración"
+                  value={formatDuration(selectedRow.mission.startedAt, selectedRow.mission.finishedAt)}
+                />
+                <MissionInfo label="Objetivo" value={selectedRow.mission.objective || "-"} />
+                <MissionInfo
+                  label="Puntos seleccionados"
+                  value={`${selectedRow.mission.selectedPlanWaypointIds?.length ?? 0} puntos`}
+                />
+              </div>
+
+              {selectedRow.mission.status === "IN_PROGRESS" && (
+                <div className="mission-progress-box">
+                  <div>
+                    <strong>Progreso de la misión</strong>
+                    <span>{selectedRow.mission.completionPercentage}%</span>
+                  </div>
+                  <div className="mission-progress-track">
+                    <i style={{ width: `${selectedRow.mission.completionPercentage}%` }} />
+                  </div>
                 </div>
               )}
-            </div>
-          </aside>
-        )}
-      </section>
+
+              <div className="mission-quick-actions">
+                <h3>Acciones rápidas</h3>
+
+                {startError && selectedRow.mission.idMission === startingId && (
+                  <p className="mission-empty">
+                    <AlertCircle size={16} aria-hidden="true" /> {startError}
+                  </p>
+                )}
+
+                {selectedRow.mission.status === "PLANNED" && (
+                  <div className="mission-actions-row">
+                    <button
+                      className="mission-action start"
+                      disabled={startingId === selectedRow.mission.idMission}
+                      onClick={() => handleStart(selectedRow.mission)}
+                      type="button"
+                    >
+                      <Play size={14} />
+                      {startingId === selectedRow.mission.idMission ? "Iniciando..." : "Iniciar"}
+                    </button>
+                    <button className="mission-action postpone" type="button">
+                      Postergar
+                    </button>
+                    <button className="mission-action cancel" type="button">
+                      <XCircle size={14} />
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+
+                {selectedRow.mission.status === "UPLOADING" && (
+                  <p className="mission-empty">Esperando confirmación del dron...</p>
+                )}
+
+                {selectedRow.mission.status === "IN_PROGRESS" && (
+                  <div className="mission-actions-row">
+                    <button className="mission-action telemetry" type="button">
+                      Ver telemetría
+                    </button>
+                    <button className="mission-action pause" type="button">
+                      <Pause size={14} />
+                      Pausar misión
+                    </button>
+                    <button className="mission-action cancel" type="button">
+                      <XCircle size={14} />
+                      Cancelar misión
+                    </button>
+                  </div>
+                )}
+              </div>
+            </aside>
+          )}
+        </section>
+      )}
     </section>
   );
 }
@@ -258,56 +384,4 @@ function MissionInfo({ label, value }: { label: string; value: string }) {
       <strong>{value}</strong>
     </div>
   );
-}
-
-function buildMissionRows(missions: InspectionMission[], assets: Asset[], plant: Plant): MissionRow[] {
-  const fallbackAssets = assets.length > 0 ? assets : [
-    { id: 1, name: "Silo Norte", type: "Silo", latitude: plant.center.latitude, longitude: plant.center.longitude, description: "", plantId: plant.id } as Asset
-  ];
-
-  const baseRows = missions.length > 0 ? missions : [
-    createMockMission(1, "Inspeccion Silo Norte", fallbackAssets[0], "Pendiente"),
-    createMockMission(2, "Inspeccion Cinta Transportadora 2", fallbackAssets[1] ?? fallbackAssets[0], "En ejecución"),
-    createMockMission(3, "Inspeccion Noria Principal", fallbackAssets[2] ?? fallbackAssets[0], "Pendiente"),
-    createMockMission(4, "Inspeccion Tuberia de Vapor", fallbackAssets[3] ?? fallbackAssets[0], "Finalizada"),
-    createMockMission(5, "Inspeccion Techo Almacen 2", fallbackAssets[4] ?? fallbackAssets[0], "Finalizada"),
-    createMockMission(6, "Inspeccion Silo Sur", fallbackAssets[0], "Cancelada")
-  ];
-
-  return baseRows.map((mission, index) => ({
-    ...mission,
-    displayId: `MIS-2025-${String(index + 1).padStart(3, "0")}`,
-    date: index < 3 ? "28/05/2025" : index < 5 ? "27/05/2025" : "25/05/2025",
-    time: ["09:30", "11:15", "14:00", "16:20", "10:45", "09:10"][index] ?? "09:00",
-    pilot: index === 2 ? "Sin asignar" : "Emilia Andersen",
-    drone: "AeroDrone 01",
-    duration: index === 1 ? "25 min" : "30 min",
-    routePoints: mission.routePoints.length > 0 ? mission.routePoints : MOCK_ROUTE,
-    statusLabel: normalizeStatus(mission.status)
-  }));
-}
-
-function createMockMission(id: number, name: string, asset: Asset, status: InspectionMission["status"]): InspectionMission {
-  return {
-    id,
-    name,
-    assetId: asset.id,
-    assetName: asset.name,
-    routePoints: MOCK_ROUTE,
-    status
-  };
-}
-
-function normalizeStatus(status: InspectionMission["status"]): MissionDisplayStatus {
-  if (status === "En ejecución") return "En progreso";
-  if (status === "Finalizada") return "Completada";
-  if (status === "Cancelada") return "Cancelada";
-  return "Pendiente";
-}
-
-function statusClass(status: MissionDisplayStatus) {
-  if (status === "En progreso") return "progress";
-  if (status === "Completada") return "completed";
-  if (status === "Cancelada") return "cancelled";
-  return "pending";
 }

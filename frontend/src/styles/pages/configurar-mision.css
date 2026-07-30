@@ -91,3 +91,234 @@
   line-height: 1.35;
 }
 
+.mission-builder-back {
+  margin-bottom: 14px;
+}
+
+.mission-quick-actions-title {
+  margin: 0 0 4px;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 720;
+}
+
+/* --- Elegir plan de vuelo --- */
+.flight-plan-picker {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.flight-plan-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.flight-plan-option:hover {
+  border-color: #0ca75b;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.flight-plan-option strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.flight-plan-option span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* --- Armado de misión (mapa + campos) --- */
+.mission-builder-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.mission-builder-map .leaflet-map-shell {
+  height: 480px;
+}
+
+.mission-builder-fields {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.mission-builder-fields label {
+  display: block;
+}
+
+.mission-builder-fields label > span {
+  display: block;
+  margin-bottom: 8px;
+  color: #172033;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mission-builder-fields input {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid #d7e0ea;
+  border-radius: 8px;
+  outline: 0;
+  background: #ffffff;
+  color: #10253a;
+  font-size: 13px;
+}
+
+.mission-builder-fields input:focus {
+  border-color: #18d4aa;
+  box-shadow: 0 0 0 3px rgba(24, 212, 170, 0.14);
+}
+
+.mission-builder-fields input.field-invalid {
+  border-color: #da1e28;
+}
+
+.mission-builder-fields input.field-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(218, 30, 40, 0.12);
+}
+
+.mission-builder-fields input::placeholder {
+  color: #8b9caf;
+}
+
+.mission-builder-fields .required-inline {
+  margin-left: 3px;
+  color: #dc2626;
+  font-size: 0.9em;
+  font-weight: 700;
+}
+
+@media (max-width: 1180px) {
+  .mission-builder-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mission-builder-map .leaflet-map-shell {
+    height: 360px;
+  }
+}
+
+/* --- Marcador de activo seleccionable (grande, pensado para clickear) --- */
+.leaflet-selectable-asset-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.leaflet-selectable-asset-marker span {
+  display: block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow:
+    0 8px 18px rgba(2, 18, 30, 0.35),
+    0 0 0 4px rgba(255, 255, 255, 0.32);
+  transition: transform 0.15s ease;
+}
+
+.leaflet-selectable-asset-marker:hover span {
+  transform: scale(1.12);
+}
+
+.leaflet-asset-tooltip.leaflet-tooltip {
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.85);
+  box-shadow: none;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.leaflet-asset-tooltip.leaflet-tooltip::before {
+  display: none;
+}
+
+/* --- Popup de puntos de interés de un activo --- */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+}
+
+.poi-popup {
+  display: grid;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.poi-popup h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.poi-popup-empty {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.poi-popup-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.poi-popup-item {
+  padding: 8px;
+  border: 1px solid #edf2f7;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.poi-popup-item label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.poi-popup-item input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.poi-popup-item label strong {
+  color: #172033;
+  font-size: 12px;
+}
+
+.poi-popup-item p {
+  margin: 4px 0 0 24px;
+  color: #52677a;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.poi-popup-meta {
+  color: #8b9caf !important;
+  font-weight: 400 !important;
+}
+
