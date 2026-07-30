@@ -1,233 +1,315 @@
-import { useState, type FormEvent } from "react";
-import { ArrowLeft, ChevronDown, Save, X, MapPin, CheckCircle2 } from "lucide-react";
-import type { Asset, InspectionMission, InspectionPoint, Plant } from "../types";
+import { useEffect, useState, type FormEvent } from "react";
+import { ArrowLeft, Save, CheckCircle2, AlertCircle, Database, X } from "lucide-react";
+import type { BackendFlightPlan, BackendAsset } from "../api/types";
+import { getFlightPlans, getAssets, createMission, seedDemoData } from "../api/client";
 import { FieldError } from "../components/FieldError";
-import { MissionRouteMap } from "../components/MissionRouteMap";
+import { MissionPlanMap } from "../components/MissionPlanMap";
+import { AppTopActions } from "../components/AppTopActions";
+
+type FieldErrors = Partial<Record<"name" | "droneId" | "scheduledAt", string>>;
 
 export function ConfigurarMisionView({
-  assets,
-  missions,
   onBack,
-  onCreateMission,
-  plant
+  onViewMissions
 }: {
-  assets: Asset[];
-  missions: InspectionMission[];
   onBack: () => void;
-  onCreateMission: (mission: Omit<InspectionMission, "id">) => void;
-  plant: Plant;
+  onViewMissions: () => void;
 }) {
-  const plantAssets = assets.filter((asset) => asset.plantId === plant.id);
-  const [missionName, setMissionName] = useState("");
-  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(plantAssets[0]?.id ?? null);
-  const [isAssetOpen, setIsAssetOpen] = useState(false);
-  const [routePoints, setRoutePoints] = useState<InspectionPoint[]>([]);
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<"name" | "asset" | "route", string>>>({});
+  const [flightPlans, setFlightPlans] = useState<BackendFlightPlan[] | null>(null);
+  const [flightPlansError, setFlightPlansError] = useState<string | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const [selectedFlightPlan, setSelectedFlightPlan] = useState<BackendFlightPlan | null>(null);
+  const [planAssets, setPlanAssets] = useState<BackendAsset[]>([]);
+  const [assetsLoading, setAssetsLoading] = useState(false);
+  const [assetsError, setAssetsError] = useState<string | null>(null);
+
+  const [selectedWaypointIds, setSelectedWaypointIds] = useState<Set<number>>(new Set());
+  const [name, setName] = useState("");
+  const [objective, setObjective] = useState("");
+  const [droneId, setDroneId] = useState("");
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
-  const selectedAsset = plantAssets.find((asset) => asset.id === selectedAssetId) ?? null;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setFieldErrors({});
-    setIsSuccessOpen(false);
+  const loadFlightPlans = () => {
+    setFlightPlansError(null);
+    setFlightPlans(null);
+    getFlightPlans()
+      .then(setFlightPlans)
+      .catch((error: unknown) => setFlightPlansError(error instanceof Error ? error.message : "No se pudieron cargar los planes de vuelo."));
+  };
 
-    if (plantAssets.length === 0) {
-      setFieldErrors({ asset: "No hay activos disponibles para configurar una mision." });
-      return;
+  useEffect(() => {
+    loadFlightPlans();
+  }, []);
+
+  const handleSeed = async () => {
+    setIsSeeding(true);
+    setFlightPlansError(null);
+    try {
+      await seedDemoData();
+      loadFlightPlans();
+    } catch (error) {
+      setFlightPlansError(error instanceof Error ? error.message : "No se pudo cargar la data de prueba.");
+    } finally {
+      setIsSeeding(false);
     }
+  };
 
-    const nextFieldErrors: Partial<Record<"name" | "asset" | "route", string>> = {};
+  const handleSelectFlightPlan = (plan: BackendFlightPlan) => {
+    setSelectedFlightPlan(plan);
+    setSelectedWaypointIds(new Set());
+    setPlanAssets([]);
+    setAssetsError(null);
+    setAssetsLoading(true);
+    getAssets()
+      .then((allAssets) => {
+        setPlanAssets(allAssets.filter((asset) => plan.assetIds.includes(asset.idAsset)));
+      })
+      .catch((error: unknown) => setAssetsError(error instanceof Error ? error.message : "No se pudieron cargar los activos."))
+      .finally(() => setAssetsLoading(false));
+  };
 
-    if (!missionName.trim()) nextFieldErrors.name = "Ingrese nombre de la mision.";
-    if (!selectedAsset) nextFieldErrors.asset = "Seleccione un activo a inspeccionar.";
-    if (routePoints.length === 0) nextFieldErrors.route = "Defina al menos un punto de inspeccion.";
+  const handleToggleWaypoint = (idPlanWaypoint: number) => {
+    setSelectedWaypointIds((current) => {
+      const next = new Set(current);
+      if (next.has(idPlanWaypoint)) {
+        next.delete(idPlanWaypoint);
+      } else {
+        next.add(idPlanWaypoint);
+      }
+      return next;
+    });
+  };
+
+  const resetForm = () => {
+    setSelectedFlightPlan(null);
+    setPlanAssets([]);
+    setSelectedWaypointIds(new Set());
+    setName("");
+    setObjective("");
+    setDroneId("");
+    setScheduledAt("");
+    setFieldErrors({});
+    setSubmitError(null);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedFlightPlan) return;
+
+    setSubmitError(null);
+
+    const nextFieldErrors: FieldErrors = {};
+    if (!name.trim()) nextFieldErrors.name = "Ingrese un nombre para la misión.";
+    if (!droneId.trim()) nextFieldErrors.droneId = "Ingrese el identificador del dron.";
+    if (!scheduledAt) nextFieldErrors.scheduledAt = "Seleccione fecha y hora programada.";
 
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors);
       return;
     }
+    setFieldErrors({});
 
-    if (missionName.length > 100) {
-      setFieldErrors({ name: "El nombre de la mision no puede superar los 100 caracteres." });
-      return;
+    setIsSubmitting(true);
+    try {
+      await createMission({
+        idFlightPlan: selectedFlightPlan.idFlightPlan,
+        name: name.trim(),
+        objective: objective.trim(),
+        droneId: droneId.trim(),
+        scheduledAt: new Date(scheduledAt).toISOString(),
+        selectedPlanWaypointIds: Array.from(selectedWaypointIds)
+      });
+      setIsSuccessOpen(true);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "No se pudo crear la misión.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const missionExists = missions.some(
-      (mission) => mission.assetId === selectedAsset?.id && mission.name.trim().toLowerCase() === missionName.trim().toLowerCase()
-    );
-
-    if (missionExists) {
-      setFieldErrors({ name: "Ya existe una mision con ese nombre para el activo seleccionado." });
-      return;
-    }
-
-    onCreateMission({
-      name: missionName.trim(),
-      assetId: selectedAsset!.id,
-      assetName: selectedAsset!.name,
-      routePoints
-    });
-
-    setMissionName("");
-    setSelectedAssetId(plantAssets[0]?.id ?? null);
-    setRoutePoints([]);
-    setIsSuccessOpen(true);
   };
 
   return (
-    <section className="asset-page asset-page-modern">
-      <header className="asset-header-modern">
-        <button className="back-link-modern" onClick={onBack} type="button">
-          <ArrowLeft size={18} aria-hidden="true" />
-          Volver
-        </button>
-        <div className="asset-hero">
-          <h1 className="asset-hero-title">Configurar misión</h1>
-          <p className="asset-hero-subtitle">Crear una planificación de vuelo asociada a un activo registrado para su posterior ejecución.</p>
+    <section className="missions-dashboard">
+      <button className="back-link mission-builder-back" onClick={onBack} type="button">
+        <ArrowLeft size={18} aria-hidden="true" />
+        Volver
+      </button>
+
+      <header className="missions-topbar">
+        <div>
+          <h1>Configurar misión</h1>
+          <p>Elegí un plan de vuelo y tildá los puntos de interés a inspeccionar.</p>
         </div>
+        <AppTopActions />
       </header>
 
-      <form className="asset-form asset-form-modern" onSubmit={handleSubmit}>
-        <section className="form-panel-modern">
-          {plantAssets.length === 0 && <p className="empty-assets">No hay activos registrados. Primero debe darse de alta un activo.</p>}
+      {!selectedFlightPlan ? (
+        <article className="missions-list-card">
+          <div className="missions-list-toolbar">
+            <h2 className="mission-quick-actions-title">Elegir plan de vuelo</h2>
+          </div>
 
-          <div className="field-grid-modern">
-            <label className="field-modern">
-              <span className="field-label-modern">
-                <span>Nombre de la misión</span>
-                <small className="required-badge">*</small>
-              </span>
-              <input
-                aria-invalid={Boolean(fieldErrors.name)}
-                className={fieldErrors.name ? "input-modern field-invalid" : "input-modern"}
-                disabled={plantAssets.length === 0}
-                maxLength={100}
-                onChange={(event) => setMissionName(event.target.value)}
-                placeholder="Ej: Inspección Silo Sur"
-                type="text"
-                value={missionName}
-              />
-              {fieldErrors.name && <FieldError message={fieldErrors.name} />}
-            </label>
+          {flightPlansError && (
+            <p className="mission-empty">
+              <AlertCircle size={16} aria-hidden="true" /> {flightPlansError}
+            </p>
+          )}
 
-            <label className="field-modern">
-              <span className="field-label-modern">
-                <span>Activo a inspeccionar</span>
-                <small className="required-badge">*</small>
-              </span>
-              <div className="asset-select">
+          {flightPlans === null && !flightPlansError && <p className="mission-empty">Cargando planes de vuelo...</p>}
+
+          {flightPlans !== null && flightPlans.length === 0 && (
+            <div className="mission-empty">
+              <p>No hay planes de vuelo cargados todavía.</p>
+              <button className="modal-link-button" disabled={isSeeding} onClick={handleSeed} type="button">
+                <Database size={16} aria-hidden="true" />
+                {isSeeding ? "Cargando..." : "Cargar datos de prueba"}
+              </button>
+            </div>
+          )}
+
+          {flightPlans !== null && flightPlans.length > 0 && (
+            <div className="flight-plan-picker">
+              {flightPlans.map((plan) => (
                 <button
-                  aria-expanded={isAssetOpen}
-                  aria-haspopup="listbox"
-                  className={fieldErrors.asset ? "asset-select-trigger-modern field-invalid" : "asset-select-trigger-modern"}
-                  disabled={plantAssets.length === 0}
-                  onClick={() => setIsAssetOpen((current) => !current)}
+                  className="flight-plan-option"
+                  key={plan.idFlightPlan}
+                  onClick={() => handleSelectFlightPlan(plan)}
                   type="button"
                 >
-                  <span className={selectedAsset ? undefined : "select-placeholder"}>{selectedAsset?.name || "Seleccionar activo"}</span>
-                  <ChevronDown size={17} aria-hidden="true" />
+                  <strong>{plan.name}</strong>
+                  <span>{plan.objective}</span>
                 </button>
-
-                {isAssetOpen && plantAssets.length > 0 && (
-                  <div className="asset-select-menu-modern" role="listbox">
-                    {plantAssets.map((asset) => (
-                      <button
-                        className={selectedAssetId === asset.id ? "selected" : undefined}
-                        key={asset.id}
-                        onClick={() => {
-                          setSelectedAssetId(asset.id);
-                          setIsAssetOpen(false);
-                          setRoutePoints([]);
-                        }}
-                        role="option"
-                        type="button"
-                      >
-                        {asset.name}
-                      </button>
-                    ))}
+              ))}
+            </div>
+          )}
+        </article>
+      ) : (
+        <form onSubmit={handleSubmit}>
+          <div className="mission-builder-grid">
+            <article className="mission-detail-card mission-builder-map">
+              <div className="mission-detail-header">
+                <div>
+                  <h2>{selectedFlightPlan.name}</h2>
+                  <div className="mission-detail-id">
+                    <small>{selectedFlightPlan.objective}</small>
                   </div>
-                )}
-              </div>
-              {fieldErrors.asset && <FieldError message={fieldErrors.asset} />}
-            </label>
-          </div>
-        </section>
-
-        <section className="form-panel-modern map-section">
-          <div className="form-section-header">
-            <div className="section-icon">
-              <MapPin size={18} aria-hidden="true" />
-            </div>
-            <h3>Recorrido de inspección</h3>
-          </div>
-          <p className="section-description">Selecciona uno o más puntos sobre el mapa para definir el recorrido de la misión.</p>
-
-          <div className="mission-layout">
-            <MissionRouteMap
-              asset={selectedAsset}
-              disabled={plantAssets.length === 0}
-              onAddPoint={(point) => {
-                setRoutePoints((current) => [...current, { ...point, id: Date.now() + current.length }]);
-                setFieldErrors((current) => ({ ...current, route: undefined }));
-              }}
-              plant={plant}
-              routePoints={routePoints}
-            />
-
-            <div className="mission-route-panel">
-              <div>
-                <p className="map-field-label">Puntos definidos</p>
-                <p>{routePoints.length} puntos de inspeccion</p>
-              </div>
-
-              {routePoints.length === 0 ? (
-                <p className="mission-empty">No hay puntos definidos.</p>
-              ) : (
-                <div className="mission-point-list">
-                  {routePoints.map((point, index) => (
-                    <div className="mission-point-row" key={point.id}>
-                      <span>{index + 1}</span>
-                      <p>{point.latitude}, {point.longitude}</p>
-                      <button
-                        aria-label="Quitar punto"
-                        onClick={() => setRoutePoints((current) => current.filter((item) => item.id !== point.id))}
-                        type="button"
-                      >
-                        <X size={15} aria-hidden="true" />
-                      </button>
-                    </div>
-                  ))}
                 </div>
-              )}
-
-              {routePoints.length > 0 && (
-                <button className="modal-link-button" onClick={() => setRoutePoints([])} type="button">
-                  Limpiar recorrido
+                <button className="mission-detail-close" onClick={resetForm} type="button" aria-label="Cambiar plan">
+                  <X size={17} />
                 </button>
-              )}
-            </div>
-          </div>
-          {fieldErrors.route && <FieldError message={fieldErrors.route} />}
-        </section>
+              </div>
 
-        <div className="form-actions">
-          <button className="register-button" disabled={plantAssets.length === 0} type="submit">
-            <Save size={18} aria-hidden="true" />
-            Registrar misión
-          </button>
-        </div>
-      </form>
+              {assetsError && (
+                <p className="mission-empty">
+                  <AlertCircle size={16} aria-hidden="true" /> {assetsError}
+                </p>
+              )}
+              {assetsLoading && <p className="mission-empty">Cargando activos...</p>}
+
+              {!assetsLoading && !assetsError && (
+                <MissionPlanMap
+                  assets={planAssets}
+                  flightPlan={selectedFlightPlan}
+                  onToggleWaypoint={handleToggleWaypoint}
+                  selectedWaypointIds={selectedWaypointIds}
+                />
+              )}
+
+              <p className="map-field-label">
+                {selectedWaypointIds.size} puntos de interés seleccionados — tocá un activo en el mapa para
+                elegir sus puntos.
+              </p>
+            </article>
+
+            <article className="mission-detail-card mission-builder-fields">
+              <h3 className="mission-quick-actions-title">Datos de la misión</h3>
+
+              <label>
+                <span>
+                  Nombre de la misión <small className="required-inline">*</small>
+                </span>
+                <input
+                  aria-invalid={Boolean(fieldErrors.name)}
+                  className={fieldErrors.name ? "field-invalid" : undefined}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Ej: Inspección trimestral Q1"
+                  type="text"
+                  value={name}
+                />
+                {fieldErrors.name && <FieldError message={fieldErrors.name} />}
+              </label>
+
+              <label>
+                <span>Objetivo</span>
+                <input
+                  onChange={(event) => setObjective(event.target.value)}
+                  placeholder="Opcional"
+                  type="text"
+                  value={objective}
+                />
+              </label>
+
+              <label>
+                <span>
+                  Dron <small className="required-inline">*</small>
+                </span>
+                <input
+                  aria-invalid={Boolean(fieldErrors.droneId)}
+                  className={fieldErrors.droneId ? "field-invalid" : undefined}
+                  onChange={(event) => setDroneId(event.target.value)}
+                  placeholder="Ej: DRONE-01"
+                  type="text"
+                  value={droneId}
+                />
+                {fieldErrors.droneId && <FieldError message={fieldErrors.droneId} />}
+              </label>
+
+              <label>
+                <span>
+                  Programada para <small className="required-inline">*</small>
+                </span>
+                <input
+                  aria-invalid={Boolean(fieldErrors.scheduledAt)}
+                  className={fieldErrors.scheduledAt ? "field-invalid" : undefined}
+                  onChange={(event) => setScheduledAt(event.target.value)}
+                  type="datetime-local"
+                  value={scheduledAt}
+                />
+                {fieldErrors.scheduledAt && <FieldError message={fieldErrors.scheduledAt} />}
+              </label>
+
+              {submitError && (
+                <p className="mission-empty">
+                  <AlertCircle size={16} aria-hidden="true" /> {submitError}
+                </p>
+              )}
+
+              <div className="form-actions">
+                <button className="register-button" disabled={isSubmitting} type="submit">
+                  <Save size={18} aria-hidden="true" />
+                  {isSubmitting ? "Creando..." : "Crear misión"}
+                </button>
+              </div>
+            </article>
+          </div>
+        </form>
+      )}
 
       {isSuccessOpen && (
         <MissionSuccessModal
-          onClose={() => setIsSuccessOpen(false)}
           onGoHome={() => {
             setIsSuccessOpen(false);
+            resetForm();
             onBack();
           }}
           onViewMissions={() => {
             setIsSuccessOpen(false);
-            onBack();
+            resetForm();
+            onViewMissions();
           }}
         />
       )}
@@ -235,28 +317,20 @@ export function ConfigurarMisionView({
   );
 }
 
-function MissionSuccessModal({
-  onClose,
-  onGoHome,
-  onViewMissions
-}: {
-  onClose: () => void;
-  onGoHome: () => void;
-  onViewMissions: () => void;
-}) {
+function MissionSuccessModal({ onGoHome, onViewMissions }: { onGoHome: () => void; onViewMissions: () => void }) {
   return (
     <div className="modal-backdrop" role="presentation">
       <section aria-modal="true" className="success-modal" role="dialog">
         <div className="success-icon">
           <CheckCircle2 size={48} aria-hidden="true" />
         </div>
-        <h2>Misión guardada</h2>
-        <p>La misión se ha guardado correctamente y está lista para su ejecución.</p>
+        <h2>Misión creada</h2>
+        <p>La misión se creó correctamente y quedó planificada, lista para despachar.</p>
         <div className="modal-actions">
           <button className="ghost-button" onClick={onGoHome} type="button">
             Volver al inicio
           </button>
-          <button className="modal-primary-button" onClick={onViewMissions} type="button">
+          <button className="register-button" onClick={onViewMissions} type="button">
             Ver misiones
           </button>
         </div>
