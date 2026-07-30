@@ -1,17 +1,34 @@
 import L from "leaflet";
+import { renderToStaticMarkup } from "react-dom/server";
 import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip } from "react-leaflet";
-import type { BackendAsset, BackendFlightPlan, BackendPlanWaypoint } from "../api/types";
-import { BACKEND_ASSET_TYPE_COLORS, BACKEND_ASSET_TYPE_LABELS } from "../api/constants";
+import { Cylinder, MoveHorizontal, RotateCw, Waves, Wind } from "lucide-react";
+import type { BackendAsset, BackendAssetType, BackendFlightPlan, BackendPlanWaypoint } from "../api/types";
+import { BACKEND_ASSET_TYPE_LABELS } from "../api/constants";
 import { SATELLITE_LAYER } from "../constants";
 import { MapSizeController } from "./LeafletHelpers";
+
+// Un ícono por tipo de activo, en vez de codificar el tipo con el color del círculo
+// (dejaba colores medio arbitrarios, poco intuitivos). El color del círculo queda libre
+// para indicar selección: gris si no se tildó ningún punto de ese activo, verde si sí.
+const ASSET_TYPE_ICONS: Record<BackendAssetType, typeof Cylinder> = {
+  SILO: Cylinder,
+  NORIA: RotateCw,
+  CINTA_TRANSPORTADORA: MoveHorizontal,
+  SECADORA: Wind,
+  TUBERIA: Waves
+};
 
 // Marcador grande y clickeable para elegir activos en el mapa de armado de misión.
 // Independiente de .leaflet-asset-marker (10px, usado en otros mapas de solo lectura):
 // acá el activo ES la interacción principal de la pantalla, tiene que invitar al click.
-function createSelectableAssetMarkerIcon(color: string) {
+function createSelectableAssetMarkerIcon(type: BackendAssetType, hasSelection: boolean) {
+  const IconComponent = ASSET_TYPE_ICONS[type];
+  const iconSvg = renderToStaticMarkup(<IconComponent color="#ffffff" size={16} strokeWidth={2.4} />);
+  const background = hasSelection ? "#16a34a" : "#1f2937";
+
   return L.divIcon({
     className: "leaflet-selectable-asset-marker",
-    html: `<span style="background:${color};"></span>`,
+    html: `<span style="background:${background};">${iconSvg}</span>`,
     iconAnchor: [16, 16],
     iconSize: [32, 32]
   });
@@ -76,7 +93,7 @@ export function MissionPlanMap({
           return (
             <Marker
               bubblingMouseEvents={false}
-              icon={createSelectableAssetMarkerIcon(BACKEND_ASSET_TYPE_COLORS[asset.type])}
+              icon={createSelectableAssetMarkerIcon(asset.type, selectedCount > 0)}
               key={asset.idAsset}
               position={[asset.latitude, asset.longitude]}
             >
