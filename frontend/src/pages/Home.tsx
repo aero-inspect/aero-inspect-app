@@ -199,17 +199,9 @@ export function Home({
         ) : isMonitorPath && userCanConsultAssets ? (
           <MonitorMissionView missions={missions} assets={assets} plant={MOCK_PLANT} onBack={() => navigateTo("/")} />
         ) : isMissionsPath ? (
-          <MisMisionesView
-            missions={missions}
-            assets={assets}
-            onBack={() => navigateTo("/")}
-            onCreateMission={() => navigateTo("/configurar-mision")}
-            plant={MOCK_PLANT}
-          />
+          <MisMisionesView onCreateMission={() => navigateTo("/configurar-mision")} />
         ) : isMissionPath && user.role === "Tecnico de Mantenimiento" ? (
-          <ConfigurarMisionView assets={assets} missions={missions} onBack={() => navigateTo("/")} onCreateMission={(mission) => {
-            setMissions((current) => [...current, { ...mission, id: Date.now(), status: "Pendiente" }]);
-          }} plant={MOCK_PLANT} />
+          <ConfigurarMisionView onBack={() => navigateTo("/")} onViewMissions={() => navigateTo("/mis-misiones")} />
         ) : isLaunchPath && DRONE_OPERATION_ROLES.includes(user.role) ? (
           <LaunchMissionView
             missions={missions}
