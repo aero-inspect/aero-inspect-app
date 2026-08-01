@@ -1,16 +1,20 @@
 ﻿.login-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
-  min-height: var(--app-canvas-height);
+  grid-template-columns: minmax(0, 60%) minmax(360px, 40%);
+  height: var(--app-canvas-height);
+  background: #ffffff;
 }
 
 .login-visual {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 56px;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
   background:
-    linear-gradient(135deg, rgba(7, 33, 55, 0.9), rgba(38, 165, 125, 0.66)),
+    linear-gradient(134deg, rgba(23, 82, 152, 0.9) 0%, rgba(58, 89, 125, 0.66) 70.72%),
     url("https://www.sofoval.com/wp2018/wordpress/wp-content/uploads/2018/01/Silos-Miguelete-editada.jpg")
       center / cover;
   color: #ffffff;
@@ -38,32 +42,17 @@
   align-items: center;
   flex-direction: column;
   gap: 0;
+  width: min(720px, 72%);
   max-width: 720px;
+  margin-top: -1px;
   text-align: center;
 }
 
-.hero-brand {
-  margin: -66px 0 2px;
-  color: rgba(255, 255, 255, 0.94);
-  font-size: 5.2rem;
-  font-weight: 700;
-  line-height: 0.95;
-  text-shadow: 0 20px 48px rgba(5, 24, 40, 0.36);
-}
-
-.hero-brand strong {
-  color: #00d7c7;
-  font-weight: 700;
-}
-
-.hero-drone {
-  width: 286px;
-  max-width: 42vw;
+.hero-logo {
+  display: block;
+  width: min(620px, 76%);
   height: auto;
-  margin-top: -18px;
-  margin-bottom: -28px;
-  transform: translateX(-34px);
-  filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 20px 42px rgba(5, 24, 40, 0.36));
 }
 
 .eyebrow {
@@ -82,15 +71,6 @@ p {
   margin-top: 0;
 }
 
-.login-visual h1 {
-  max-width: 680px;
-  margin: 19px 0 0;
-  color: rgba(238, 247, 250, 0.86);
-  font-size: 1.42rem;
-  font-weight: 300;
-  line-height: 1.35;
-}
-
 .metric-card span {
   display: block;
   color: inherit;
@@ -101,49 +81,54 @@ p {
 .login-panel {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 52px;
+  padding-top: 190px;
   background: #fbfdfc;
 }
 
 .login-heading {
+  width: min(664px, 100%);
   margin-bottom: 34px;
 }
 
 .login-heading h2 {
   margin: 0;
-  color: #10253a;
-  font-size: 1.72rem;
-  font-weight: 900;
+  color: #063b7a;
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 38px;
 }
 
 .login-heading span {
   display: block;
-  width: 40px;
+  width: 79px;
   height: 2px;
   margin-top: 12px;
-  border-radius: 999px;
-  background: #17d4b0;
+  border-radius: 1px;
+  background: #063b7a;
 }
 
 .login-form {
   display: grid;
+  width: min(664px, 100%);
   gap: 22px;
 }
 
 .login-form label span {
   display: block;
   margin-bottom: 10px;
-  color: #173955;
-  font-size: 0.86rem;
+  color: #063b7a;
+  font-size: 18px;
   font-weight: 600;
+  line-height: 19px;
 }
 
 .input-wrap {
   gap: 12px;
   height: 58px;
   padding: 0 18px;
-  border: 1px solid #d7e0ea;
+  border: 1px solid #52647a;
   border-radius: 8px;
   background: #ffffff;
   color: #8192a5;
@@ -151,8 +136,14 @@ p {
 }
 
 .input-wrap:focus-within {
-  border-color: #1e8f76;
-  box-shadow: 0 0 0 3px rgba(30, 143, 118, 0.14);
+  border-color: #063b7a;
+  box-shadow: 0 0 0 3px rgba(6, 59, 122, 0.12);
+}
+
+.input-wrap-error,
+.input-wrap-error:focus-within {
+  border-color: #a94442;
+  box-shadow: 0 10px 28px rgba(16, 37, 58, 0.04);
 }
 
 .input-wrap input {
@@ -162,7 +153,7 @@ p {
   outline: 0;
   background: transparent;
   color: #10253a;
-  font-size: 0.9rem;
+  font-size: 16px;
   font-weight: 400;
 }
 
@@ -188,12 +179,12 @@ p {
   color: #0b5f89;
 }
 
-.form-error {
-  margin: -12px 0 0;
-  color: #b42318;
-  font-size: 0.82rem;
-  font-weight: 400;
-  line-height: 1.35;
+.login-form .form-error {
+  margin: -8px 0 -2px;
+  color: #a94442;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .primary-button,
@@ -210,10 +201,11 @@ p {
 
 .primary-button {
   min-height: 58px;
-  margin-top: 4px;
-  background: linear-gradient(90deg, #18d4aa, #0087bf);
+  margin-top: 5px;
+  background: #063b7a;
   color: #ffffff;
-  box-shadow: 0 14px 28px rgba(0, 135, 191, 0.2);
+  box-shadow: none;
+  font-size: 18px;
 }
 
 .primary-button:hover,
@@ -233,5 +225,4 @@ p {
   background: #ffffff;
   color: #405464;
 }
-
 

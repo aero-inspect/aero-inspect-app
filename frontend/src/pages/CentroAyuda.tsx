@@ -1,174 +1,169 @@
-﻿import { useState } from "react";
+﻿import { useState, type ReactNode } from "react";
 import {
-  ArrowRight,
+  AlertTriangle,
+  ArrowUpRight,
+  BarChart3,
   BookOpen,
-  Bug,
-  CheckCircle2,
   ChevronDown,
+  ChevronRight,
+  CircleHelp,
   Download,
   FileText,
-  GraduationCap,
-  Lightbulb,
+  Headphones,
   Mail,
-  MessageCircle,
   Phone,
-  Send,
-  Sparkles,
-  Timer,
-  Wrench
+  Route,
+  ScrollText
 } from "lucide-react";
 import { AppTopActions } from "../components/AppTopActions";
 
-const HELP_STATS = [
-  { icon: <Phone size={20} />, label: "Soporte", value: "Disponible", detail: "24/7", tone: "green" },
-  { icon: <MessageCircle size={20} />, label: "Chat", value: "Tiempo prom.", detail: "5 min", tone: "green" },
-  { icon: <BookOpen size={20} />, label: "Guias", value: "18 articulos", detail: "Operativas", tone: "blue" },
-  { icon: <GraduationCap size={20} />, label: "Tutorial", value: "Primer uso", detail: "Paso a paso", tone: "amber" }
-];
-
 const FAQS = [
   {
-    title: "Como crear una mision?",
-    body: "Ingresá a Misiones, seleccioná Nueva mision, elegí un activo y marcá los puntos de inspeccion sobre el mapa."
+    title: "¿Cómo configuro una nueva misión?",
+    body: "Ingresa en Misiones, selecciona Nueva misión, elige un activo y marca los puntos del recorrido sobre el mapa. Luego define los parámetros de vuelo y guarda.",
+    link: "Ver guía completa"
   },
   {
-    title: "Como registrar un activo?",
-    body: "Desde Activos, usá Nuevo activo, completá nombre, tipo, estado, fotos y seleccioná su ubicacion exacta en el mapa."
+    title: "¿Cómo descargo un reporte?",
+    body: "Desde Reportes, selecciona el informe requerido y usa la acción Descargar para guardarlo en tu equipo.",
+    link: "Ver guía completa"
   },
   {
-    title: "Como conectar un dron?",
-    body: "Verificá bateria, GPS y señal en Drones. Cuando el estado sea operativo, la plataforma habilita la telemetria."
-  },
-  {
-    title: "Como generar un reporte?",
-    body: "En Reportes podés filtrar por activo, estado y fecha. Por ahora los botones Ver, Descargar y Exportar quedan mockup."
-  },
-  {
-    title: "Que significan los estados?",
-    body: "Operativo indica disponible; Mantenimiento requiere revision; Fuera de servicio bloquea su uso para inspecciones."
+    title: "¿Cómo conecto el dron?",
+    body: "Verifica batería, GPS y señal desde Drones. Cuando el estado sea operativo, la plataforma habilita la conexión.",
+    link: "Ver guía completa"
   }
 ];
 
-const QUICK_GUIDES = [
-  "Registrar un nuevo activo",
-  "Configurar una mision",
-  "Ejecutar una inspeccion",
-  "Analizar hallazgos IA",
-  "Exportar reportes"
+const GUIDES = [
+  {
+    icon: <Route size={24} />,
+    title: "Primeros pasos",
+    detail: "Conoce las funciones básicas de la plataforma."
+  },
+  {
+    icon: <ScrollText size={24} />,
+    title: "Planificar misión",
+    detail: "Aprende a crear y configurar misiones de inspección."
+  },
+  {
+    icon: <BookOpen size={24} />,
+    title: "Interpretar hallazgos",
+    detail: "Entiende los reportes y los tipos de hallazgos."
+  },
+  {
+    icon: <BarChart3 size={24} />,
+    title: "Generar reportes",
+    detail: "Aprende a generar y descargar reportes."
+  }
 ];
 
-const SYSTEM_ITEMS = ["Plataforma", "Servicios IA", "Mapa satelital", "Base de datos"];
+const QUICK_ACTIONS = [
+  { icon: <AlertTriangle size={22} />, label: "Reportar un problema" },
+  { icon: <BookOpen size={22} />, label: "Solicitar capacitación" },
+  { icon: <FileText size={22} />, label: "Consultar estado del servicio" },
+  { icon: <Download size={24} />, label: "Descargar manual de usuario" }
+];
 
 export function CentroAyudaView() {
   const [openFaq, setOpenFaq] = useState(0);
 
   return (
     <section className="help-dashboard">
-      <header className="assets-dashboard-header help-header">
+      <header className="help-header">
         <div>
-          <h1>Centro de ayuda</h1>
-          <p>Soporte tecnico, documentacion y asistencia operativa.</p>
+          <h1>Centro de Ayuda</h1>
+          <p>Encuentra respuestas, guias y canales de soporte.</p>
         </div>
         <AppTopActions />
       </header>
 
-      <section className="help-stats-row" aria-label="Resumen de soporte">
-        {HELP_STATS.map((item) => (
-          <article className="help-stat-card" key={item.label}>
-            <span className={`help-stat-icon ${item.tone}`}>{item.icon}</span>
-            <div>
-              <p>{item.label}</p>
-              <strong>{item.value}</strong>
-              <span>{item.detail}</span>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <section className="help-main-layout">
-        <div className="help-left-column">
-          <article className="help-card">
-            <div className="help-card-heading">
-              <h2>Preguntas frecuentes</h2>
-              <span>Operacion diaria</span>
-            </div>
+      <div className="help-center-body">
+        <main className="help-left-column">
+          <section className="help-card help-faq-card">
+            <h2>Preguntas frecuentes</h2>
             <div className="help-faq-list">
               {FAQS.map((faq, index) => {
                 const isOpen = openFaq === index;
                 return (
-                  <div className={isOpen ? "help-faq-item open" : "help-faq-item"} key={faq.title}>
+                  <article className={isOpen ? "help-faq-item open" : "help-faq-item"} key={faq.title}>
                     <button onClick={() => setOpenFaq(isOpen ? -1 : index)} type="button">
                       <span>{faq.title}</span>
-                      <ChevronDown size={15} aria-hidden="true" />
+                      <ChevronDown size={18} aria-hidden="true" />
                     </button>
-                    {isOpen && <p>{faq.body}</p>}
-                  </div>
+                    {isOpen && (
+                      <div className="help-faq-answer">
+                        <p>{faq.body}</p>
+                        <a href="#" onClick={(event) => event.preventDefault()}>{faq.link} ›</a>
+                      </div>
+                    )}
+                  </article>
                 );
               })}
             </div>
-          </article>
+          </section>
 
-          <article className="help-card">
-            <div className="help-card-heading">
-              <h2>Guias rapidas</h2>
-              <span>Tutoriales operativos</span>
-            </div>
+          <section className="help-card help-guides-card">
+            <h2>Guías rápidas</h2>
             <div className="help-guide-grid">
-              {QUICK_GUIDES.map((guide) => (
-                <button className="help-guide-card" key={guide} type="button">
-                  <span>
-                    <BookOpen size={17} aria-hidden="true" />
-                  </span>
-                  <strong>{guide}</strong>
-                  <ArrowRight size={15} aria-hidden="true" />
+              {GUIDES.map((guide) => (
+                <article className="help-guide-card" key={guide.title}>
+                  <span>{guide.icon}</span>
+                  <h3>{guide.title}</h3>
+                  <p>{guide.detail}</p>
+                  <a href="#" onClick={(event) => event.preventDefault()}>Ver guía ›</a>
+                </article>
+              ))}
+            </div>
+          </section>
+        </main>
+
+        <aside className="help-right-column">
+          <section className="help-card help-support-card">
+            <div className="help-support-icon">
+              <Headphones size={30} aria-hidden="true" />
+            </div>
+            <div className="help-support-copy">
+              <h2>Contactar soporte</h2>
+              <p>Nuestro equipo está disponible para ayudarte con incidencias técnicas.</p>
+              <HelpContact icon={<Mail size={21} />} label="soporte@aeroinspect.com" />
+              <HelpContact icon={<Phone size={21} />} label="+54 11 5555 0100" />
+              <button className="help-primary-button" type="button">
+                <ArrowUpRight size={18} aria-hidden="true" />
+                Enviar consulta
+              </button>
+            </div>
+          </section>
+
+          <section className="help-card help-actions-card">
+            <h2>Acciones rápidas</h2>
+            <div className="help-actions-list">
+              {QUICK_ACTIONS.map((action) => (
+                <button key={action.label} type="button">
+                  <span>{action.icon}</span>
+                  <strong>{action.label}</strong>
+                  <ChevronRight size={24} aria-hidden="true" />
                 </button>
               ))}
             </div>
-          </article>
-        </div>
-
-        <aside className="help-right-column">
-          <article className="help-card support-card">
-            <h2>Contactar soporte</h2>
-            <div className="support-brand">
-              <Wrench size={18} aria-hidden="true" />
-              <strong>Soporte AeroInspect</strong>
-            </div>
-            <HelpContact icon={<Mail size={16} />} label="soporte@aeroinspect.com" />
-            <HelpContact icon={<Phone size={16} />} label="+54 11 5555 5555" />
-            <HelpContact icon={<Timer size={16} />} label="Lunes a Viernes 08:00 - 18:00" />
-            <button className="help-primary-button" type="button">
-              <Send size={15} aria-hidden="true" />
-              Contactar soporte
-            </button>
-          </article>
-
-          <article className="help-card quick-actions-card">
-            <h2>Acciones rapidas</h2>
-            <button type="button">
-              <Bug size={16} aria-hidden="true" />
-              Reportar problema
-            </button>
-            <button type="button">
-              <Lightbulb size={16} aria-hidden="true" />
-              Sugerir mejora
-            </button>
-            <button type="button">
-              <FileText size={16} aria-hidden="true" />
-              Ver documentacion
-            </button>
-            <button type="button">
-              <Download size={16} aria-hidden="true" />
-              Descargar manual PDF
-            </button>
-          </article>
+          </section>
         </aside>
-      </section>
+
+        <section className="help-final-banner">
+          <span>
+            <CircleHelp size={22} aria-hidden="true" />
+          </span>
+          <div>
+            <h2>¿No encontraste lo que buscabas?</h2>
+            <p>Nuestro equipo está listo para ayudarte. Contáctanos y te responderemos a la brevedad.</p>
+          </div>
+        </section>
+      </div>
     </section>
   );
 }
 
-function HelpContact({ icon, label }: { icon: React.ReactNode; label: string }) {
+function HelpContact({ icon, label }: { icon: ReactNode; label: string }) {
   return (
     <div className="help-contact-item">
       <span>{icon}</span>
@@ -176,4 +171,3 @@ function HelpContact({ icon, label }: { icon: React.ReactNode; label: string }) 
     </div>
   );
 }
-

@@ -1,7 +1,9 @@
-﻿import { useState, useEffect } from "react";
-import { ArrowLeft, MapPin, Navigation, Clock, CheckCircle2, XCircle, Pause } from "lucide-react";
-import type { InspectionMission, Asset, Plant } from "../types";
+import { Pause, X } from "lucide-react";
+import type { ReactNode } from "react";
+import type { InspectionMission, Asset, Plant, InspectionPoint } from "../types";
 import { MissionMonitorMap } from "../components/MissionMonitorMap";
+import { AppTopActions } from "../components/AppTopActions";
+import droneImage from "../assets/drone-image.png";
 
 type MonitorMissionViewProps = {
   missions: InspectionMission[];
@@ -10,250 +12,112 @@ type MonitorMissionViewProps = {
   onBack: () => void;
 };
 
+const DEMO_ROUTE: InspectionPoint[] = [
+  { id: 1, latitude: "-35.140110", longitude: "-60.458900" },
+  { id: 2, latitude: "-35.140410", longitude: "-60.458520" },
+  { id: 3, latitude: "-35.140205", longitude: "-60.457920" },
+  { id: 4, latitude: "-35.140760", longitude: "-60.457710" },
+  { id: 5, latitude: "-35.141045", longitude: "-60.458240" },
+  { id: 6, latitude: "-35.140820", longitude: "-60.458760" }
+];
+
+const telemetryRows = [
+  ["Bateria", "72 %"],
+  ["Altitud", "28 m"],
+  ["Velocidad", "4.8 m/s"],
+  ["Senal GPS", "Excelente"],
+  ["Viento", "2.3 m/s"],
+  ["Temperatura", `24${String.fromCharCode(176)}C`]
+];
+
 export function MonitorMissionView({ missions, assets, plant, onBack }: MonitorMissionViewProps) {
-  const [simulatedMission, setSimulatedMission] = useState<InspectionMission | null>(null);
-  const activeMission = simulatedMission || missions.find((m) => m.status === "En ejecución");
-  const [dronePosition, setDronePosition] = useState<{ lat: number; lng: number } | null>(null);
-  const [completedPoints, setCompletedPoints] = useState<number>(0);
-  const [missionProgress, setMissionProgress] = useState<number>(0);
-  const startSimulation = () => {
-    const centerLat = parseFloat(plant.center.latitude);
-    const centerLng = parseFloat(plant.center.longitude);
-    let missionToSimulate: InspectionMission | null = null;
-    const pendingMission = missions.find((m) => m.status === "Pendiente");
-    if (pendingMission && pendingMission.routePoints.length > 0) {
-      missionToSimulate = {
-        ...pendingMission,
-        status: "En ejecución",
-        startedAt: new Date().toISOString()
-      };
-    }
-    else if (missions.length > 0) {
-      const missionWithRoute = missions.find((m) => m.routePoints && m.routePoints.length > 0);
-      if (missionWithRoute) {
-        missionToSimulate = {
-          ...missionWithRoute,
-          status: "En ejecución",
-          startedAt: new Date().toISOString()
-        };
-      }
-    }
-    if (!missionToSimulate) {
-      const demoAssetName = assets.length > 0 ? assets[0].name : "Activo Demo";
-      const demoAssetId = assets.length > 0 ? assets[0].id : 1;
-      
-      missionToSimulate = {
-        id: 9999,
-        name: "Misión de Demostración",
-        assetId: demoAssetId,
-        assetName: demoAssetName,
-        status: "En ejecución",
-        startedAt: new Date().toISOString(),
-        routePoints: [
-          { id: 1, latitude: (centerLat - 0.0002).toString(), longitude: (centerLng - 0.0002).toString() },
-          { id: 2, latitude: (centerLat - 0.0001).toString(), longitude: (centerLng - 0.0002).toString() },
-          { id: 3, latitude: (centerLat).toString(), longitude: (centerLng - 0.0002).toString() },
-          { id: 4, latitude: (centerLat + 0.0001).toString(), longitude: (centerLng - 0.0001).toString() },
-          { id: 5, latitude: (centerLat + 0.0002).toString(), longitude: (centerLng).toString() },
-          { id: 6, latitude: (centerLat + 0.0001).toString(), longitude: (centerLng + 0.0001).toString() },
-          { id: 7, latitude: (centerLat).toString(), longitude: (centerLng + 0.0002).toString() },
-          { id: 8, latitude: (centerLat - 0.0001).toString(), longitude: (centerLng + 0.0001).toString() }
-        ]
-      };
-    }
-    
-    setSimulatedMission(missionToSimulate);
-    setCompletedPoints(0);
-    setMissionProgress(0);
-  };
-
-  const stopSimulation = () => {
-    setSimulatedMission(null);
-    setCompletedPoints(0);
-    setMissionProgress(0);
-    setDronePosition(null);
-  };
-  useEffect(() => {
-    if (!activeMission || activeMission.routePoints.length === 0) return;
-
-    const interval = setInterval(() => {
-      setCompletedPoints((prev) => {
-        const next = prev + 1;
-        if (next >= activeMission.routePoints.length) {
-          clearInterval(interval);
-          return activeMission.routePoints.length;
-        }
-        const currentPoint = activeMission.routePoints[next];
-        setDronePosition({
-          lat: parseFloat(currentPoint.latitude),
-          lng: parseFloat(currentPoint.longitude)
-        });
-        const progress = Math.round((next / activeMission.routePoints.length) * 100);
-        setMissionProgress(progress);
-        
-        return next;
-      });
-    }, 3000); // Move to next point every 3 seconds
-    if (activeMission.routePoints.length > 0) {
-      const firstPoint = activeMission.routePoints[0];
-      setDronePosition({
-        lat: parseFloat(firstPoint.latitude),
-        lng: parseFloat(firstPoint.longitude)
-      });
-    }
-
-    return () => clearInterval(interval);
-  }, [activeMission]);
-
-  const getStatusIcon = (status?: string) => {
-    switch (status) {
-      case "Finalizada":
-        return <CheckCircle2 size={20} />;
-      case "En ejecución":
-        return <Navigation size={20} />;
-      case "Pendiente":
-        return <Clock size={20} />;
-      default:
-        return <XCircle size={20} />;
-    }
-  };
-
-  const getStatusClass = (status?: string) => {
-    switch (status) {
-      case "Finalizada":
-        return "status-completed";
-      case "En ejecución":
-        return "status-active";
-      case "Pendiente":
-        return "status-pending";
-      default:
-        return "status-cancelled";
-    }
-  };
+  const mission = missions.find((item) => item.status !== "Pendiente") ?? missions[0];
+  const asset = mission ? assets.find((item) => item.id === mission.assetId) : assets[0];
+  const routePoints = mission?.routePoints?.length ? mission.routePoints : DEMO_ROUTE;
+  const dronePosition = routePoints[2]
+    ? { lat: Number(routePoints[2].latitude), lng: Number(routePoints[2].longitude) }
+    : null;
 
   return (
-    <section className="monitor-mission-container">
-      <header className="panel-header">
-        <button className="icon-button" onClick={onBack} aria-label="Volver" type="button">
-          <ArrowLeft size={20} aria-hidden="true" />
-        </button>
+    <section className="monitor-mission-dashboard">
+      <header className="monitor-topbar">
         <div>
-          <h2>Monitorear Recorrido del Dron</h2>
-          <p className="panel-subtitle">Seguimiento en tiempo real de la misión en ejecución</p>
+          <h1>Monitorear mision</h1>
+          <p>Seguimiento en vivo de las inspecciones a los activos.</p>
         </div>
+        <AppTopActions />
       </header>
 
-      {!activeMission ? (
-        <div className="no-active-mission">
-          <div className="empty-state-icon">
-            <Pause size={48} />
+      <section className="monitor-body-grid">
+        <article className="monitor-live-card">
+          <div className="monitor-live-title">
+            <h2>{mission?.name || "Inspeccion Silo Norte"}</h2>
+            <span>En vivo</span>
           </div>
-          <h3>No hay misiones activas</h3>
-          <p>No existe una misión en ejecución para monitorear en este momento.</p>
-          <p className="hint-text">Las misiones deben estar en estado "En ejecución" para poder visualizar el recorrido del dron.</p>
-          <button className="simulate-button" onClick={startSimulation} type="button">
-            <Navigation size={20} />
-            Simular Misión Activa
-          </button>
-        </div>
-      ) : (
-        <div className="monitor-layout">
-          <aside className="mission-info-panel">
-            <div className="info-card">
-              <div className="info-header">
-                <div>
-                  <h3>Información de Misión</h3>
-                  {simulatedMission && (
-                    <span className="simulation-badge">Simulación</span>
-                  )}
-                </div>
-                <div className="header-actions-group">
-                  <div className={`mission-status-badge ${getStatusClass(activeMission.status)}`}>
-                    {getStatusIcon(activeMission.status)}
-                    <span>{activeMission.status}</span>
-                  </div>
-                  {simulatedMission && (
-                    <button className="stop-simulation-btn" onClick={stopSimulation} type="button" title="Detener simulación">
-                      <XCircle size={18} />
-                    </button>
-                  )}
-                </div>
-              </div>
+          <p className="monitor-map-label">MAPA SATELITAL - AREA DE PLANTA</p>
 
-              <div className="info-details">
-                <div className="info-item">
-                  <span className="info-label">Misión</span>
-                  <strong>{activeMission.name}</strong>
-                </div>
-                <div className="info-item">
-                  <span className="info-label">Activo</span>
-                  <strong>{activeMission.assetName}</strong>
-                </div>
-                {activeMission.startedAt && (
-                  <div className="info-item">
-                    <span className="info-label">Inicio</span>
-                    <strong>{new Date(activeMission.startedAt).toLocaleString('es-AR')}</strong>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="progress-card">
-              <div className="progress-header">
-                <h3>Progreso de Misión</h3>
-                <span className="progress-percentage">{missionProgress}%</span>
-              </div>
-              
-              <div className="progress-bar-container">
-                <div 
-                  className="progress-bar-fill" 
-                  style={{ width: `${missionProgress}%` }}
-                />
-              </div>
-
-              <div className="progress-stats">
-                <div className="progress-stat">
-                  <span className="stat-label">Puntos completados</span>
-                  <strong>{completedPoints} / {activeMission.routePoints.length}</strong>
-                </div>
-                <div className="progress-stat">
-                  <span className="stat-label">Puntos restantes</span>
-                  <strong>{activeMission.routePoints.length - completedPoints}</strong>
-                </div>
-              </div>
-            </div>
-
-            <div className="route-legend">
-              <h4>Leyenda del Mapa</h4>
-              <div className="legend-items">
-                <div className="legend-item">
-                  <div className="legend-marker planned"></div>
-                  <span>Trayectoria planificada</span>
-                </div>
-                <div className="legend-item">
-                  <div className="legend-marker completed"></div>
-                  <span>Recorrido completado</span>
-                </div>
-                <div className="legend-item">
-                  <div className="legend-marker drone"></div>
-                  <span>Posición actual del dron</span>
-                </div>
-              </div>
-            </div>
-          </aside>
-          <div className="map-container">
+          <div className="monitor-map-frame">
             <MissionMonitorMap
               plant={plant}
-              routePoints={activeMission.routePoints}
-              completedPoints={completedPoints}
+              routePoints={routePoints}
+              completedPoints={3}
               dronePosition={dronePosition}
             />
           </div>
-        </div>
-      )}
+
+          <div className="monitor-main-actions">
+            <button className="monitor-pause" type="button">
+              <Pause size={17} />
+              Pausar
+            </button>
+            <button className="monitor-cancel" type="button" onClick={onBack}>
+              <X size={17} />
+              Cancelar
+            </button>
+          </div>
+        </article>
+
+        <aside className="monitor-side-column">
+          <article className="monitor-side-card monitor-progress-card">
+            <h2>Progreso de mision</h2>
+            <strong>Punto 3 de {routePoints.length}</strong>
+            <div className="monitor-progress-track"><span /></div>
+            <p>58% completado</p>
+            <ProgressLine label="Tiempo transcurrido" value="00:08:00" />
+            <ProgressLine label="Tiempo restante estimado" value="00:11:15" />
+          </article>
+
+          <article className="monitor-side-card monitor-telemetry-card">
+            <h2>Telemetria</h2>
+            <div className="monitor-telemetry-list">
+              {telemetryRows.map(([label, value]) => (
+                <ProgressLine key={label} label={label} value={value} />
+              ))}
+            </div>
+          </article>
+
+          <article className="monitor-side-card monitor-captures-card">
+            <h2>Capturas recientes</h2>
+            <div className="monitor-capture-row">
+              {[1, 2, 3].map((item) => (
+                <div className="monitor-capture" key={item}>
+                  <img src={droneImage} alt={`Captura ${item}`} />
+                  <span />
+                </div>
+              ))}
+            </div>
+          </article>
+        </aside>
+      </section>
     </section>
   );
 }
 
-
-
+function ProgressLine({ label, value }: { label: ReactNode; value: ReactNode }) {
+  return (
+    <div className="monitor-data-row">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}

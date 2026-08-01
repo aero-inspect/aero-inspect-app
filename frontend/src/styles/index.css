@@ -8,11 +8,14 @@
 @import "./pages/asset-form-extra.css";
 @import "./pages/configurar-mision.css";
 @import "./pages/mis-misiones.css";
+@import "./pages/monitor-mision.css";
 @import "./components/modals.css";
 @import "./components/app-top-actions.css";
 @import "./components/shared-tables.css";
 @import "./pages/mis-activos.css";
 @import "./pages/reportes.css";
+@import "./pages/crear-reporte.css";
+@import "./pages/reporte-detalle.css";
 @import "./pages/centro-ayuda.css";
 @import "./pages/actividad-reciente.css";
 @import "./responsive.css";

@@ -1,5 +1,5 @@
 ﻿import { useMemo, useState, type ReactNode } from "react";
-import { CalendarCheck, CheckCircle2, Clock3, Pause, Play, Plus, Search, Trash2, X, XCircle } from "lucide-react";
+import { CalendarCheck, CheckCircle2, Clock3, Eye, Pause, Play, Plus, Search, Trash2, X, XCircle } from "lucide-react";
 import type { Asset, InspectionMission, Plant } from "../types";
 import { MissionRouteMap } from "../components/MissionRouteMap";
 import { AppTopActions } from "../components/AppTopActions";
@@ -29,12 +29,14 @@ export function MisMisionesView({
   missions,
   assets,
   onCreateMission,
+  onViewMission,
   plant
 }: {
   missions: InspectionMission[];
   assets: Asset[];
   onBack: () => void;
   onCreateMission: () => void;
+  onViewMission: () => void;
   plant: Plant;
 }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -75,7 +77,7 @@ export function MisMisionesView({
       <header className="missions-topbar">
         <div>
           <h1>Misiones</h1>
-          <p>Gestiona y monitorea las misiones de inspeccion.</p>
+          <p>Gestiona y monitorea las misiones de inspección.</p>
         </div>
         <AppTopActions />
       </header>
@@ -87,23 +89,30 @@ export function MisMisionesView({
         <MissionSummaryCard icon={<CheckCircle2 size={22} />} label="Completadas" tone="green" value={totals.completed} />
         <button className="missions-new-button" onClick={onCreateMission} type="button">
           <Plus size={18} />
-          Nueva mision
+          Nueva Misión
         </button>
       </section>
 
       <section className="missions-content-grid">
         <article className="missions-list-card">
           <div className="missions-list-toolbar">
-            <div className="missions-tabs" role="tablist" aria-label="Filtro de misiones">
-              {(["Todas", "Pendiente", "En progreso", "Completada", "Cancelada"] as const).map((status) => (
-                <button className={statusFilter === status ? "active" : undefined} key={status} onClick={() => setStatusFilter(status)} type="button">
-                  {status === "Todas" ? "Todas" : status === "Completada" ? "Completadas" : status === "Cancelada" ? "Canceladas" : status}
-                </button>
-              ))}
+            <div className="missions-filters" aria-label="Filtro de misiones">
+              <button className={statusFilter === "Todas" ? "active" : undefined} onClick={() => setStatusFilter("Todas")} type="button">
+                Todas
+              </button>
+              <label className="missions-status-filter">
+                <select onChange={(event) => setStatusFilter(event.target.value as "Todas" | MissionDisplayStatus)} value={statusFilter}>
+                  <option value="Todas">Filtrar por estado</option>
+                  <option value="Pendiente">Pendiente</option>
+                  <option value="En progreso">En progreso</option>
+                  <option value="Completada">Completada</option>
+                  <option value="Cancelada">Cancelada</option>
+                </select>
+              </label>
             </div>
             <label className="missions-search">
               <Search size={15} />
-              <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar mision..." value={searchTerm} />
+              <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar misión..." value={searchTerm} />
             </label>
           </div>
 
@@ -141,9 +150,23 @@ export function MisMisionesView({
                       </td>
                       <td>{mission.pilot}</td>
                       <td>
-                        <button className="mission-delete-button" onClick={(event) => event.stopPropagation()} type="button" aria-label="Eliminar mision">
-                          <Trash2 size={15} />
-                        </button>
+                        <div className="mission-row-actions">
+                          <button
+                            className="mission-view-button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedId(mission.id);
+                              onViewMission();
+                            }}
+                            type="button"
+                            aria-label="Ver misión"
+                          >
+                            <Eye size={15} />
+                          </button>
+                          <button className="mission-delete-button" onClick={(event) => event.stopPropagation()} type="button" aria-label="Eliminar misión">
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -158,7 +181,7 @@ export function MisMisionesView({
               <button type="button">2</button>
               <button type="button">â€º</button>
             </div>
-            <span>Mostrando {filteredMissions.length} de {missionRows.length} misiones</span>
+            <span>Mostrando 1 a 8 de 48 misiones</span>
           </div>
         </article>
 
@@ -205,17 +228,17 @@ export function MisMisionesView({
             )}
 
             <div className="mission-quick-actions">
-              <h3>Acciones rapidas</h3>
+              <h3>Acciones rápidas</h3>
               {isSelectedActive ? (
                 <div className="mission-actions-row">
-                  <button className="mission-action telemetry" type="button">Ver telemetria</button>
+                  <button className="mission-action telemetry" type="button">Ver telemetría</button>
                   <button className="mission-action pause" type="button">
                     <Pause size={14} />
-                    Pausar mision
+                    Pausar misión
                   </button>
                   <button className="mission-action cancel" type="button">
                     <XCircle size={14} />
-                    Cancelar mision
+                    Cancelar misión
                   </button>
                 </div>
               ) : (
@@ -232,6 +255,8 @@ export function MisMisionesView({
                 </div>
               )}
             </div>
+
+            <button className="mission-view-full" type="button" onClick={onViewMission}>Ver Misión</button>
           </aside>
         )}
       </section>
@@ -311,4 +336,6 @@ function statusClass(status: MissionDisplayStatus) {
   if (status === "Cancelada") return "cancelled";
   return "pending";
 }
+
+
 

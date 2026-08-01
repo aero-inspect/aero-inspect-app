@@ -1,101 +1,95 @@
 ﻿.help-dashboard {
   height: var(--app-canvas-height);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 16px 20px;
+  overflow: hidden;
+  padding: 18px 24px 18px;
   background: #f8fafc;
-  color: #0f172a;
+  color: #0a1426;
 }
 
 .help-header {
-  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  height: 54px;
+  margin-bottom: 10px;
 }
 
 .help-header h1 {
   margin: 0;
-  color: #0f172a;
-  font-size: 1.52rem;
-  line-height: 1.1;
-  font-weight: 800;
+  color: #063b7a;
+  font-size: 27px;
+  line-height: 34px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .help-header p {
-  margin: 5px 0 0;
-  color: #64748b;
-  font-size: 0.72rem;
+  margin: 3px 0 0;
+  color: #063b7a;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 400;
 }
 
-.help-stats-row {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.help-stat-card {
+.help-dashboard .app-top-actions {
   display: flex;
   align-items: center;
   gap: 14px;
-  min-height: 78px;
-  padding: 12px 16px;
-  border: 1px solid #e5eaf0;
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  padding-top: 5px;
 }
 
-.help-stat-icon {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  flex-shrink: 0;
+.help-dashboard .app-weather {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.help-dashboard .app-weather strong {
+  display: block;
+  color: #0f172a;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 700;
+}
+
+.help-dashboard .app-weather span {
+  display: block;
+  color: #5c708c;
+  font-size: 9px;
+  line-height: 12px;
+}
+
+.help-dashboard .tech-notification-button,
+.help-dashboard .tech-user-button {
+  width: 38px;
+  height: 38px;
+  color: #063b7a;
+}
+
+.help-dashboard .tech-notification-button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.help-dashboard .tech-notification-button span {
+  display: none;
+}
+
+.help-dashboard .tech-user-button {
+  border: 2px solid #063b7a;
   border-radius: 50%;
+  background: transparent;
 }
 
-.help-stat-icon.green {
-  background: #dcfce7;
-  color: #079246;
-}
-
-.help-stat-icon.blue {
-  background: #dbeafe;
-  color: #2563eb;
-}
-
-.help-stat-icon.amber {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.help-stat-card p {
-  margin: 0 0 4px;
-  color: #0f172a;
-  font-size: 0.7rem;
-  font-weight: 800;
-}
-
-.help-stat-card strong {
-  display: block;
-  color: #0f172a;
-  font-size: 1rem;
-  line-height: 1.05;
-  font-weight: 800;
-}
-
-.help-stat-card span:not(.help-stat-icon) {
-  display: block;
-  margin-top: 4px;
-  color: #047a3f;
-  font-size: 0.62rem;
-  font-weight: 800;
-}
-
-.help-main-layout {
+.help-center-body {
   display: grid;
-  grid-template-columns: minmax(0, 1.85fr) minmax(300px, 0.78fr);
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 0.64fr);
+  grid-template-rows: minmax(260px, 0.92fr) minmax(204px, 0.72fr) 52px;
   gap: 14px;
-  align-items: start;
+  height: calc(var(--app-canvas-height) - 90px);
+  min-height: 0;
 }
 
 .help-left-column,
@@ -103,53 +97,54 @@
   display: grid;
   gap: 14px;
   min-width: 0;
+  min-height: 0;
 }
 
-.help-card {
+.help-left-column {
+  grid-row: 1 / span 2;
+  grid-template-rows: minmax(260px, 0.92fr) minmax(204px, 0.72fr);
+}
+
+.help-right-column {
+  grid-row: 1 / span 2;
+  grid-template-rows: minmax(274px, 0.92fr) minmax(210px, 0.76fr);
+}
+
+.help-card,
+.help-final-banner {
   min-width: 0;
-  padding: 16px;
-  border: 1px solid #e5eaf0;
-  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
   background: #ffffff;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.07);
 }
 
-.help-card h2 {
+.help-card h2,
+.help-final-banner h2 {
   margin: 0;
-  color: #0f172a;
-  font-size: 0.9rem;
-  font-weight: 800;
+  color: #063b7a;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
 }
 
-.help-card-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.help-card-heading > span {
-  color: #64748b;
-  font-size: 0.62rem;
-  font-weight: 800;
+.help-faq-card {
+  padding: 20px 28px;
 }
 
 .help-faq-list {
   display: grid;
-  gap: 8px;
+  gap: 14px;
+  margin-top: 18px;
 }
 
 .help-faq-item {
-  border: 1px solid #edf2f7;
-  border-radius: 12px;
-  background: #ffffff;
   overflow: hidden;
-}
-
-.help-faq-item.open {
-  border-color: #bbf7d0;
-  background: #f8fffb;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
 }
 
 .help-faq-item button {
@@ -159,198 +154,417 @@
   gap: 12px;
   width: 100%;
   min-height: 42px;
-  padding: 0 12px;
+  padding: 0 22px;
   border: 0;
   background: transparent;
-  color: #0f172a;
+  color: #063b7a;
   cursor: pointer;
   font: inherit;
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
   text-align: left;
+}
+
+.help-faq-item button svg {
+  color: #52677a;
 }
 
 .help-faq-item.open button svg {
   transform: rotate(180deg);
 }
 
-.help-faq-item p {
-  margin: -2px 12px 12px;
-  color: #475569;
-  font-size: 0.66rem;
-  line-height: 1.5;
+.help-faq-answer {
+  padding: 0 22px 12px;
+}
+
+.help-faq-answer p {
+  max-width: 820px;
+  margin: 0 0 14px;
+  color: #52677a;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+}
+
+.help-faq-answer a,
+.help-guide-card a {
+  color: #063b7a;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.help-guides-card {
+  padding: 18px 28px;
 }
 
 .help-guide-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
 }
 
 .help-guide-card {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 18px;
-  align-items: center;
-  gap: 10px;
-  min-height: 54px;
-  padding: 9px 11px;
-  border: 1px solid #e5eaf0;
-  border-radius: 12px;
+  min-height: 148px;
+  padding: 16px 16px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   background: #ffffff;
-  color: #334155;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-}
-
-.help-guide-card:hover {
-  background: #f8fafc;
 }
 
 .help-guide-card > span {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: #dcfce7;
-  color: #047a3f;
+  background: rgba(126, 194, 255, 0.22);
+  color: #295b87;
 }
 
-.help-guide-card strong {
-  overflow: hidden;
-  color: #0f172a;
-  font-size: 0.68rem;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.help-guide-card h3 {
+  margin: 18px 0 6px;
+  color: #295b87;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
 }
 
-.help-guide-card > svg {
-  color: #16a34a;
+.help-guide-card p {
+  min-height: 30px;
+  margin: 0;
+  color: #52677a;
+  font-size: 10px;
+  line-height: 13px;
+  font-weight: 400;
 }
 
-.support-card,
-.system-card,
-.quick-actions-card {
-  display: grid;
-  gap: 12px;
-}
-
-.support-brand {
+.help-guide-card a {
   display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #0f172a;
-  font-size: 0.72rem;
-  font-weight: 800;
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 15px;
 }
 
-.support-brand svg {
-  color: #16a34a;
+.help-support-card {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  column-gap: 16px;
+  padding: 22px 28px 18px;
+}
+
+.help-support-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(126, 194, 255, 0.22);
+  color: #063b7a;
+}
+
+.help-support-copy h2 {
+  margin-top: 12px;
+  font-size: 19px;
+  line-height: 25px;
+}
+
+.help-support-copy > p {
+  max-width: 310px;
+  margin: 10px 0 14px;
+  color: #52677a;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
 }
 
 .help-contact-item {
-  display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
-  gap: 8px;
-  align-items: start;
-  color: #64748b;
-}
-
-.help-contact-item span {
-  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  color: #295b87;
 }
 
 .help-contact-item p {
   margin: 0;
-  color: #334155;
-  font-size: 0.66rem;
-  line-height: 1.45;
+  color: #063b7a;
+  font-size: 12px;
+  line-height: 17px;
+  font-weight: 600;
 }
 
 .help-primary-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 34px;
-  border: 1px solid #16a34a;
-  border-radius: 10px;
-  background: #16a34a;
+  gap: 10px;
+  width: 165px;
+  height: 38px;
+  margin-top: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #063b7a;
   color: #ffffff;
   cursor: pointer;
   font: inherit;
-  font-size: 0.66rem;
-  font-weight: 800;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
 }
 
-.system-status-list,
-.quick-actions-card {
+.help-actions-card {
+  padding: 20px 28px;
+}
+
+.help-actions-list {
   display: grid;
-  gap: 8px;
+  gap: 12px;
+  margin-top: 20px;
 }
 
-.system-status-item {
+.help-actions-list button {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
-  gap: 8px;
-  min-height: 38px;
+  grid-template-columns: 40px minmax(0, 1fr) 22px;
   align-items: center;
-}
-
-.system-status-item svg {
-  color: #16a34a;
-}
-
-.system-status-item strong,
-.system-status-item span {
-  display: block;
-}
-
-.system-status-item strong {
-  color: #0f172a;
-  font-size: 0.66rem;
-  font-weight: 800;
-}
-
-.system-status-item span {
-  margin-top: 2px;
-  color: #047a3f;
-  font-size: 0.58rem;
-  font-weight: 800;
-}
-
-.quick-actions-card button {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 34px;
-  padding: 0 10px;
-  border: 1px solid #e5eaf0;
-  border-radius: 10px;
+  width: 100%;
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   background: #ffffff;
-  color: #334155;
+  color: #295b87;
   cursor: pointer;
   font: inherit;
-  font-size: 0.64rem;
-  font-weight: 800;
   text-align: left;
 }
 
-.quick-actions-card button:hover {
-  background: #f8fafc;
+.help-actions-list button span {
+  display: flex;
+  align-items: center;
+  color: #295b87;
 }
 
-.quick-actions-card button svg {
-  color: #64748b;
+.help-actions-list button strong {
+  overflow: hidden;
+  color: #295b87;
+  font-size: 12px;
+  line-height: 17px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-@media (max-width: 900px) {
-  .help-stats-row,
-  .help-main-layout,
-  .help-guide-grid {
+.help-actions-list button > svg {
+  color: #52677a;
+}
+
+.help-final-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 56px;
+  padding: 0 24px;
+}
+
+.help-final-banner > span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgba(126, 194, 255, 0.22);
+  color: #063b7a;
+}
+
+.help-final-banner h2 {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.help-final-banner p {
+  margin: 1px 0 0;
+  color: #52677a;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 400;
+}
+
+
+/* Ajuste viewport real: evita cortes en soporte y banner inferior. */
+.help-center-body {
+  height: calc(var(--app-canvas-height) - 116px);
+  grid-template-rows: minmax(250px, 0.94fr) minmax(190px, 0.66fr) 48px;
+}
+
+.help-left-column {
+  grid-template-rows: minmax(250px, 0.94fr) minmax(190px, 0.66fr);
+}
+
+.help-right-column {
+  grid-template-rows: minmax(286px, 1fr) minmax(188px, 0.66fr);
+}
+
+.help-support-card {
+  overflow: visible;
+  padding: 20px 28px 18px;
+}
+
+.help-support-copy h2 {
+  margin-top: 5px;
+}
+
+.help-support-copy > p {
+  margin: 8px 0 12px;
+  line-height: 17px;
+}
+
+.help-contact-item {
+  margin-bottom: 10px;
+}
+
+.help-primary-button {
+  height: 34px;
+  margin-top: 0;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.help-actions-card {
+  padding-top: 18px;
+  padding-bottom: 16px;
+}
+
+.help-actions-list {
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.help-actions-list button {
+  height: 38px;
+}
+
+.help-final-banner {
+  height: 48px;
+  align-self: end;
+}
+
+.help-final-banner > span {
+  width: 26px;
+  height: 26px;
+}
+
+.help-final-banner h2 {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.help-final-banner p {
+  font-size: 10px;
+  line-height: 13px;
+}
+
+/* Centro de ayuda: layout con scroll vertical, sin recortes internos. */
+.help-dashboard {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 28px;
+}
+
+.help-center-body {
+  height: auto;
+  min-height: 0;
+  grid-template-rows: auto auto auto;
+  align-items: start;
+}
+
+.help-left-column,
+.help-right-column {
+  grid-template-rows: auto auto;
+}
+
+.help-card,
+.help-final-banner {
+  overflow: visible;
+}
+
+.help-faq-card {
+  min-height: 350px;
+}
+
+.help-faq-list {
+  gap: 18px;
+}
+
+.help-faq-item.open {
+  min-height: 150px;
+}
+
+.help-guides-card {
+  min-height: 278px;
+}
+
+.help-guide-card {
+  min-height: 172px;
+}
+
+.help-guide-card p {
+  min-height: 42px;
+}
+
+.help-support-card {
+  min-height: 298px;
+  overflow: visible;
+}
+
+.help-actions-card {
+  min-height: 300px;
+}
+
+.help-actions-list {
+  gap: 14px;
+}
+
+.help-actions-list button {
+  height: 46px;
+}
+
+.help-final-banner {
+  height: 58px;
+  margin-bottom: 12px;
+}
+@media (max-width: 1200px) {
+  .help-dashboard {
+    overflow-y: auto;
+  }
+
+  .help-center-body,
+  .help-left-column,
+  .help-right-column {
+    display: grid;
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    height: auto;
+  }
+
+  .help-left-column,
+  .help-right-column,
+  .help-final-banner {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .help-guide-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+
 

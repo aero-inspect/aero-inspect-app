@@ -56,8 +56,8 @@ export function App() {
 
     setError(
       shouldLock
-        ? "Usuario o contrasena incorrectos. La cuenta quedo bloqueada por 15 minutos."
-        : "Usuario o contrasena incorrectos"
+        ? "Usuario o contraseña incorrectos. La cuenta quedó bloqueada por 15 minutos."
+        : "Usuario o contraseña incorrectos."
     );
   };
 
@@ -85,7 +85,7 @@ export function App() {
 
     if (currentLock?.lockedUntil && currentLock.lockedUntil > now) {
       const minutesLeft = Math.ceil((currentLock.lockedUntil - now) / 60000);
-      setError(`La cuenta esta bloqueada temporalmente. Intenta nuevamente en ${minutesLeft} minutos.`);
+      setError(`La cuenta está bloqueada temporalmente. Intenta nuevamente en ${minutesLeft} minutos.`);
       return;
     }
 

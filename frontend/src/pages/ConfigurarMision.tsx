@@ -1,36 +1,22 @@
-﻿import { useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
-import {
-  ArrowLeft,
-  Check,
-  CheckCircle2,
-  ChevronDown,
-  Clock3,
-  Gauge,
-  Layers,
-  MapPin,
-  Navigation,
-  Ruler,
-  Save,
-  Trash2,
-  X
-} from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
+import { Check, ChevronDown, Info, Trash2 } from "lucide-react";
 import type { Asset, InspectionMission, InspectionPoint, Plant } from "../types";
-import { ASSET_TYPE_COLORS } from "../constants";
 import { AppTopActions } from "../components/AppTopActions";
-import { FieldError } from "../components/FieldError";
 import { MissionRouteMap } from "../components/MissionRouteMap";
 
-type AssetStatus = "Operativo" | "Mantenimiento" | "Fuera de servicio";
+type MissionDraftStatus = "Pendiente";
 
-const STATUS_META: Record<AssetStatus, { className: string; label: string }> = {
-  Operativo: { className: "ok", label: "Operativo" },
-  Mantenimiento: { className: "warning", label: "Mantenimiento" },
-  "Fuera de servicio": { className: "danger", label: "Fuera de servicio" }
-};
+const DEFAULT_ROUTE: InspectionPoint[] = [
+  { id: 1, latitude: "-35.140110", longitude: "-60.458900" },
+  { id: 2, latitude: "-35.140410", longitude: "-60.458520" },
+  { id: 3, latitude: "-35.140205", longitude: "-60.457920" },
+  { id: 4, latitude: "-35.140760", longitude: "-60.457710" },
+  { id: 5, latitude: "-35.141045", longitude: "-60.458240" },
+  { id: 6, latitude: "-35.140820", longitude: "-60.458760" }
+];
 
 export function ConfigurarMisionView({
   assets,
-  missions,
   onBack,
   onCreateMission,
   plant
@@ -42,368 +28,169 @@ export function ConfigurarMisionView({
   plant: Plant;
 }) {
   const plantAssets = assets.filter((asset) => asset.plantId === plant.id);
-  const [missionName, setMissionName] = useState("");
-  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
-  const [isAssetOpen, setIsAssetOpen] = useState(false);
-  const [routePoints, setRoutePoints] = useState<InspectionPoint[]>([]);
-  const [flightHeight, setFlightHeight] = useState("20");
-  const [flightSpeed, setFlightSpeed] = useState("5");
+  const fallbackAsset = plantAssets[0] ?? assets[0] ?? null;
+  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(fallbackAsset?.id ?? null);
+  const [missionName, setMissionName] = useState("Inspeccion Silo Norte");
+  const [routePoints, setRoutePoints] = useState<InspectionPoint[]>(DEFAULT_ROUTE);
+  const [altitude, setAltitude] = useState("30");
+  const [speed, setSpeed] = useState("5");
   const [overlap, setOverlap] = useState("80");
-  const [centerSignal, setCenterSignal] = useState(0);
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<"name" | "asset" | "route", string>>>({});
-  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
-  const selectedAsset = plantAssets.find((asset) => asset.id === selectedAssetId) ?? null;
-  const selectedStatus = selectedAsset ? getAssetStatus(selectedAsset) : null;
-  const estimatedDistance = useMemo(() => getRouteDistance(routePoints), [routePoints]);
-  const estimatedMinutes = routePoints.length === 0 ? 0 : Math.max(1, Math.ceil(estimatedDistance / 75 + routePoints.length * 0.7));
+  const [isMissionCreated, setIsMissionCreated] = useState(false);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const selectedAsset = plantAssets.find((asset) => asset.id === selectedAssetId) ?? fallbackAsset;
+  const distanceKm = useMemo(() => (routePoints.length > 1 ? "1.23 km" : "0 km"), [routePoints.length]);
+  const assetType = selectedAsset?.type || "Silo";
+  const status: MissionDraftStatus = "Pendiente";
+
+  const submitMission = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setFieldErrors({});
-    setIsSuccessOpen(false);
-
-    if (plantAssets.length === 0) {
-      setFieldErrors({ asset: "No hay activos disponibles para configurar una mision." });
-      return;
-    }
-
-    const nextFieldErrors: Partial<Record<"name" | "asset" | "route", string>> = {};
-
-    if (!missionName.trim()) nextFieldErrors.name = "Ingrese nombre de la mision.";
-    if (!selectedAsset) nextFieldErrors.asset = "Seleccione un activo a inspeccionar.";
-    if (routePoints.length === 0) nextFieldErrors.route = "Defina al menos un punto de inspeccion.";
-
-    if (Object.keys(nextFieldErrors).length > 0) {
-      setFieldErrors(nextFieldErrors);
-      return;
-    }
-
-    if (missionName.length > 100) {
-      setFieldErrors({ name: "El nombre de la mision no puede superar los 100 caracteres." });
-      return;
-    }
-
-    const missionExists = missions.some(
-      (mission) => mission.assetId === selectedAsset?.id && mission.name.trim().toLowerCase() === missionName.trim().toLowerCase()
-    );
-
-    if (missionExists) {
-      setFieldErrors({ name: "Ya existe una mision con ese nombre para el activo seleccionado." });
-      return;
-    }
+    if (!selectedAsset) return;
 
     onCreateMission({
-      name: missionName.trim(),
-      assetId: selectedAsset!.id,
-      assetName: selectedAsset!.name,
-      routePoints
+      name: missionName.trim() || "Inspeccion Silo Norte",
+      assetId: selectedAsset.id,
+      assetName: selectedAsset.name,
+      routePoints,
+      status: "Pendiente"
     });
-
-    setMissionName("");
-    setSelectedAssetId(null);
-    setRoutePoints([]);
-    setIsSuccessOpen(true);
+    setIsMissionCreated(true);
   };
 
   return (
     <section className="mission-config-dashboard">
-      <header className="assets-dashboard-header mission-config-header">
-        <div className="mission-title-group">
-          <button className="mission-back-button" onClick={onBack} type="button" aria-label="Volver">
-            <ArrowLeft size={20} aria-hidden="true" />
-          </button>
-          <div>
-            <h1>Configurar mision</h1>
-            <p>Planifica un recorrido de inspeccion para un activo registrado.</p>
-          </div>
+      <header className="configure-topbar">
+        <div>
+          <h1>Configurar mision</h1>
+          <p>Defini el recorrido y los parametros del vuelo</p>
         </div>
         <AppTopActions />
       </header>
 
-      <form className="mission-config-form" onSubmit={handleSubmit}>
-        <section className="mission-quick-config">
-          <label className="mission-field mission-name-field">
-            <span>Nombre de mision</span>
-            <input
-              aria-invalid={Boolean(fieldErrors.name)}
-              className={fieldErrors.name ? "field-invalid" : undefined}
-              disabled={plantAssets.length === 0}
-              maxLength={100}
-              onChange={(event) => setMissionName(event.target.value)}
-              placeholder="Ej: Inspeccion Silo Norte"
-              type="text"
-              value={missionName}
-            />
-            {fieldErrors.name && <FieldError message={fieldErrors.name} />}
+      <form className="configure-form" onSubmit={submitMission}>
+        <section className="configure-fields-row" aria-label="Datos de mision">
+          <label className="configure-field configure-name-field">
+            <span>Nombre de mision *</span>
+            <input value={missionName} onChange={(event) => setMissionName(event.target.value)} />
           </label>
 
-          <div className="mission-asset-selector">
-            <span>Activo a inspeccionar</span>
-            <button
-              aria-expanded={isAssetOpen}
-              aria-haspopup="listbox"
-              className={fieldErrors.asset ? "mission-asset-trigger field-invalid" : "mission-asset-trigger"}
-              disabled={plantAssets.length === 0}
-              onClick={() => setIsAssetOpen((current) => !current)}
-              type="button"
-            >
-              <strong>{selectedAsset?.name || "Seleccionar"}</strong>
-              <ChevronDown size={16} aria-hidden="true" />
-            </button>
+          <label className="configure-field configure-select-field">
+            <span>Activo a inspeccionar *</span>
+            <select value={selectedAsset?.id ?? ""} onChange={(event) => setSelectedAssetId(Number(event.target.value))}>
+              {plantAssets.length === 0 && <option value="">Silo Norte</option>}
+              {plantAssets.map((asset) => (
+                <option key={asset.id} value={asset.id}>{asset.name}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} aria-hidden="true" />
+          </label>
 
-            {isAssetOpen && plantAssets.length > 0 && (
-              <div className="mission-asset-menu" role="listbox">
-                {plantAssets.map((asset) => (
-                  <button
-                    className={selectedAssetId === asset.id ? "selected" : undefined}
-                    key={asset.id}
-                    onClick={() => {
-                      setSelectedAssetId(asset.id);
-                      setIsAssetOpen(false);
-                      setRoutePoints([]);
-                    }}
-                    role="option"
-                    type="button"
-                  >
-                    <span style={{ "--asset-type-color": ASSET_TYPE_COLORS[asset.type] } as CSSProperties} />
-                    {asset.name}
-                  </button>
-                ))}
-              </div>
-            )}
-            {fieldErrors.asset && <FieldError message={fieldErrors.asset} />}
+          <div className="configure-field">
+            <span>Tipo de activo</span>
+            <strong>{assetType}</strong>
           </div>
 
-          <QuickInfoCard label="Tipo de activo" value={selectedAsset?.type || "-"} />
-          <QuickInfoCard label="Estado" value={selectedStatus || "-"} status={selectedStatus} />
+          <div className="configure-field">
+            <span>Estado</span>
+            <b className="configure-status-pill">{status}</b>
+          </div>
         </section>
 
-        {plantAssets.length === 0 && <p className="mission-empty-assets">No hay activos registrados. Primero debe darse de alta un activo.</p>}
+        <section className="configure-body-grid">
+          <article className="configure-map-card">
+            <header>
+              <h2>Recorrido de inspeccion</h2>
+              <p>Selecciona puntos sobre el mapa para definir la ruta del dron.</p>
+            </header>
 
-        <div className="mission-config-layout">
-          <section className="mission-card mission-map-card">
-            <div className="mission-card-heading">
-              <div>
-                <h2>Recorrido de inspeccion</h2>
-                <p>Selecciona puntos sobre el mapa para definir la ruta del dron.</p>
-              </div>
-            </div>
+            <button className="configure-clear-route" type="button" onClick={() => setRoutePoints([])}>
+              <Trash2 size={14} />
+              Limpiar recorrido
+            </button>
 
-            <div className="mission-map-toolbar">
-              <button className="mission-map-tool" disabled={!selectedAsset} onClick={() => setCenterSignal((current) => current + 1)} type="button">
-                <Navigation size={15} aria-hidden="true" />
-                Centrar activo
-              </button>
-              <button className="mission-map-tool danger" disabled={routePoints.length === 0} onClick={() => setRoutePoints([])} type="button">
-                <Trash2 size={15} aria-hidden="true" />
-                Limpiar ruta
-              </button>
-            </div>
-
-            <div className="mission-map-frame">
+            <div className="configure-map-frame">
               <MissionRouteMap
                 asset={selectedAsset}
-                centerSignal={centerSignal}
-                disabled={plantAssets.length === 0}
-                onAddPoint={(point) => {
-                  setRoutePoints((current) => [...current, { ...point, id: Date.now() + current.length }]);
-                  setFieldErrors((current) => ({ ...current, route: undefined }));
-                }}
+                disabled={false}
+                onAddPoint={(point) => setRoutePoints((current) => [...current, { ...point, id: Date.now() + current.length }])}
                 plant={plant}
                 routePoints={routePoints}
               />
+              <div className="configure-map-badge top">{routePoints.length} puntos definidos</div>
             </div>
-            {fieldErrors.route && <FieldError message={fieldErrors.route} />}
-          </section>
 
-          <aside className="mission-side-column">
-            <section className="mission-card mission-summary-card">
-              <h2>Resumen de mision</h2>
-              <MissionSummaryItem label="Activo seleccionado" value={selectedAsset?.name || "Sin activo"} icon={<MapPin size={16} />} />
-              <MissionSummaryItem label="Tipo" value={selectedAsset?.type || "-"} icon={<Layers size={16} />} />
-              <MissionSummaryItem label="Estado" value={selectedStatus || "-"} status={selectedStatus} icon={<CheckCircle2 size={16} />} />
-              <MissionSummaryItem label="Puntos definidos" value={String(routePoints.length)} icon={<MapPin size={16} />} />
-              <MissionSummaryItem label="Distancia estimada" value={`${estimatedDistance} m`} icon={<Ruler size={16} />} />
-              <MissionSummaryItem label="Tiempo estimado" value={`${estimatedMinutes} min`} icon={<Clock3 size={16} />} />
-            </section>
+            <div className="configure-map-note">
+              <Info size={15} />
+              <span>Haz clic en el mapa para agregar puntos. Arrastra los puntos para ajustar la ruta.</span>
+            </div>
+          </article>
 
-            <section className="mission-card mission-points-card">
-              <h2>Puntos de inspeccion</h2>
-              {routePoints.length === 0 ? (
-                <div className="mission-no-points">
-                  <strong>No hay puntos definidos.</strong>
-                  <p>Haz clic sobre el mapa para comenzar.</p>
-                </div>
-              ) : (
-                <div className="mission-point-list">
-                  {routePoints.map((point, index) => (
-                    <div className="mission-point-card" key={point.id}>
-                      <span>Punto {index + 1}</span>
-                      <p>{point.latitude}, {point.longitude}</p>
-                      <button
-                        aria-label="Quitar punto"
-                        onClick={() => setRoutePoints((current) => current.filter((item) => item.id !== point.id))}
-                        type="button"
-                      >
-                        <X size={14} aria-hidden="true" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
+          <aside className="configure-side-column">
+            <article className="configure-card configure-summary-card">
+              <header>
+                <h2>Resumen de mision</h2>
+                <span>MIS-2025-001</span>
+              </header>
 
-            <section className="mission-card flight-params-card">
-              <h2>Parametros de vuelo</h2>
-              <div className="flight-param-grid">
-                <FlightParam label="Altura" suffix="m" value={flightHeight} onChange={setFlightHeight} />
-                <FlightParam label="Velocidad" suffix="m/s" value={flightSpeed} onChange={setFlightSpeed} />
-                <FlightParam label="Solapamiento" suffix="%" value={overlap} onChange={setOverlap} />
+              <div className="configure-summary-grid">
+                <SummaryItem label="Activo seleccionado" value={selectedAsset?.name || "Silo Norte"} />
+                <SummaryItem label="Fecha" value="Jueves - 18:45" />
+                <SummaryItem label="Tipo de activo" value={assetType} />
+                <SummaryItem label="Estado" value={<b className="configure-status-pill">{status}</b>} />
+                <SummaryItem label="Puntos definidos" value={String(routePoints.length || 6)} />
+                <SummaryItem label="Distancia estimada" value={distanceKm} />
               </div>
-            </section>
+            </article>
 
-            <footer className="mission-side-actions">
-              <button className="mission-cancel-button" onClick={onBack} type="button">
-                Cancelar
-              </button>
-              <button className="mission-save-button" disabled={plantAssets.length === 0} type="submit">
-                <Save size={16} aria-hidden="true" />
-                Guardar mision
-              </button>
-            </footer>
+            <article className="configure-card configure-params-card">
+              <h2>Parametros de vuelo</h2>
+              <div className="configure-param-grid">
+                <label>
+                  <span>Altitud (m)</span>
+                  <input value={altitude} onChange={(event) => setAltitude(event.target.value)} />
+                </label>
+                <label>
+                  <span>Velocidad (m/s)</span>
+                  <input value={speed} onChange={(event) => setSpeed(event.target.value)} />
+                </label>
+                <label className="wide">
+                  <span>Solapamiento de captura (%)</span>
+                  <input value={overlap} onChange={(event) => setOverlap(event.target.value)} />
+                </label>
+              </div>
+            </article>
           </aside>
-        </div>
+        </section>
+
+        <footer className="configure-actions">
+          <button className="configure-cancel" type="button" onClick={onBack}>Cancelar</button>
+          <button className="configure-create" type="submit">Crear mision</button>
+        </footer>
       </form>
 
-      {isSuccessOpen && (
-        <MissionSuccessModal
-          onGoHome={() => {
-            setIsSuccessOpen(false);
-            onBack();
-          }}
-          onViewMissions={() => {
-            setIsSuccessOpen(false);
-            onBack();
-          }}
-        />
+      {isMissionCreated && (
+        <div className="configure-success-overlay" role="presentation">
+          <article className="configure-success-modal" role="dialog" aria-modal="true" aria-labelledby="configure-success-title">
+            <span className="configure-success-icon" aria-hidden="true">
+              <Check size={23} />
+            </span>
+            <h2 id="configure-success-title">Mision Registrada</h2>
+            <p>La mision se guardo correctamente con su recorrido y parametros de vuelo.</p>
+            <div className="configure-success-actions">
+              <button type="button" onClick={() => setIsMissionCreated(false)}>Volver</button>
+              <button className="primary" type="button" onClick={onBack}>Ver misiones</button>
+            </div>
+          </article>
+        </div>
       )}
     </section>
   );
 }
 
-function QuickInfoCard({ label, status, value }: { label: string; status?: AssetStatus | null; value: string }) {
+function SummaryItem({ label, value }: { label: string; value: string | JSX.Element }) {
   return (
-    <div className="mission-quick-card">
+    <div className="configure-summary-item">
       <span>{label}</span>
-      {status ? <strong className={`assets-status ${STATUS_META[status].className}`}>{value}</strong> : <strong>{value}</strong>}
+      {typeof value === "string" ? <strong>{value}</strong> : value}
     </div>
   );
 }
-
-function MissionSummaryItem({
-  icon,
-  label,
-  status,
-  value
-}: {
-  icon: ReactNode;
-  label: string;
-  status?: AssetStatus | null;
-  value: string;
-}) {
-  return (
-    <div className="mission-summary-item">
-      <span>{icon}</span>
-      <div>
-        <small>{label}</small>
-        {status ? <p className={`assets-status ${STATUS_META[status].className}`}>{value}</p> : <p>{value}</p>}
-      </div>
-    </div>
-  );
-}
-
-function FlightParam({
-  label,
-  onChange,
-  suffix,
-  value
-}: {
-  label: string;
-  onChange: (value: string) => void;
-  suffix: string;
-  value: string;
-}) {
-  return (
-    <label className="flight-param">
-      <span>
-        <Gauge size={14} aria-hidden="true" />
-        {label}
-      </span>
-      <div>
-        <input onChange={(event) => onChange(event.target.value)} type="number" value={value} />
-        <small>{suffix}</small>
-      </div>
-    </label>
-  );
-}
-
-function MissionSuccessModal({
-  onGoHome,
-  onViewMissions
-}: {
-  onGoHome: () => void;
-  onViewMissions: () => void;
-}) {
-  return (
-    <div className="modal-backdrop" role="presentation">
-      <section aria-modal="true" className="success-modal" role="dialog">
-        <div className="success-icon">
-          <CheckCircle2 size={24} aria-hidden="true" />
-        </div>
-        <h2>Mision registrada</h2>
-        <p>Ya esta disponible para su posterior ejecucion.</p>
-        <div className="modal-actions">
-          <button className="modal-link-button" onClick={onGoHome} type="button">
-            Volver al inicio
-          </button>
-          <button className="register-button" onClick={onViewMissions} type="button">
-            Ver misiones
-          </button>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function getAssetStatus(asset: Asset | null): AssetStatus {
-  if (!asset) return "Operativo";
-  if (asset.status) return asset.status;
-  if (asset.name.toLowerCase().includes("sur") || asset.id % 7 === 0) return "Fuera de servicio";
-  if (asset.type === "Tuberia" || asset.id % 4 === 0) return "Mantenimiento";
-  return "Operativo";
-}
-
-function getRouteDistance(points: InspectionPoint[]) {
-  if (points.length < 2) return 0;
-  return Math.round(
-    points.slice(1).reduce((total, point, index) => {
-      const previous = points[index];
-      return total + getDistanceMeters(previous, point);
-    }, 0)
-  );
-}
-
-function getDistanceMeters(first: InspectionPoint, second: InspectionPoint) {
-  const earthRadius = 6371000;
-  const lat1 = toRadians(Number(first.latitude));
-  const lat2 = toRadians(Number(second.latitude));
-  const deltaLat = toRadians(Number(second.latitude) - Number(first.latitude));
-  const deltaLng = toRadians(Number(second.longitude) - Number(first.longitude));
-  const a = Math.sin(deltaLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
-  return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function toRadians(value: number) {
-  return (value * Math.PI) / 180;
-}
-
