@@ -8,6 +8,17 @@ import { AppTopActions } from "../components/AppTopActions";
 
 type FieldErrors = Partial<Record<"name" | "droneId" | "scheduledAt", string>>;
 
+type MissionDraftStatus = "Pendiente";
+
+const DEFAULT_ROUTE: InspectionPoint[] = [
+  { id: 1, latitude: "-35.140110", longitude: "-60.458900" },
+  { id: 2, latitude: "-35.140410", longitude: "-60.458520" },
+  { id: 3, latitude: "-35.140205", longitude: "-60.457920" },
+  { id: 4, latitude: "-35.140760", longitude: "-60.457710" },
+  { id: 5, latitude: "-35.141045", longitude: "-60.458240" },
+  { id: 6, latitude: "-35.140820", longitude: "-60.458760" }
+];
+
 export function ConfigurarMisionView({
   onBack,
   onViewMissions

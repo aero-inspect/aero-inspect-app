@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { CalendarDays, Download, Eye, FileDown, FileText, Search, Trash2, ClipboardCheck, AlertTriangle } from "lucide-react";
+﻿import { useMemo, useState, type ReactNode } from "react";
+import { AlertTriangle, BarChart3, Download, Eye, Plus, RadioTower, Search, Trash2, TrendingUp } from "lucide-react";
 import type { Asset } from "../types";
 import { AppTopActions } from "../components/AppTopActions";
 
@@ -26,18 +26,24 @@ const MOCK_REPORTS: MockReport[] = [
 ];
 
 const FINDING_TYPES = [
-  { label: "Corrosion", value: 22 },
-  { label: "Grietas", value: 14 },
-  { label: "Deformaciones", value: 8 },
+  { label: "Corrosion", value: 4 },
+  { label: "Grietas", value: 3 },
   { label: "Acumulacion de polvo", value: 7 },
   { label: "Otros", value: 2 }
 ];
 
-export function ReportesView({ assets }: { assets: Asset[] }) {
+const FINDINGS_BY_ASSET = [
+  { label: "Silos", value: 4 },
+  { label: "Cinta Transportadora", value: 3 },
+  { label: "Noria", value: 7 },
+  { label: "Otros", value: 2 }
+];
+
+export function ReportesView({ assets, onCreateReport, onViewReport }: { assets: Asset[]; onCreateReport: () => void; onViewReport: () => void }) {
   const [startDate, setStartDate] = useState("2025-05-01");
   const [endDate, setEndDate] = useState("2025-05-28");
-  const [assetFilter, setAssetFilter] = useState("Todos los activos");
-  const [statusFilter, setStatusFilter] = useState<"Todos los estados" | ReportStatus>("Todos los estados");
+  const [assetFilter, setAssetFilter] = useState("Activo");
+  const [severityFilter, setSeverityFilter] = useState<"Severidad" | ReportStatus>("Severidad");
   const [searchTerm, setSearchTerm] = useState("");
 
   const assetOptions = useMemo(() => {
@@ -47,8 +53,8 @@ export function ReportesView({ assets }: { assets: Asset[] }) {
   }, [assets]);
 
   const filteredReports = MOCK_REPORTS.filter((report) => {
-    const matchesAsset = assetFilter === "Todos los activos" || report.assetName === assetFilter;
-    const matchesStatus = statusFilter === "Todos los estados" || report.status === statusFilter;
+    const matchesAsset = assetFilter === "Activo" || report.assetName === assetFilter;
+    const matchesStatus = severityFilter === "Severidad" || report.status === severityFilter;
     const matchesSearch = !searchTerm.trim() || `${report.title} ${report.assetName} ${report.id}`.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDate = report.date >= startDate && report.date <= endDate;
     return matchesAsset && matchesStatus && matchesSearch && matchesDate;
@@ -59,50 +65,53 @@ export function ReportesView({ assets }: { assets: Asset[] }) {
       <header className="reports-topbar">
         <div>
           <h1>Reportes</h1>
-          <p>Descarga reportes de inspecciones y hallazgos.</p>
+          <p>Consulta y gestiona los activos gestionados en la planta</p>
         </div>
 
         <AppTopActions />
       </header>
 
       <section className="reports-stats">
-        <ReportMetric icon={<FileText size={20} />} label="Reportes generados" tone="green" value="24" />
-        <ReportMetric icon={<ClipboardCheck size={20} />} label="Hallazgos detectados" tone="amber" value="58" />
-        <ReportMetric icon={<AlertTriangle size={20} />} label="Hallazgos criticos" tone="red" value="7" />
-        <ReportMetric icon={<CalendarDays size={20} />} label="Misiones inspeccionadas" tone="blue" value="18" />
+        <ReportMetric icon={<BarChart3 size={21} />} label="Reportes generados" tone="green" value="24" />
+        <ReportMetric icon={<Search size={21} />} label="Hallazgos detectados" tone="amber" value="58" />
+        <ReportMetric icon={<AlertTriangle size={21} />} label="Hallazgos criticos" tone="red" value="7" />
+        <ReportMetric icon={<RadioTower size={21} />} label="Misiones inspeccionadas" tone="blue" value="18" />
+        <ReportMetric icon={<TrendingUp size={21} />} label="Tendencia (30 dias)" tone="green" value="12%" />
       </section>
 
-      <section className="reports-filters">
-        <label className="reports-date-filter">
-          <span>Desde</span>
-          <input onChange={(event) => setStartDate(event.target.value)} type="date" value={startDate} />
-        </label>
-        <label className="reports-date-filter">
-          <span>Hasta</span>
-          <input onChange={(event) => setEndDate(event.target.value)} type="date" value={endDate} />
-        </label>
-        <label className="reports-select-filter">
-          <select onChange={(event) => setAssetFilter(event.target.value)} value={assetFilter}>
-            <option>Todos los activos</option>
-            {assetOptions.map((assetName) => (
-              <option key={assetName}>{assetName}</option>
-            ))}
-          </select>
-        </label>
-        <label className="reports-select-filter">
-          <select onChange={(event) => setStatusFilter(event.target.value as "Todos los estados" | ReportStatus)} value={statusFilter}>
-            <option>Todos los estados</option>
-            <option>Completado</option>
-            <option>En revision</option>
-          </select>
-        </label>
-        <label className="reports-search">
-          <Search size={14} />
-          <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar reporte..." value={searchTerm} />
-        </label>
-        <button className="reports-export-button" type="button">
-          <FileDown size={15} />
-          Exportar
+      <section className="reports-filters-row">
+        <div className="reports-filters">
+          <label className="reports-date-filter">
+            <span>Desde</span>
+            <input onChange={(event) => setStartDate(event.target.value)} type="date" value={startDate} />
+          </label>
+          <label className="reports-date-filter">
+            <span>Hasta</span>
+            <input onChange={(event) => setEndDate(event.target.value)} type="date" value={endDate} />
+          </label>
+          <label className="reports-select-filter">
+            <select onChange={(event) => setAssetFilter(event.target.value)} value={assetFilter}>
+              <option>Activo</option>
+              {assetOptions.map((assetName) => (
+                <option key={assetName}>{assetName}</option>
+              ))}
+            </select>
+          </label>
+          <label className="reports-select-filter">
+            <select onChange={(event) => setSeverityFilter(event.target.value as "Severidad" | ReportStatus)} value={severityFilter}>
+              <option>Severidad</option>
+              <option>Completado</option>
+              <option>En revision</option>
+            </select>
+          </label>
+          <label className="reports-search">
+            <Search size={14} />
+            <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar reporte..." value={searchTerm} />
+          </label>
+        </div>
+        <button className="reports-create-button" onClick={onCreateReport} type="button">
+          <Plus size={16} />
+          Crear Reporte
         </button>
       </section>
 
@@ -117,7 +126,7 @@ export function ReportesView({ assets }: { assets: Asset[] }) {
             <div className="severity-legend">
               <ReportLegend color="#ef4444" label="Criticos" value="7 (12%)" />
               <ReportLegend color="#f97316" label="Altos" value="16 (28%)" />
-              <ReportLegend color="#facc15" label="Medios" value="20 (34%)" />
+              <ReportLegend color="#4f6ee9" label="Medios" value="20 (34%)" />
               <ReportLegend color="#22c55e" label="Bajos" value="15 (26%)" />
             </div>
           </div>
@@ -130,7 +139,22 @@ export function ReportesView({ assets }: { assets: Asset[] }) {
               <div className="finding-row" key={finding.label}>
                 <span>{finding.label}</span>
                 <div>
-                  <i style={{ width: `${(finding.value / 22) * 100}%` }} />
+                  <i style={{ width: `${(finding.value / 7) * 100}%` }} />
+                </div>
+                <strong>{finding.value}</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="reports-card finding-asset-card">
+          <h2>Hallazgos por activo</h2>
+          <div className="finding-bars">
+            {FINDINGS_BY_ASSET.map((finding) => (
+              <div className="finding-row" key={finding.label}>
+                <span>{finding.label}</span>
+                <div>
+                  <i style={{ width: `${(finding.value / 7) * 100}%` }} />
                 </div>
                 <strong>{finding.value}</strong>
               </div>
@@ -142,7 +166,6 @@ export function ReportesView({ assets }: { assets: Asset[] }) {
       <section className="reports-card reports-table-card">
         <div className="reports-table-header">
           <h2>Todos los reportes</h2>
-          <span>Mostrando {filteredReports.length} de {MOCK_REPORTS.length} reportes</span>
         </div>
         <div className="reports-table-wrap">
           <table className="reports-table">
@@ -162,7 +185,6 @@ export function ReportesView({ assets }: { assets: Asset[] }) {
                 <tr key={report.id}>
                   <td>
                     <div className="report-name-cell">
-                      <span><FileText size={15} /></span>
                       <div>
                         <strong>{report.title}</strong>
                         <small>{report.id}</small>
@@ -170,13 +192,13 @@ export function ReportesView({ assets }: { assets: Asset[] }) {
                     </div>
                   </td>
                   <td>{report.assetName}</td>
-                  <td>{formatDate(report.date)}<small>{report.time}</small></td>
+                  <td>{formatDate(report.date)} - {report.time}</td>
                   <td>{report.missions}</td>
-                  <td>{report.findings} <small>{report.critical} criticos</small></td>
-                  <td><span className={`report-status ${report.status === "Completado" ? "done" : "review"}`}>{report.status}</span></td>
+                  <td>{report.findings} - <small>{report.critical} critico</small></td>
+                  <td><span className={`report-status ${report.status === "Completado" ? "done" : "review"}`}>{report.status === "Completado" ? "✓ Validada" : "x No validada"}</span></td>
                   <td>
                     <div className="report-actions">
-                      <button type="button" aria-label="Ver reporte"><Eye size={14} /></button>
+                      <button onClick={onViewReport} type="button" aria-label="Ver reporte"><Eye size={14} /></button>
                       <button type="button" aria-label="Descargar reporte"><Download size={14} /></button>
                       <button type="button" aria-label="Eliminar reporte"><Trash2 size={14} /></button>
                     </div>
@@ -186,6 +208,18 @@ export function ReportesView({ assets }: { assets: Asset[] }) {
             </tbody>
           </table>
         </div>
+        <footer className="reports-table-footer">
+          <span>Mostrando {filteredReports.length} de 24 reportes</span>
+          <div className="reports-pagination" aria-label="Paginacion de reportes">
+            <button type="button">&lt;</button>
+            <button className="active" type="button">1</button>
+            <button type="button">2</button>
+            <button type="button">3</button>
+            <button type="button">4</button>
+            <button type="button">5</button>
+            <button type="button">&gt;</button>
+          </div>
+        </footer>
       </section>
     </section>
   );
@@ -217,3 +251,4 @@ function formatDate(value: string) {
   const [year, month, day] = value.split("-");
   return `${day}/${month}/${year}`;
 }
+

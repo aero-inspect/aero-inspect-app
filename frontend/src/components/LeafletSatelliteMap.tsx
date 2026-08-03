@@ -1,4 +1,4 @@
-import { MapContainer, Marker, TileLayer } from "react-leaflet";
+﻿import { MapContainer, Marker, TileLayer } from "react-leaflet";
 import type { MapMarker, Plant } from "../types";
 import { SATELLITE_LAYER, ASSET_TYPE_COLORS } from "../constants";
 import { createAssetMarkerIcon, selectedMarkerIcon, MapClickHandler, MapSizeController } from "./LeafletHelpers";
@@ -53,3 +53,4 @@ export function LeafletSatelliteMap({
     </div>
   );
 }
+

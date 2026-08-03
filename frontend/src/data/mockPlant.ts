@@ -1,4 +1,4 @@
-import type { Plant } from "../types";
+﻿import type { Plant } from "../types";
 
 export const MOCK_PLANT: Plant = {
   id: "planta-principal",
@@ -15,3 +15,4 @@ export const MOCK_PLANT: Plant = {
     { latitude: "-35.1415", longitude: "-60.4592" }
   ]
 };
+

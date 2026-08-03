@@ -1,4 +1,4 @@
-import L from "leaflet";
+﻿import L from "leaflet";
 import { useEffect } from "react";
 import { useMap, useMapEvents } from "react-leaflet";
 
@@ -38,7 +38,7 @@ export function MapClickHandler({ onSelect }: { onSelect: (location: { latitude:
   return null;
 }
 
-export function MapSizeController({ center }: { center?: [number, number] }) {
+export function MapSizeController({ center, invalidateSignal }: { center?: [number, number]; invalidateSignal?: string | number }) {
   const map = useMap();
 
   useEffect(() => {
@@ -71,7 +71,8 @@ export function MapSizeController({ center }: { center?: [number, number] }) {
     if (!center) return;
     map.setView(center, map.getZoom(), { animate: false });
     map.invalidateSize({ animate: false });
-  }, [center, map]);
+  }, [center, invalidateSignal, map]);
 
   return null;
 }
+

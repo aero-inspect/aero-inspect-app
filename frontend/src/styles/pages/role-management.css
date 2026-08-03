@@ -1,4 +1,4 @@
-﻿/* Profile & Role Management - Minimal, clean styles */
+﻿
 .profile-view .profile-card,
 .profile-panel,
 .role-management .create-user,
@@ -172,5 +172,7 @@
   text-align: left;
   border-bottom: 1px solid #eef4f6;
 }
+
+
 
 

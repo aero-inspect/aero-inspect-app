@@ -43,26 +43,49 @@ export function App() {
     setCurrentPath(path);
   };
 
-  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError("");
+  const handleFailedLogin = (normalizedUsername: string, currentLock: LockState | undefined) => {
+    const failedAttempts = (currentLock?.attempts || 0) + 1;
+    const shouldLock = failedAttempts >= MAX_LOGIN_ATTEMPTS;
 
-    try {
-      const response = await fetch("/api/v1/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser({
-          name: data.user.name,
-          role: mapBackendRole(data.user.role),
-          token: data.token
-        });
-        return;
+    setLockByUser((current) => ({
+      ...current,
+      [normalizedUsername]: {
+        attempts: shouldLock ? 0 : failedAttempts,
+        lockedUntil: shouldLock ? Date.now() + LOCK_TIME_MS : null
       }
+    }));
+
+    setError(
+      shouldLock
+        ? "Usuario o contraseña incorrectos. La cuenta quedó bloqueada por 15 minutos."
+        : "Usuario o contraseña incorrectos."
+    );
+  };
+
+  const handleSuccessfulLogin = (normalizedUsername: string, sessionUser: SessionUser) => {
+    setUser(sessionUser);
+    setLockByUser((current) => ({
+      ...current,
+      [normalizedUsername]: { attempts: 0, lockedUntil: null }
+    }));
+  };
+
+    const fieldError = validateLoginFields(username, password);
+    if (fieldError) {
+      setError(fieldError);
+      return;
+    }
+
+    const normalizedUsername = username.trim().toLowerCase();
+    const currentLock = lockByUser[normalizedUsername];
+    const now = Date.now();
+
+    if (currentLock?.lockedUntil && currentLock.lockedUntil > now) {
+      const minutesLeft = Math.ceil((currentLock.lockedUntil - now) / 60000);
+      setError(`La cuenta está bloqueada temporalmente. Intenta nuevamente en ${minutesLeft} minutos.`);
+      return;
+    }
+
 
       const errorBody: LoginErrorResponse = await response.json();
       setError(
@@ -113,3 +136,5 @@ export function App() {
     </div>
   );
 }
+
+

@@ -1,4 +1,4 @@
-import { MapContainer, Marker, TileLayer, Polyline, CircleMarker } from "react-leaflet";
+﻿import { MapContainer, Marker, TileLayer, Polyline, CircleMarker } from "react-leaflet";
 import { Icon } from "leaflet";
 import type { InspectionPoint, Plant } from "../types";
 import { SATELLITE_LAYER } from "../constants";
@@ -23,14 +23,10 @@ export function MissionMonitorMap({
   dronePosition: { lat: number; lng: number } | null;
 }) {
   const center: [number, number] = [Number(plant.center.latitude), Number(plant.center.longitude)];
-
-  // Convert route points to coordinates
   const plannedRoute: [number, number][] = routePoints.map((point) => [
     Number(point.latitude),
     Number(point.longitude)
   ]);
-
-  // Completed route (from start to current position)
   const completedRoute: [number, number][] = routePoints
     .slice(0, completedPoints + 1)
     .map((point) => [Number(point.latitude), Number(point.longitude)]);
@@ -55,8 +51,6 @@ export function MissionMonitorMap({
           url={SATELLITE_LAYER.url}
           zoomOffset={SATELLITE_LAYER.zoomOffset}
         />
-
-        {/* Planned route - dashed line */}
         {plannedRoute.length > 1 && (
           <Polyline
             positions={plannedRoute}
@@ -68,8 +62,6 @@ export function MissionMonitorMap({
             }}
           />
         )}
-
-        {/* Completed route - solid line */}
         {completedRoute.length > 1 && (
           <Polyline
             positions={completedRoute}
@@ -80,8 +72,6 @@ export function MissionMonitorMap({
             }}
           />
         )}
-
-        {/* Route points markers */}
         {routePoints.map((point, index) => {
           const isCompleted = index <= completedPoints;
           return (
@@ -99,8 +89,6 @@ export function MissionMonitorMap({
             />
           );
         })}
-
-        {/* Drone current position */}
         {dronePosition && (
           <Marker
             position={[dronePosition.lat, dronePosition.lng]}
@@ -113,4 +101,4 @@ export function MissionMonitorMap({
   );
 }
 
-// Made with Bob
+

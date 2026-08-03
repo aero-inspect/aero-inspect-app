@@ -1,10 +1,10 @@
-import type { MockUser } from "../types";
+﻿import type { MockUser } from "../types";
 
 export const REGISTERED_USERS: MockUser[] = [
   {
     username: "tecnico",
     password: "Tecnico#123",
-    name: "Tecnico de Mantenimiento",
+    name: "Camila Solimano",
     role: "Tecnico de Mantenimiento",
     active: true
   },
@@ -23,3 +23,5 @@ export const REGISTERED_USERS: MockUser[] = [
     active: false
   }
 ];
+
+

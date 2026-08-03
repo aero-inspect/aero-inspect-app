@@ -1,27 +1,12 @@
-import { useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import {
-  ArrowRight,
-  BriefcaseBusiness,
-  CalendarDays,
-  Camera,
-  ClipboardCheck,
-  Clock3,
-  Edit3,
-  FileUp,
-  Lock,
-  LogOut,
-  MapPin,
-  Pencil,
-  Shield,
-  User,
-  UserRound
-} from "lucide-react";
+﻿import { useState, type Dispatch, type SetStateAction } from "react";
+import { AlertCircle, ArrowRight, Edit3, HelpCircle, Lock, LogOut, UserRound } from "lucide-react";
 import type { MockUser, SessionUser } from "../types";
 import { AppTopActions } from "../components/AppTopActions";
 
 export function ProfileView({
   users,
   setUsers,
+  onViewActivity,
   onLogout
 }: {
   user: SessionUser;
@@ -29,26 +14,29 @@ export function ProfileView({
   setUsers: Dispatch<SetStateAction<MockUser[]>>;
   onBack: () => void;
   onAssignRoles: () => void;
+  onViewActivity: () => void;
   onLogout: () => void;
 }) {
-  const userEntry = users.find((item) => item.name === "Emilia Andersen") ?? users[0] ?? null;
-  const firstName = userEntry?.firstName || "Emilia";
-  const lastName = userEntry?.lastName || "Andersen";
-  const phone = userEntry?.phone || "+54 11 1234 5678";
-  const email = userEntry?.email || "emilia.andersen@planta.com";
-  const company = userEntry?.company || "Agroindustrial del Norte S.A.";
-  const location = userEntry?.location || "Planta Principal - Sector Norte";
+  const userEntry = users.find((item) => item.username === "tecnico") ?? users[0] ?? null;
+  const initialData = {
+    firstName: userEntry?.firstName || "Emilia",
+    lastName: userEntry?.lastName || "Andersen",
+    phone: userEntry?.phone || "+54 11 1234 5678",
+    email: userEntry?.email || "emilia.andersen@planta.com",
+    company: userEntry?.company || "Agroindustrial del Norte S.A.",
+    location: userEntry?.location || "Planta Principal - Sector Norte"
+  };
   const [isEditing, setIsEditing] = useState(false);
-  const [profileImage, setProfileImage] = useState(userEntry?.profileImage ?? "");
-  const [formData, setFormData] = useState({ firstName, lastName, phone, email, company, location });
+  const [formData, setFormData] = useState(initialData);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [passwordData, setPasswordData] = useState({ current: "", next: "", repeat: "" });
 
-  const handleProfileImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const displayName = "María Emilia Andersen";
 
-    const reader = new FileReader();
-    reader.onload = () => setProfileImage(String(reader.result ?? ""));
-    reader.readAsDataURL(file);
+  const cancelProfileEdit = () => {
+    setFormData(initialData);
+    setIsEditing(false);
   };
 
   const saveProfile = () => {
@@ -56,7 +44,7 @@ export function ProfileView({
       setUsers((current) =>
         current.map((item) =>
           item.username === userEntry.username
-            ? { ...item, ...formData, profileImage }
+            ? { ...item, ...formData }
             : item
         )
       );
@@ -64,115 +52,194 @@ export function ProfileView({
     setIsEditing(false);
   };
 
-  const displayName = `${formData.firstName} ${formData.lastName}`.trim();
+  const closePasswordModal = () => {
+    setPasswordData({ current: "", next: "", repeat: "" });
+    setIsPasswordModalOpen(false);
+  };
+
+  const goToHelp = () => {
+    window.history.pushState({}, "", "/centro-ayuda");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
 
   return (
-    <section className="profile-dashboard">
+    <section className={isEditing ? "profile-dashboard profile-dashboard-editing" : "profile-dashboard"}>
       <header className="profile-topbar">
         <div>
-          <h1>Mi perfil</h1>
+          <h1>Mi Perfil</h1>
+          <p>Gestiona tus datos personales y seguridad</p>
         </div>
-
         <AppTopActions />
       </header>
 
       <div className="profile-layout">
         <main className="profile-main-column profile-main-column-no-role">
-          <section className="profile-card-modern profile-personal-card">
+          <section className="profile-identity-card" aria-label="Perfil de usuario">
+            <div className={isEditing ? "profile-photo profile-photo-editing" : "profile-photo"}>
+              {isEditing ? (
+                <>
+                  <Edit3 size={32} />
+                  <span>JPG, PNG o WEBP.<br />Tamaño máximo:<br />2MB</span>
+                </>
+              ) : (
+                <UserRound size={54} />
+              )}
+            </div>
+            <div className="profile-identity-copy">
+              <h2>{displayName}</h2>
+              <p>Técnico de Mantenimiento</p>
+            </div>
+          </section>
+
+          <section className="profile-personal-card">
             <div className="profile-card-heading">
               <h2>Información personal</h2>
-              <button className="profile-outline-button" onClick={isEditing ? saveProfile : () => setIsEditing(true)} type="button">
-                <Edit3 size={16} />
-                {isEditing ? "Guardar perfil" : "Editar perfil"}
-              </button>
+              {!isEditing && (
+                <button className="profile-edit-button" onClick={() => setIsEditing(true)} type="button">
+                  <Edit3 size={14} />
+                  Editar datos
+                </button>
+              )}
             </div>
 
-            <div className="profile-personal-grid">
-              <div className="profile-photo-block">
-                <div className="profile-photo">
-                  {profileImage ? <img alt={displayName} src={profileImage} /> : <UserRound size={72} />}
-                  <label className="profile-photo-edit">
-                    <Pencil size={16} />
-                    <input accept="image/*" hidden onChange={handleProfileImageChange} type="file" />
-                  </label>
+            <div className="profile-form-grid">
+              <ProfileField disabled={!isEditing} label="Nombre" onChange={(value) => setFormData((current) => ({ ...current, firstName: value }))} value={formData.firstName} />
+              <ProfileField disabled={!isEditing} label="Apellido" onChange={(value) => setFormData((current) => ({ ...current, lastName: value }))} value={formData.lastName} />
+              <ProfileField disabled={!isEditing} label="Teléfono" onChange={(value) => setFormData((current) => ({ ...current, phone: value }))} value={formData.phone} />
+              <ProfileField disabled={!isEditing} label="Email" onChange={(value) => setFormData((current) => ({ ...current, email: value }))} value={formData.email} />
+              <ProfileField disabled={!isEditing} label="Empresa" onChange={(value) => setFormData((current) => ({ ...current, company: value }))} value={formData.company} />
+              <ProfileField disabled={!isEditing} label="Ubicación" onChange={(value) => setFormData((current) => ({ ...current, location: value }))} value={formData.location} />
+            </div>
+
+            {isEditing && (
+              <div className="profile-edit-actions">
+                <button className="profile-edit-cancel-button" onClick={cancelProfileEdit} type="button">
+                  Cancelar
+                </button>
+                <button className="profile-edit-save-button" onClick={saveProfile} type="button">
+                  <Edit3 size={20} />
+                  Guardar datos
+                </button>
+              </div>
+            )}
+          </section>
+
+          {!isEditing && (
+            <>
+              <section className="profile-action-card profile-security-card">
+                <div className="profile-action-icon profile-security-icon">
+                  <Lock size={28} />
                 </div>
-                <label className="profile-photo-button">
-                  <Camera size={16} />
-                  Cambiar foto
-                  <input accept="image/*" hidden onChange={handleProfileImageChange} type="file" />
-                </label>
-                <p>JPG, PNG o WEBP.<br />Tamaño máximo: 2MB</p>
-              </div>
+                <div className="profile-action-copy">
+                  <h2>Seguridad de la cuenta</h2>
+                  <p>Mantén tu información actualizada para asegurar el acceso a la plataforma.</p>
+                </div>
+                <button className="profile-password-button" onClick={() => setIsPasswordModalOpen(true)} type="button">
+                  Cambiar contraseña
+                </button>
+              </section>
 
-              <div className="profile-form-grid">
-                <ProfileField disabled={!isEditing} label="Nombre" onChange={(value) => setFormData((current) => ({ ...current, firstName: value }))} value={formData.firstName} />
-                <ProfileField disabled={!isEditing} label="Apellido" onChange={(value) => setFormData((current) => ({ ...current, lastName: value }))} value={formData.lastName} />
-                <ProfileField disabled={!isEditing} label="Teléfono" onChange={(value) => setFormData((current) => ({ ...current, phone: value }))} value={formData.phone} />
-                <ProfileField disabled={!isEditing} label="Email" onChange={(value) => setFormData((current) => ({ ...current, email: value }))} value={formData.email} />
-                <ProfileField disabled={!isEditing} label="Empresa" onChange={(value) => setFormData((current) => ({ ...current, company: value }))} value={formData.company} />
-                <ProfileField disabled={!isEditing} label="Ubicación" onChange={(value) => setFormData((current) => ({ ...current, location: value }))} value={formData.location} />
-              </div>
-            </div>
-          </section>
-
-          <section className="profile-card-modern profile-security-card">
-            <div className="profile-security-icon">
-              <Shield size={24} />
-            </div>
-            <div>
-              <h3>Seguridad de la cuenta</h3>
-              <p>Mantén tu información actualizada para asegurar el acceso a la plataforma.</p>
-            </div>
-            <button className="profile-outline-button" type="button">
-              <Lock size={16} />
-              Cambiar contraseña
-            </button>
-          </section>
-
-          <section className="profile-card-modern profile-logout-card">
-            <div>
-              <h2>Cerrar sesión</h2>
-              <p>¿Deseas cerrar tu sesión actual en la plataforma?</p>
-            </div>
-            <button className="profile-danger-button" onClick={onLogout} type="button">
-              <LogOut size={16} />
-              Cerrar sesión
-            </button>
-          </section>
-
-          <section className="profile-card-modern profile-delete-card">
-            <div>
-              <h2>Eliminar cuenta</h2>
-              <p>Esta acción desactivará el acceso del usuario a la plataforma.</p>
-            </div>
-            <button className="profile-delete-button" type="button">
-              Eliminar cuenta
-            </button>
-          </section>
+              <section className="profile-action-card profile-logout-card">
+                <div className="profile-action-icon profile-logout-icon">
+                  <LogOut size={29} />
+                </div>
+                <div className="profile-action-copy">
+                  <h2>Cerrar sesión</h2>
+                  <p>¿Deseas cerrar tu sesión actual en la plataforma?</p>
+                </div>
+                <button className="profile-logout-button" onClick={onLogout} type="button">
+                  Cerrar sesión
+                </button>
+              </section>
+            </>
+          )}
         </main>
 
         <aside className="profile-side-column">
-          <section className="profile-card-modern profile-account-card">
+          <section className="profile-side-card profile-account-card">
             <h2>Información de la cuenta</h2>
-            <ProfileInfoRow icon={<User size={17} />} label="Usuario" value="emilia.andersen" />
-            <ProfileInfoRow icon={<CalendarDays size={17} />} label="Fecha de registro" value="12/03/2025" />
-            <ProfileInfoRow icon={<Clock3 size={17} />} label="Último acceso" value="Hoy, 08:42" />
-            <ProfileInfoRow icon={<MapPin size={17} />} label="Estado de la cuenta" value="Activa" badge />
+            <ProfileInfoRow boxed={isEditing} label="Usuario" value="emilia.andersen" />
+            <ProfileInfoRow label="Fecha de registro" value="12/03/2025" />
+            <ProfileInfoRow label="Último acceso" value="Hoy, 08:42" />
+            <ProfileInfoRow label="Estado de la cuenta" value="Activa" highlight />
+            {!isEditing && (
+              <button className="profile-delete-account-button" onClick={() => setIsDeleteModalOpen(true)} type="button">
+                Eliminar cuenta
+              </button>
+            )}
           </section>
 
-          <section className="profile-card-modern profile-activity-card">
+          <section className="profile-side-card profile-activity-card">
             <h2>Actividad reciente</h2>
-            <ProfileActivity icon={<ClipboardCheck size={20} />} title="Misión completada" detail="Inspección Silo Norte" time="Hoy, 08:15" tone="green" />
-            <ProfileActivity icon={<Shield size={20} />} title="Hallazgo validado" detail="Corrosión en unión" time="Ayer, 16:30" tone="yellow" />
-            <ProfileActivity icon={<FileUp size={20} />} title="Reporte generado" detail="Reporte mensual - Mayo" time="Ayer, 10:45" tone="green" />
-            <ProfileActivity icon={<BriefcaseBusiness size={20} />} title="Misión creada" detail="Noria Principal" time="27/05/2026" tone="purple" />
-            <button className="profile-activity-link" type="button">
+            <ProfileActivity title="Misión completada" detail="Inspección Silo Norte" time="Hoy, 08:15" />
+            <ProfileActivity title="Hallazgo validado" detail="Corrosión en unión" time="Ayer, 16:30" />
+            <ProfileActivity title="Reporte generado" detail="Reporte mensual - Mayo" time="Ayer, 10:45" />
+            <button className="profile-activity-link" onClick={onViewActivity} type="button">
               Ver toda la actividad
-              <ArrowRight size={15} />
+              <ArrowRight size={13} />
             </button>
           </section>
+
+          <button className="profile-help-button" onClick={goToHelp} type="button">
+            <HelpCircle size={22} />
+            Centro de ayuda
+          </button>
         </aside>
       </div>
+
+      {isDeleteModalOpen && (
+        <div className="modal-backdrop profile-delete-modal-backdrop" role="presentation">
+          <section aria-modal="true" className="profile-delete-modal" role="dialog">
+            <div className="profile-delete-modal-icon">
+              <AlertCircle size={31} aria-hidden="true" />
+            </div>
+            <h2>Eliminar cuenta</h2>
+            <p>¿Está seguro de que desea eliminar su cuenta?<br />Esta acción no se puede deshacer.</p>
+            <div className="profile-delete-modal-actions">
+              <button className="profile-delete-modal-secondary" onClick={() => setIsDeleteModalOpen(false)} type="button">
+                Cancelar
+              </button>
+              <button className="profile-delete-modal-primary" onClick={() => setIsDeleteModalOpen(false)} type="button">
+                Eliminar
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {isPasswordModalOpen && (
+        <div className="modal-backdrop profile-modal-backdrop" role="presentation">
+          <section aria-modal="true" className="profile-modal" role="dialog">
+            <div className="profile-modal-icon">
+              <Lock size={24} aria-hidden="true" />
+            </div>
+            <h2>Cambiar contraseña</h2>
+            <p>Actualiza tu contraseña de acceso. Debe tener al menos 8 caracteres.</p>
+            <div className="profile-modal-fields">
+              <label>
+                <span>Repetir contraseña</span>
+                <input onChange={(event) => setPasswordData((current) => ({ ...current, repeat: event.target.value }))} placeholder="••••••••" type="password" value={passwordData.repeat} />
+              </label>
+              <label>
+                <span>Nueva contraseña</span>
+                <input onChange={(event) => setPasswordData((current) => ({ ...current, next: event.target.value }))} placeholder="••••••••" type="password" value={passwordData.next} />
+              </label>
+              <label>
+                <span>Contraseña actual</span>
+                <input onChange={(event) => setPasswordData((current) => ({ ...current, current: event.target.value }))} placeholder="••••••••" type="password" value={passwordData.current} />
+              </label>
+            </div>
+            <div className="profile-modal-actions">
+              <button className="profile-modal-secondary" onClick={closePasswordModal} type="button">
+                Cancelar
+              </button>
+              <button className="profile-modal-primary" onClick={closePasswordModal} type="button">
+                Continuar
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
@@ -196,20 +263,18 @@ function ProfileField({
   );
 }
 
-function ProfileInfoRow({ badge, icon, label, value }: { badge?: boolean; icon: ReactNode; label: string; value: string }) {
+function ProfileInfoRow({ boxed, highlight, label, value }: { boxed?: boolean; highlight?: boolean; label: string; value: string }) {
   return (
-    <div className="profile-info-row">
-      {icon}
+    <div className={boxed ? "profile-info-row profile-info-row-boxed" : "profile-info-row"}>
       <span>{label}</span>
-      {badge ? <strong className="profile-account-badge">{value}</strong> : <strong>{value}</strong>}
+      <strong className={highlight ? "profile-info-highlight" : undefined}>{value}</strong>
     </div>
   );
 }
 
-function ProfileActivity({ detail, icon, time, title, tone }: { detail: string; icon: ReactNode; time: string; title: string; tone: "green" | "purple" | "yellow" }) {
+function ProfileActivity({ detail, time, title }: { detail: string; time: string; title: string }) {
   return (
     <div className="profile-activity-row">
-      <div className={`profile-activity-icon ${tone}`}>{icon}</div>
       <div>
         <h3>{title}</h3>
         <p>{detail}</p>
@@ -218,3 +283,4 @@ function ProfileActivity({ detail, icon, time, title, tone }: { detail: string; 
     </div>
   );
 }
+
