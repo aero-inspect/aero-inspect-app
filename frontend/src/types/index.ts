@@ -1,9 +1,12 @@
 ﻿export type SessionUser = {
   name: string;
   role: string;
+  token: string;
 };
 
-export type MockUser = SessionUser & {
+export type MockUser = {
+  name: string;
+  role: string;
   username: string;
   password: string;
   active: boolean;
@@ -14,11 +17,6 @@ export type MockUser = SessionUser & {
   company?: string;
   location?: string;
   profileImage?: string;
-};
-
-export type LockState = {
-  attempts: number;
-  lockedUntil: number | null;
 };
 
 export type AssetType = "Silo" | "Noria" | "Cinta transportadora" | "Tuberia" | "Techo";

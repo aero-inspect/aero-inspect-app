@@ -403,108 +403,321 @@
   }
 }
 
-
-.mission-config-dashboard .tech-notification-button,
-.mission-config-dashboard .tech-user-button {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  color: #063b7a;
-  background: transparent;
+.configure-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.mission-config-dashboard .tech-notification-button {
-  position: relative;
-  border: 0;
-}
-
-.mission-config-dashboard .tech-notification-button span {
-  position: absolute;
-  top: 5px;
-  right: 7px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #063b7a;
-}
-
-.mission-config-dashboard .tech-user-button {
-  border: 2px solid #063b7a;
-}
-
-.configure-success-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1200;
-  display: grid;
-  place-items: center;
-  background: rgba(15, 23, 42, 0.42);
-}
-
-.configure-success-modal {
-  display: grid;
-  justify-items: center;
-  width: min(460px, calc(100vw - 40px));
-  padding: 24px 28px 28px;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 18px 46px rgba(10, 26, 56, 0.18);
-  text-align: center;
-}
-
-.configure-success-icon {
-  display: grid;
-  place-items: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  background: #e8f5e9;
-  color: #446b50;
-}
-
-.configure-success-modal h2 {
-  margin: 16px 0 0;
-  color: #446b50;
-  font-size: 23px;
-  line-height: 29px;
-  font-weight: 700;
-}
-
-.configure-success-modal p {
-  max-width: 390px;
-  margin: 22px 0 0;
-  color: #698096;
-  font-size: 14px;
-  line-height: 18px;
-  font-weight: 500;
-}
-
-.configure-success-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  width: 100%;
-  max-width: 360px;
-  margin-top: 32px;
-}
-
-.configure-success-actions button {
-  height: 42px;
-  border: 1px solid #dbe6f2;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #5c6e8a;
-  font: inherit;
-  font-size: 14px;
+.mission-quick-actions-title {
+  margin: 0 0 4px;
+  color: #172033;
+  font-size: 13px;
   line-height: 17px;
   font-weight: 700;
+}
+
+/* --- Elegir plan de vuelo --- */
+.flight-plan-picker {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.flight-plan-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.flight-plan-option:hover {
+  border-color: #0ca75b;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.flight-plan-option strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.flight-plan-option span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* --- Armado de misión (mapa + campos) --- */
+.mission-builder-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.42fr) minmax(300px, 0.9fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.missions-dashboard .mission-builder-map {
+  display: grid;
+  grid-template-rows: auto minmax(390px, 1fr) 36px;
+  gap: 10px;
+  height: calc(var(--app-canvas-height) - 116px);
+  min-height: 0;
+  overflow: hidden;
+  padding: 16px 20px;
+}
+
+.missions-dashboard .mission-builder-map .leaflet-map-shell {
+  height: 100%;
+  min-height: 390px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.missions-dashboard .mission-builder-map .leaflet-map,
+.missions-dashboard .mission-builder-map .leaflet-container {
+  height: 100%;
+  min-height: 390px;
+  border-radius: 8px;
+}
+
+.missions-dashboard .mission-builder-map .mission-detail-header {
+  min-height: 42px;
+}
+
+.missions-dashboard .mission-builder-map .mission-detail-header h2 {
+  font-size: 17px;
+  line-height: 21px;
+}
+
+.missions-dashboard .mission-builder-map .mission-detail-id {
+  margin-top: 5px;
+}
+
+.missions-dashboard .mission-builder-map .mission-detail-id small {
+  font-size: 12px;
+  line-height: 15px;
+}
+
+.missions-dashboard .mission-builder-map .map-field-label {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  min-height: 0;
+  padding: 0 12px;
+  border: 1px solid #dbe6f2;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #5c6e8a;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 600;
+}
+
+.missions-dashboard .mission-builder-fields {
+  display: grid;
+  grid-template-rows: none;
+  gap: 10px;
+  align-content: start;
+  height: auto;
+  min-height: 0;
+  padding: 16px 20px 18px;
+}
+
+.mission-builder-fields label {
+  display: block;
+}
+
+.mission-builder-fields label > span {
+  display: block;
+  margin-bottom: 6px;
+  color: #172033;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mission-builder-fields input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #d7e0ea;
+  border-radius: 8px;
+  outline: 0;
+  background: #ffffff;
+  color: #10253a;
+  font-size: 13px;
+}
+
+.mission-builder-fields input:focus {
+  border-color: #18d4aa;
+  box-shadow: 0 0 0 3px rgba(24, 212, 170, 0.14);
+}
+
+.mission-builder-fields input.field-invalid {
+  border-color: #da1e28;
+}
+
+.mission-builder-fields input.field-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(218, 30, 40, 0.12);
+}
+
+.mission-builder-fields input::placeholder {
+  color: #8b9caf;
+}
+
+.mission-builder-fields .required-inline {
+  margin-left: 3px;
+  color: #dc2626;
+  font-size: 0.9em;
+  font-weight: 700;
+}
+
+.mission-builder-fields .form-actions {
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.mission-builder-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 136px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(126, 194, 255, 0.22);
+  color: #063b7a;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.mission-builder-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+@media (max-width: 1180px) {
+  .mission-builder-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mission-builder-map .leaflet-map-shell {
+    height: 360px;
+  }
+}
+
+/* --- Marcador de activo seleccionable (grande, pensado para clickear) --- */
+.leaflet-selectable-asset-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 
-.configure-success-actions button.primary {
-  border-color: #446b50;
-  background: #e8f5e9;
-  color: #446b50;
+.leaflet-selectable-asset-marker span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow:
+    0 8px 18px rgba(2, 18, 30, 0.35),
+    0 0 0 4px rgba(255, 255, 255, 0.32);
+  transition: transform 0.15s ease, background-color 0.2s ease;
 }
+
+.leaflet-selectable-asset-marker:hover span {
+  transform: scale(1.12);
+}
+
+.leaflet-asset-tooltip.leaflet-tooltip {
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.85);
+  box-shadow: none;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.leaflet-asset-tooltip.leaflet-tooltip::before {
+  display: none;
+}
+
+/* --- Popup de puntos de interés de un activo --- */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+}
+
+.poi-popup {
+  display: grid;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.poi-popup h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.poi-popup-empty {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.poi-popup-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.poi-popup-item {
+  padding: 8px;
+  border: 1px solid #edf2f7;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.poi-popup-item label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.poi-popup-item input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.poi-popup-item label strong {
+  color: #172033;
+  font-size: 12px;
+}
+
+.poi-popup-item p {
+  margin: 4px 0 0 24px;
+  color: #52677a;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.poi-popup-meta {
+  color: #8b9caf !important;
+  font-weight: 400 !important;
+}
+

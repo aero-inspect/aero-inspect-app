@@ -1,43 +1,9 @@
-﻿import type { MockUser, SessionUser } from "../types";
-import { REGISTERED_USERS } from "../data/mockUsers";
+const BACKEND_ROLE_LABELS: Record<string, string> = {
+  TECNICO_MANTENIMIENTO: "Tecnico de Mantenimiento",
+  JEFE_PLANTA: "Jefe de Planta"
+};
 
-export function validateLoginFields(username: string, password: string) {
-  const isUsernameMissing = !username.trim();
-  const isPasswordMissing = !password.trim();
-
-  if (isUsernameMissing && isPasswordMissing) {
-    return "Ingrese su usuario y contrasena.";
-  }
-
-  if (isUsernameMissing) {
-    return "Ingrese su usuario.";
-  }
-
-  if (isPasswordMissing) {
-    return "Ingrese su contrasena.";
-  }
-
-  if (username.length > 50) {
-    return "El nombre de usuario no puede superar los 50 caracteres.";
-  }
-
-  if (password.length > 100) {
-    return "La contrasena no puede superar los 100 caracteres.";
-  }
-
-  return "";
-}
-
-export function getMockLoginResult(username: string, password: string) {
-  const registeredUser = REGISTERED_USERS.find((item) => item.username === username);
-
-  if (!registeredUser?.active || registeredUser.password !== password) {
-    return null;
-  }
-
-  return {
-    name: registeredUser.name,
-    role: registeredUser.role
-  } as SessionUser;
+export function mapBackendRole(role: string): string {
+  return BACKEND_ROLE_LABELS[role] ?? role;
 }
 

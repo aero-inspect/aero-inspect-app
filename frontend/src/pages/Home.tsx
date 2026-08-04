@@ -9,6 +9,7 @@ import { MisActivosView } from "./MisActivos";
 import { ConfigurarMisionView } from "./ConfigurarMision";
 import { MisMisionesView } from "./MisMisiones";
 import { DroneTelemetryView } from "./DroneTelemetry";
+import { PruebaTelemetriaView } from "./PruebaTelemetria";
 import { LaunchMissionView } from "./LaunchMission";
 import { RegistrarActivoView } from "./RegistrarActivo";
 import { ProfileView } from "./Perfil";
@@ -84,10 +85,13 @@ export function Home({
   const isReportDetailPath = currentPath === "/reporte-detalle";
   const isHelpPath = currentPath === "/centro-ayuda";
   const isActivityPath = currentPath === "/actividad-reciente";
+  const isPruebaTelemetriaPath = currentPath === "/prueba-telemetria";
   const userCanConsultAssets = canConsultAssets(user.role);
   const currentUser = users.find((u) => u.name === user.name);
   const currentProfileImage = currentUser?.profileImage ?? "";
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [selectedBackendMissionId, setSelectedBackendMissionId] = useState<string | null>(null);
+  const [selectedFlightPlanId, setSelectedFlightPlanId] = useState<number | null>(null);
   const sidebarRoleLabel = user.role === "Tecnico de Mantenimiento" ? "Técnico de Mantenimiento" : user.role;
   return (
     <main className={isSidebarCollapsed ? "home-shell-no-header sidebar-collapsed" : "home-shell-no-header"}>
@@ -189,10 +193,8 @@ export function Home({
           </header>
         )}
 
-        {isActivityPath ? (
-          <ActividadRecienteView />
-        ) : isHelpPath ? (
-          <CentroAyudaView />
+        {isPruebaTelemetriaPath ? (
+          <PruebaTelemetriaView token={user.token} onBack={() => navigateTo("/dron")} />
         ) : isProfilePath ? (
           <ProfileView user={user} users={users} setUsers={setUsers} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onViewActivity={() => navigateTo("/actividad-reciente")} onLogout={() => { navigateTo("/"); onLogout(); }} />
         ) : isRegisterAssetPath && (userCanConsultAssets || user.role === "Jefe de Planta") ? (
@@ -200,20 +202,20 @@ export function Home({
         ) : isRoleMgmtPath && user.role === "Jefe de Planta" ? (
           <RoleManagementView users={users} setUsers={setUsers} onBack={() => navigateTo("/")} />
         ) : isMonitorPath && userCanConsultAssets ? (
-          <MonitorMissionView missions={missions} assets={assets} plant={MOCK_PLANT} onBack={() => navigateTo("/mis-misiones")} />
+          <MonitorMissionView missionId={selectedBackendMissionId} token={user.token} onBack={() => navigateTo("/mis-misiones")} />
         ) : isMissionsPath ? (
           <MisMisionesView
-            missions={missions}
-            assets={assets}
-            onBack={() => navigateTo("/")}
-            onCreateMission={() => navigateTo("/configurar-mision")}
-            onViewMission={() => navigateTo("/monitorear-mision")}
-            plant={MOCK_PLANT}
+            onCreateMission={(idFlightPlan) => {
+              setSelectedFlightPlanId(idFlightPlan);
+              navigateTo("/configurar-mision");
+            }}
+            onViewMission={(idMission) => {
+              setSelectedBackendMissionId(idMission);
+              navigateTo("/monitorear-mision");
+            }}
           />
         ) : isMissionPath && user.role === "Tecnico de Mantenimiento" ? (
-          <ConfigurarMisionView assets={assets} missions={missions} onBack={() => navigateTo("/mis-misiones")} onCreateMission={(mission) => {
-            setMissions((current) => [...current, { ...mission, id: Date.now(), status: "Pendiente" }]);
-          }} plant={MOCK_PLANT} />
+          <ConfigurarMisionView initialFlightPlanId={selectedFlightPlanId} onBack={() => navigateTo("/mis-misiones")} onViewMissions={() => navigateTo("/mis-misiones")} />
         ) : isLaunchPath && DRONE_OPERATION_ROLES.includes(user.role) ? (
           <LaunchMissionView
             missions={missions}
@@ -225,13 +227,17 @@ export function Home({
             plant={MOCK_PLANT}
           />
         ) : isDronePath && DRONE_OPERATION_ROLES.includes(user.role) ? (
-          <DroneTelemetryView onBack={() => navigateTo("/")} droneConnected={droneConnected} setDroneConnected={setDroneConnected} battery={battery} setBattery={setBattery} />
+          <DroneTelemetryView token={user.token} />
         ) : isAssetsPath && userCanConsultAssets ? (
           <MisActivosView assets={assets} onBack={() => navigateTo("/")} onDeleteAsset={(assetId) => setAssets((current) => current.filter((asset) => asset.id !== assetId))} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} plant={MOCK_PLANT} />
         ) : isCreateReportPath ? (
           <CrearReporteView onBack={() => navigateTo("/reportes")} />
         ) : isReportDetailPath ? (
           <ReporteDetalleView onBack={() => navigateTo("/reportes")} />
+        ) : isHelpPath ? (
+          <CentroAyudaView />
+        ) : isActivityPath ? (
+          <ActividadRecienteView />
         ) : isReportsPath ? (
           <ReportesView assets={assets} onCreateReport={() => navigateTo("/crear-reporte")} onViewReport={() => navigateTo("/reporte-detalle")} />
         ) : user.role === "Jefe de Planta" ? (
