@@ -1,114 +1,296 @@
-import { Pause, X } from "lucide-react";
-import type { ReactNode } from "react";
-import type { InspectionMission, Asset, Plant, InspectionPoint } from "../types";
-import { MissionMonitorMap } from "../components/MissionMonitorMap";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ArrowLeft, Pause, Play, X } from "lucide-react";
+import type { BackendFlightPlan, BackendMission, BackendMissionStatus, BackendMissionWaypoint, BackendPlanWaypoint } from "../api/types";
+import { getFlightPlan, getMission, getMissions, startMission } from "../api/client";
+import { MissionDetailRouteMap } from "../components/MissionDetailRouteMap";
 import { AppTopActions } from "../components/AppTopActions";
-import droneImage from "../assets/drone-image.png";
+
+type TelemetryUpdate = {
+  missionId: string;
+  timestamp: string;
+  position: { latitude: number; longitude: number; relativeAltitude: number; absoluteAltitude: number } | null;
+  velocity: { groundHorizontalSpeedMs: number; groundVerticalSpeedMs: number; headingDegree: number } | null;
+  battery: { percentage: number; voltageV: number } | null;
+  gps: { fixType: string; satellites: number; hdop: number; vdop: number } | null;
+  flightMode: string | null;
+  currentWaypoint: number | null;
+};
 
 type MonitorMissionViewProps = {
-  missions: InspectionMission[];
-  assets: Asset[];
-  plant: Plant;
+  missionId: string | null;
+  token: string;
   onBack: () => void;
 };
 
-const DEMO_ROUTE: InspectionPoint[] = [
-  { id: 1, latitude: "-35.140110", longitude: "-60.458900" },
-  { id: 2, latitude: "-35.140410", longitude: "-60.458520" },
-  { id: 3, latitude: "-35.140205", longitude: "-60.457920" },
-  { id: 4, latitude: "-35.140760", longitude: "-60.457710" },
-  { id: 5, latitude: "-35.141045", longitude: "-60.458240" },
-  { id: 6, latitude: "-35.140820", longitude: "-60.458760" }
-];
+type RoutePoint = {
+  sequence: number;
+  latitude: number;
+  longitude: number;
+};
 
-const telemetryRows = [
-  ["Bateria", "72 %"],
-  ["Altitud", "28 m"],
-  ["Velocidad", "4.8 m/s"],
-  ["Senal GPS", "Excelente"],
-  ["Viento", "2.3 m/s"],
-  ["Temperatura", `24${String.fromCharCode(176)}C`]
-];
+const EMPTY_VALUE = "-";
 
-export function MonitorMissionView({ missions, assets, plant, onBack }: MonitorMissionViewProps) {
-  const mission = missions.find((item) => item.status !== "Pendiente") ?? missions[0];
-  const asset = mission ? assets.find((item) => item.id === mission.assetId) : assets[0];
-  const routePoints = mission?.routePoints?.length ? mission.routePoints : DEMO_ROUTE;
-  const dronePosition = routePoints[2]
-    ? { lat: Number(routePoints[2].latitude), lng: Number(routePoints[2].longitude) }
-    : null;
+type MissionDisplayStatus = "Pendiente" | "Enviando al dron" | "En progreso" | "Completada" | "Cancelada" | "Fallida";
+
+function statusLabel(status: BackendMissionStatus | undefined): MissionDisplayStatus {
+  if (status === "IN_PROGRESS") return "En progreso";
+  if (status === "UPLOADING") return "Enviando al dron";
+  if (status === "COMPLETED") return "Completada";
+  if (status === "CANCELLED") return "Cancelada";
+  if (status === "FAILED") return "Fallida";
+  return "Pendiente";
+}
+
+function statusClass(status: MissionDisplayStatus) {
+  if (status === "Enviando al dron") return "uploading";
+  if (status === "En progreso") return "progress";
+  if (status === "Completada") return "completed";
+  if (status === "Cancelada") return "cancelled";
+  if (status === "Fallida") return "failed";
+  return "pending";
+}
+
+function toRoutePoint(point: BackendMissionWaypoint | BackendPlanWaypoint): RoutePoint {
+  return {
+    sequence: point.sequence,
+    latitude: point.latitude,
+    longitude: point.longitude
+  };
+}
+
+function formatPercent(value: number | null | undefined) {
+  if (value == null) return EMPTY_VALUE;
+  return `${Math.round(value)}%`;
+}
+
+function formatNumber(value: number | null | undefined, decimals = 1) {
+  if (value == null || Number.isNaN(value)) return EMPTY_VALUE;
+  return value.toFixed(decimals);
+}
+
+export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionViewProps) {
+  const [mission, setMission] = useState<BackendMission | null>(null);
+  const [flightPlan, setFlightPlan] = useState<BackendFlightPlan | null>(null);
+  const [telemetry, setTelemetry] = useState<TelemetryUpdate | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const statusPollRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadError(null);
+    setTelemetry(null);
+    setMission(null);
+    setFlightPlan(null);
+    setStartError(null);
+
+    if (statusPollRef.current) {
+      window.clearInterval(statusPollRef.current);
+      statusPollRef.current = null;
+    }
+
+    const loadMission = missionId ? getMission(missionId) : getMissions().then((items) => items[0] ?? null);
+
+    loadMission
+      .then((loadedMission) => {
+        if (cancelled) return;
+        setMission(loadedMission);
+        if (!loadedMission) return null;
+        return getFlightPlan(loadedMission.idFlightPlan);
+      })
+      .then((loadedPlan) => {
+        if (!cancelled && loadedPlan) setFlightPlan(loadedPlan);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setLoadError(error instanceof Error ? error.message : "No se pudo cargar la mision.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [missionId]);
+
+  useEffect(() => {
+    return () => {
+      if (statusPollRef.current) window.clearInterval(statusPollRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    eventSourceRef.current?.close();
+    eventSourceRef.current = null;
+
+    if (!mission?.idMission || !token) return;
+
+    const url = `/api/v1/telemetry/missions/${mission.idMission}/stream?token=${encodeURIComponent(token)}`;
+    const eventSource = new EventSource(url);
+    eventSourceRef.current = eventSource;
+
+    eventSource.addEventListener("telemetry", (event) => {
+      try {
+        setTelemetry(JSON.parse((event as MessageEvent).data));
+      } catch {
+        setTelemetry(null);
+      }
+    });
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      eventSourceRef.current = null;
+    };
+
+    return () => {
+      eventSource.close();
+      eventSourceRef.current = null;
+    };
+  }, [mission?.idMission, token]);
+
+  const routePoints = useMemo(
+    () => (mission?.missionWaypoints?.length ? mission.missionWaypoints.map(toRoutePoint) : flightPlan?.route?.map(toRoutePoint) ?? []),
+    [mission?.missionWaypoints, flightPlan?.route]
+  );
+
+  const currentWaypoint = telemetry?.currentWaypoint ?? null;
+  const totalWaypoints = routePoints.length;
+  const progress = mission?.completionPercentage ?? null;
+  const progressWidth = progress == null ? 0 : Math.max(0, Math.min(100, progress));
+  const missionStatus = statusLabel(mission?.status);
+  const isPendingMission = mission?.status === "PLANNED";
+
+  const pollMissionStatus = (idMission: string) => {
+    if (statusPollRef.current) window.clearInterval(statusPollRef.current);
+
+    let attempts = 0;
+    statusPollRef.current = window.setInterval(() => {
+      attempts += 1;
+      getMission(idMission)
+        .then((updated) => {
+          setMission(updated);
+          if (updated.status !== "UPLOADING" || attempts >= 300) {
+            if (statusPollRef.current) window.clearInterval(statusPollRef.current);
+            statusPollRef.current = null;
+          }
+        })
+        .catch(() => {
+          if (statusPollRef.current) window.clearInterval(statusPollRef.current);
+          statusPollRef.current = null;
+        });
+    }, 2000);
+  };
+
+  const handleStartMission = async () => {
+    if (!mission) return;
+    setStartError(null);
+    setIsStarting(true);
+    try {
+      const updated = await startMission(mission.idMission);
+      setMission(updated);
+      pollMissionStatus(updated.idMission);
+    } catch (error) {
+      setStartError(error instanceof Error ? error.message : "No se pudo iniciar la mision.");
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  const telemetryRows = [
+    ["Bateria", telemetry?.battery ? `${telemetry.battery.percentage}%` : EMPTY_VALUE],
+    ["Altitud", telemetry?.position ? `${formatNumber(telemetry.position.relativeAltitude)} m` : EMPTY_VALUE],
+    ["Velocidad", telemetry?.velocity ? `${formatNumber(telemetry.velocity.groundHorizontalSpeedMs)} m/s` : EMPTY_VALUE],
+    ["Senal GPS", telemetry?.gps?.fixType ?? EMPTY_VALUE],
+    ["Satelites", telemetry?.gps ? String(telemetry.gps.satellites) : EMPTY_VALUE],
+    ["Timestamp", telemetry?.timestamp ? new Date(telemetry.timestamp).toLocaleTimeString("es-AR") : EMPTY_VALUE]
+  ];
 
   return (
     <section className="monitor-mission-dashboard">
       <header className="monitor-topbar">
-        <div>
-          <h1>Monitorear mision</h1>
-          <p>Seguimiento en vivo de las inspecciones a los activos.</p>
+        <div className="monitor-title-row">
+          <button className="monitor-back-button" onClick={onBack} type="button" aria-label="Volver">
+            <ArrowLeft size={19} />
+          </button>
+          <div>
+            <h1>Monitorear mision</h1>
+            <p>Seguimiento en vivo de las inspecciones a los activos.</p>
+          </div>
         </div>
         <AppTopActions />
       </header>
 
-      <section className="monitor-body-grid">
-        <article className="monitor-live-card">
-          <div className="monitor-live-title">
-            <h2>{mission?.name || "Inspeccion Silo Norte"}</h2>
-            <span>En vivo</span>
-          </div>
-          <p className="monitor-map-label">MAPA SATELITAL - AREA DE PLANTA</p>
+      {loadError && <p className="mission-empty">{loadError}</p>}
 
-          <div className="monitor-map-frame">
-            <MissionMonitorMap
-              plant={plant}
-              routePoints={routePoints}
-              completedPoints={3}
-              dronePosition={dronePosition}
-            />
-          </div>
+      {!loadError && !mission && <p className="mission-empty">Cargando mision...</p>}
 
-          <div className="monitor-main-actions">
-            <button className="monitor-pause" type="button">
-              <Pause size={17} />
-              Pausar
-            </button>
-            <button className="monitor-cancel" type="button" onClick={onBack}>
-              <X size={17} />
-              Cancelar
-            </button>
-          </div>
-        </article>
-
-        <aside className="monitor-side-column">
-          <article className="monitor-side-card monitor-progress-card">
-            <h2>Progreso de mision</h2>
-            <strong>Punto 3 de {routePoints.length}</strong>
-            <div className="monitor-progress-track"><span /></div>
-            <p>58% completado</p>
-            <ProgressLine label="Tiempo transcurrido" value="00:08:00" />
-            <ProgressLine label="Tiempo restante estimado" value="00:11:15" />
-          </article>
-
-          <article className="monitor-side-card monitor-telemetry-card">
-            <h2>Telemetria</h2>
-            <div className="monitor-telemetry-list">
-              {telemetryRows.map(([label, value]) => (
-                <ProgressLine key={label} label={label} value={value} />
-              ))}
+      {!loadError && mission && (
+        <section className="monitor-body-grid">
+          <article className="monitor-live-card">
+            <div className="monitor-live-title">
+              <h2>{mission.name}</h2>
+              <span className={`mission-state ${statusClass(missionStatus)}`}>{missionStatus}</span>
             </div>
-          </article>
+            <p className="monitor-map-label">MAPA SATELITAL - AREA DE PLANTA</p>
 
-          <article className="monitor-side-card monitor-captures-card">
-            <h2>Capturas recientes</h2>
-            <div className="monitor-capture-row">
-              {[1, 2, 3].map((item) => (
-                <div className="monitor-capture" key={item}>
-                  <img src={droneImage} alt={`Captura ${item}`} />
-                  <span />
+            <div className="monitor-map-frame">
+              <MissionDetailRouteMap points={routePoints} />
+              {isPendingMission && (
+                <div className="monitor-pending-overlay">
+                  <div>
+                    <h3>La mision aun no comenzo</h3>
+                    <p>Presione Iniciar para comenzar el vuelo.</p>
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
+
+            <div className="monitor-main-actions">
+              {isPendingMission && (
+                <button className="monitor-start" type="button" onClick={handleStartMission} disabled={isStarting}>
+                  <Play size={17} />
+                  {isStarting ? "Iniciando..." : "Iniciar"}
+                </button>
+              )}
+              <button className="monitor-pause" type="button">
+                <Pause size={17} />
+                Pausar
+              </button>
+              <button className="monitor-cancel" type="button" onClick={onBack}>
+                <X size={17} />
+                Cancelar
+              </button>
+            </div>
+            {startError && <p className="monitor-start-error">{startError}</p>}
           </article>
-        </aside>
-      </section>
+
+          <aside className="monitor-side-column">
+            <article className="monitor-side-card monitor-progress-card">
+              <h2>Progreso de mision</h2>
+              <strong>
+                Punto {currentWaypoint ?? EMPTY_VALUE} de {totalWaypoints || EMPTY_VALUE}
+              </strong>
+              <div className="monitor-progress-track"><span style={{ width: `${progressWidth}%` }} /></div>
+              <p>{formatPercent(progress)} completado</p>
+              <ProgressLine label="Mision" value={mission.idMission.slice(0, 8)} />
+              <ProgressLine label="Plan de vuelo" value={flightPlan?.name ?? EMPTY_VALUE} />
+            </article>
+
+            <article className="monitor-side-card monitor-telemetry-card">
+              <h2>Telemetria</h2>
+              <div className="monitor-telemetry-list">
+                {telemetryRows.map(([label, value]) => (
+                  <ProgressLine key={label} label={label} value={value} />
+                ))}
+              </div>
+            </article>
+
+            <article className="monitor-side-card monitor-captures-card">
+              <h2>Capturas recientes</h2>
+              <p className="monitor-empty-media">No hay multimedia disponible en este momento.</p>
+            </article>
+          </aside>
+        </section>
+      )}
     </section>
   );
 }

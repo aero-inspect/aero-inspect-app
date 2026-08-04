@@ -147,12 +147,22 @@
   align-items: start;
 }
 
+.missions-content-grid-empty {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .missions-list-card {
   display: grid;
   grid-template-rows: 50px 1fr 42px;
   min-width: 0;
   height: 514px;
   overflow: hidden;
+}
+
+.missions-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .missions-list-toolbar {
@@ -271,6 +281,24 @@
   box-shadow: inset 4px 0 0 #2b83ff;
 }
 
+.missions-table tbody tr.mission-empty-row {
+  cursor: default;
+}
+
+.missions-table tbody tr.mission-empty-row:hover {
+  background: transparent;
+}
+
+.mission-empty-row td {
+  height: 64px;
+  padding: 0 16px;
+  color: #698096;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 400;
+  text-align: left !important;
+}
+
 .missions-table th:nth-child(1),
 .missions-table td:nth-child(1) {
   width: 27%;
@@ -386,7 +414,9 @@
   animation: spin 0.9s linear infinite;
 }
 
-.mission-delete-button {
+.mission-view-button,
+.mission-delete-button,
+.mission-refresh-button {
   display: inline-grid;
   width: 30px;
   height: 30px;
@@ -398,12 +428,176 @@
   cursor: pointer;
 }
 
+.mission-row-actions {
+  justify-content: center;
+  gap: 10px;
+}
+
 .mission-view-button:hover {
   color: #063b7a;
 }
 
 .mission-delete-button:hover {
   color: #a94442;
+}
+
+.mission-refresh-button:disabled,
+.mission-delete-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.mission-inline-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -34px 18px 0;
+  color: #a94442;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mission-plan-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 26, 43, 0.46);
+}
+
+.mission-plan-modal {
+  position: relative;
+  width: min(680px, calc(100vw - 48px));
+  min-height: 254px;
+  border: 1px solid #e3ebf2;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 26, 43, 0.16);
+  color: #10253a;
+}
+
+.mission-plan-modal-close {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  background: transparent;
+  color: #5c708c;
+  cursor: pointer;
+}
+
+.mission-plan-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 82px;
+  padding: 0 28px;
+}
+
+.mission-plan-modal-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #d29a3c;
+  border-radius: 14px;
+  background: #fff8e1;
+  color: #d29a3c;
+}
+
+.mission-plan-modal-header h2 {
+  margin: 0;
+  color: #10253a;
+  font-size: 20px;
+  line-height: 27px;
+  font-weight: 700;
+}
+
+.mission-plan-modal-divider {
+  height: 1px;
+  background: #edf2f7;
+}
+
+.mission-plan-modal-body {
+  min-height: 106px;
+  padding: 22px 28px;
+}
+
+.mission-plan-modal-body p,
+.mission-plan-modal-error {
+  margin: 0;
+  color: #5d6f8b;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+}
+
+.mission-plan-modal-error {
+  margin-top: 12px;
+  color: #a94442;
+  font-weight: 700;
+}
+
+.mission-plan-list {
+  display: grid;
+  gap: 10px;
+  min-height: 146px;
+  padding: 16px 12px 14px;
+}
+
+.mission-plan-row {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  padding: 0 14px;
+  border: 1px solid #dfe8f2;
+  background: #ffffff;
+  color: #5d6f8b;
+  font: inherit;
+  font-size: 14px;
+  line-height: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mission-plan-row.selected {
+  border-color: #063b7a;
+  background: #f4f9ff;
+  color: #063b7a;
+  font-weight: 700;
+}
+
+.mission-plan-modal-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 56px;
+  border-top: 1px solid #edf2f7;
+}
+
+.mission-plan-modal-primary {
+  min-width: 96px;
+  height: 28px;
+  padding: 0 18px;
+  border: 1px solid #063b7a;
+  border-radius: 8px;
+  background: rgba(126, 194, 255, 0.22);
+  color: #063b7a;
+  font: inherit;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mission-plan-modal-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .missions-table-footer {

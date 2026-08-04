@@ -7,6 +7,7 @@
 }
 
 .monitor-topbar,
+.monitor-title-row,
 .monitor-body-grid,
 .monitor-live-title,
 .monitor-main-actions,
@@ -21,6 +22,26 @@
   gap: 18px;
   height: 52px;
   margin-bottom: 8px;
+}
+
+.monitor-title-row {
+  gap: 12px;
+}
+
+.monitor-back-button {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #063b7a;
+  cursor: pointer;
+}
+
+.monitor-back-button:hover {
+  background: #e4f1ff;
 }
 
 .monitor-topbar h1 {
@@ -75,22 +96,6 @@
   font-weight: 700;
 }
 
-.monitor-live-title span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 72px;
-  height: 24px;
-  padding: 0 16px;
-  border: 1px solid #446b50;
-  border-radius: 999px;
-  background: #e8f5e9;
-  color: #446b50;
-  font-size: 11px;
-  line-height: 14px;
-  font-weight: 700;
-}
-
 .monitor-map-label {
   margin: 0 0 8px;
   color: #5c6e8a;
@@ -101,11 +106,47 @@
 }
 
 .monitor-map-frame {
+  position: relative;
   height: calc(100% - 100px);
   min-height: 300px;
   overflow: hidden;
   border-radius: 8px;
   background: #dce8df;
+}
+
+.monitor-pending-overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(340px, 46%);
+  min-height: 116px;
+  transform: translate(-50%, -50%);
+  z-index: 620;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(15, 26, 43, 0.16);
+  text-align: center;
+  pointer-events: none;
+}
+
+.monitor-pending-overlay h3 {
+  margin: 0;
+  color: #10253a;
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.monitor-pending-overlay p {
+  margin: 8px 0 0;
+  color: #5d6f8b;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
 }
 
 .monitor-map-frame .leaflet-map-shell,
@@ -147,11 +188,31 @@
   color: #d29a3c;
 }
 
+.monitor-start {
+  width: 120px;
+  border: 1px solid #063b7a;
+  background: rgba(126, 194, 255, 0.22) !important;
+  color: #063b7a;
+}
+
+.monitor-start:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .monitor-cancel {
   width: 120px;
   border: 1px solid #a94442;
   background: rgba(252, 232, 232, 0.2) !important;
   color: #a94442;
+}
+
+.monitor-start-error {
+  margin: 8px 0 0;
+  color: #a94442;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 600;
 }
 
 .monitor-side-column {
@@ -240,6 +301,14 @@
 
 .monitor-captures-card {
   height: 162px;
+}
+
+.monitor-empty-media {
+  margin: 22px 0 0;
+  color: #5c6e8a;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
 }
 
 .monitor-capture-row {

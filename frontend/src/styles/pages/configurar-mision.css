@@ -403,15 +403,18 @@
   }
 }
 
-.mission-builder-back {
-  margin-bottom: 14px;
+.configure-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .mission-quick-actions-title {
   margin: 0 0 4px;
   color: #172033;
   font-size: 13px;
-  font-weight: 720;
+  line-height: 17px;
+  font-weight: 700;
 }
 
 /* --- Elegir plan de vuelo --- */
@@ -452,19 +455,76 @@
 /* --- Armado de misión (mapa + campos) --- */
 .mission-builder-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1.42fr) minmax(300px, 0.9fr);
+  gap: 16px;
   align-items: start;
 }
 
-.mission-builder-map .leaflet-map-shell {
-  height: 480px;
+.missions-dashboard .mission-builder-map {
+  display: grid;
+  grid-template-rows: auto minmax(390px, 1fr) 36px;
+  gap: 10px;
+  height: calc(var(--app-canvas-height) - 116px);
+  min-height: 0;
+  overflow: hidden;
+  padding: 16px 20px;
 }
 
-.mission-builder-fields {
+.missions-dashboard .mission-builder-map .leaflet-map-shell {
+  height: 100%;
+  min-height: 390px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.missions-dashboard .mission-builder-map .leaflet-map,
+.missions-dashboard .mission-builder-map .leaflet-container {
+  height: 100%;
+  min-height: 390px;
+  border-radius: 8px;
+}
+
+.missions-dashboard .mission-builder-map .mission-detail-header {
+  min-height: 42px;
+}
+
+.missions-dashboard .mission-builder-map .mission-detail-header h2 {
+  font-size: 17px;
+  line-height: 21px;
+}
+
+.missions-dashboard .mission-builder-map .mission-detail-id {
+  margin-top: 5px;
+}
+
+.missions-dashboard .mission-builder-map .mission-detail-id small {
+  font-size: 12px;
+  line-height: 15px;
+}
+
+.missions-dashboard .mission-builder-map .map-field-label {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  min-height: 0;
+  padding: 0 12px;
+  border: 1px solid #dbe6f2;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #5c6e8a;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 600;
+}
+
+.missions-dashboard .mission-builder-fields {
   display: grid;
-  gap: 14px;
+  grid-template-rows: none;
+  gap: 10px;
   align-content: start;
+  height: auto;
+  min-height: 0;
+  padding: 16px 20px 18px;
 }
 
 .mission-builder-fields label {
@@ -473,7 +533,7 @@
 
 .mission-builder-fields label > span {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: #172033;
   font-size: 12px;
   font-weight: 600;
@@ -481,8 +541,8 @@
 
 .mission-builder-fields input {
   width: 100%;
-  height: 42px;
-  padding: 0 14px;
+  height: 38px;
+  padding: 0 12px;
   border: 1px solid #d7e0ea;
   border-radius: 8px;
   outline: 0;
@@ -513,6 +573,31 @@
   color: #dc2626;
   font-size: 0.9em;
   font-weight: 700;
+}
+
+.mission-builder-fields .form-actions {
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.mission-builder-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 136px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(126, 194, 255, 0.22);
+  color: #063b7a;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.mission-builder-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
 }
 
 @media (max-width: 1180px) {
