@@ -56,6 +56,12 @@
   background: #eff9f0;
 }
 
+.real-report-status.discarded {
+  border-color: #e5a4a0;
+  color: #963a35;
+  background: #fff0ef;
+}
+
 .real-report-status div {
   display: grid;
   gap: 2px;
@@ -130,7 +136,6 @@
   border-radius: 12px;
   color: #294b89;
   background: #f8faff;
-  cursor: pointer;
 }
 
 .real-report-upload span {
@@ -139,49 +144,74 @@
   font-size: 12px;
 }
 
-.real-report-selected-file {
+.real-report-photo-list {
   display: grid;
-  grid-template-columns: 92px 1fr auto;
-  gap: 14px;
-  align-items: center;
-  padding: 12px;
-  border: 1px solid #dce5f1;
-  border-radius: 12px;
+  gap: 16px;
+  margin-top: 18px;
 }
 
-.real-report-selected-file img {
+.real-report-photo-card {
+  padding: 15px;
+  border: 1px solid #dce5f1;
+  border-radius: 12px;
+  background: #fbfcff;
+}
+
+.real-report-photo-header {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.real-report-photo-header > img {
   width: 92px;
   height: 68px;
   border-radius: 8px;
   object-fit: cover;
 }
 
-.real-report-selected-file div {
+.real-report-photo-header div {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
 }
 
-.real-report-selected-file strong {
+.real-report-photo-header span,
+.real-report-photo-header small {
+  color: #71809a;
+  font-size: 12px;
+}
+
+.real-report-photo-header strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.real-report-selected-file span {
-  color: #71809a;
-  font-size: 12px;
-}
-
-.real-report-selected-file button {
+.real-report-photo-header button {
+  display: grid;
+  place-items: center;
+  padding: 7px;
   border: 0;
-  color: #7a879c;
-  background: transparent;
+  border-radius: 7px;
+  color: #8c4050;
+  background: #fbecef;
   cursor: pointer;
 }
 
+.real-report-photo-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  color: #385891;
+  font-weight: 650;
+}
+
 .real-report-analyze,
-.real-report-validate {
+.real-report-validate,
+.real-report-discard {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -198,7 +228,8 @@
 }
 
 .real-report-analyze:disabled,
-.real-report-validate:disabled {
+.real-report-validate:disabled,
+.real-report-discard:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -283,9 +314,18 @@
 }
 
 .real-report-result-data dd {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
   margin: 0;
   color: #233d70;
   font-weight: 650;
+}
+
+.real-report-result-data dd small {
+  color: #71809a;
+  font-weight: 500;
 }
 
 .real-report-warning {
@@ -336,9 +376,26 @@
   font-weight: 650;
 }
 
-.real-report-validate {
+.real-report-decision-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
   margin-top: 20px;
+}
+
+.real-report-decision-actions .real-report-validate,
+.real-report-decision-actions .real-report-discard {
+  margin-top: 0;
+}
+
+.real-report-validate {
   background: #477d50;
+}
+
+.real-report-discard {
+  color: #9a3632;
+  background: #fce9e7;
+  box-shadow: inset 0 0 0 1px #e1a09c;
 }
 
 @media (max-width: 1000px) {
@@ -358,6 +415,19 @@
 
   .real-report-images,
   .real-report-result-data div {
+    grid-template-columns: 1fr;
+  }
+
+  .real-report-photo-header {
+    grid-template-columns: 72px minmax(0, 1fr) auto;
+  }
+
+  .real-report-photo-header > img {
+    width: 72px;
+    height: 58px;
+  }
+
+  .real-report-decision-actions {
     grid-template-columns: 1fr;
   }
 }
