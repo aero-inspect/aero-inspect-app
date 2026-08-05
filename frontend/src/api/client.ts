@@ -1,4 +1,5 @@
 import type {
+  AiCorrosionPrediction,
   BackendAsset,
   BackendFlightPlan,
   BackendMission,
@@ -67,4 +68,21 @@ export function startMission(idMission: string) {
 // existe todavía una pantalla real de administración de activos/planes.
 export function seedDemoData() {
   return request<SeedResult>("/api/v1/seed/demo-data", { method: "POST" });
+}
+
+export async function analyzeCorrosionImage(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch("/api/ai/predict", {
+    method: "POST",
+    body: formData
+  });
+  const body = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(body?.detail ?? body?.message ?? "No se pudo analizar la imagen");
+  }
+
+  return body as AiCorrosionPrediction;
 }

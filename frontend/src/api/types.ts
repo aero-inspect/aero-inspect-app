@@ -91,3 +91,21 @@ export type SeedResult = {
   assets: BackendAsset[];
   flightPlan: BackendFlightPlan;
 };
+
+export type AiCorrosionReport = {
+  status: "corrosion_candidate_detected" | "no_corrosion_detected";
+  warning: string;
+  detected_area_percent: number;
+};
+
+export type AiEncodedImage = {
+  media_type: string;
+  encoding: "base64";
+  data: string;
+};
+
+export type AiCorrosionPrediction = {
+  report: AiCorrosionReport;
+  mask: AiEncodedImage;
+  overlay: AiEncodedImage;
+};
