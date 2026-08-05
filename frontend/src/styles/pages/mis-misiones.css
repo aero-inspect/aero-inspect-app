@@ -48,7 +48,7 @@
 
 .missions-summary-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) 166px;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) 214px 166px;
   gap: 16px;
   margin-bottom: 10px;
 }
@@ -138,6 +138,30 @@
   line-height: 16px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.missions-generate-plan-button {
+  display: inline-flex;
+  grid-column: auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 214px;
+  height: 38px;
+  align-self: center;
+  border: 1px solid #063b7a;
+  border-radius: 6px;
+  background: rgba(126, 194, 255, 0.14);
+  color: #063b7a;
+  font: inherit;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.missions-generate-plan-button:hover {
+  background: rgba(126, 194, 255, 0.26);
 }
 
 .missions-content-grid {
@@ -811,7 +835,8 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .missions-new-button {
+  .missions-new-button,
+  .missions-generate-plan-button {
     grid-column: auto;
   }
 
@@ -839,7 +864,8 @@
 
   .missions-search,
   .missions-status-filter select,
-  .missions-new-button {
+  .missions-new-button,
+  .missions-generate-plan-button {
     width: 100%;
   }
 }

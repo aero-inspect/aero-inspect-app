@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertCircle, Box, CalendarCheck, CheckCircle2, Clock3, Database, Eye, Play, Plus, RefreshCw, Search, Trash2, X, XCircle } from "lucide-react";
+import { AlertCircle, Box, CalendarCheck, CheckCircle2, Clock3, Database, Eye, Play, Plus, RefreshCw, Route, Search, Trash2, X, XCircle } from "lucide-react";
 import type { BackendFlightPlan, BackendMission, BackendMissionStatus } from "../api/types";
 import { getFlightPlans, getMission, getMissions, seedDemoData, startMission } from "../api/client";
 import { MissionDetailRouteMap } from "../components/MissionDetailRouteMap";
@@ -50,9 +50,11 @@ function formatDuration(startedAt: string | null, finishedAt: string | null) {
 
 export function MisMisionesView({
   onCreateMission,
+  onGeneratePlan,
   onViewMission
 }: {
   onCreateMission: (idFlightPlan: number) => void;
+  onGeneratePlan: () => void;
   onViewMission: (idMission: string) => void;
 }) {
   const [missions, setMissions] = useState<BackendMission[] | null>(null);
@@ -212,6 +214,10 @@ export function MisMisionesView({
         <MissionSummaryCard icon={<Clock3 size={22} />} label="Pendientes" tone="amber" value={totals.pending} />
         <MissionSummaryCard icon={<Play size={22} />} label="En progreso" tone="blue" value={totals.active} />
         <MissionSummaryCard icon={<CheckCircle2 size={22} />} label="Completadas" tone="green" value={totals.completed} />
+        <button className="missions-generate-plan-button" onClick={onGeneratePlan} type="button">
+          <Route size={18} />
+          Generar plan desde recorrido
+        </button>
         <button className="missions-new-button" onClick={handleOpenCreateMission} type="button">
           <Plus size={18} />
           Nueva Mision

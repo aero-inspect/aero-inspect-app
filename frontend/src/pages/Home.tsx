@@ -7,6 +7,7 @@ import { DRONE_OPERATION_ROLES } from "../constants";
 import { LeafletSatelliteMap } from "../components/LeafletSatelliteMap";
 import { MisActivosView } from "./MisActivos";
 import { ConfigurarMisionView } from "./ConfigurarMision";
+import { GenerarPlanVueloView } from "./GenerarPlanVuelo";
 import { MisMisionesView } from "./MisMisiones";
 import { DroneTelemetryView } from "./DroneTelemetry";
 import { PruebaTelemetriaView } from "./PruebaTelemetria";
@@ -75,6 +76,7 @@ export function Home({
   const isAssetsPath = currentPath === "/mis-activos";
   const isMissionPath = currentPath === "/configurar-mision";
   const isMissionsPath = currentPath === "/mis-misiones";
+  const isGeneratePlanPath = currentPath === "/generar-plan";
   const isDronePath = currentPath === "/dron";
   const isLaunchPath = currentPath === "/ejecutar-despegue";
   const isProfilePath = currentPath === "/perfil";
@@ -103,7 +105,7 @@ export function Home({
           <img className="sidebar-brand-logo" src={sidebarLogo} alt="AeroInspect" />
         </div>
         <nav className="nav-list" aria-label="Principal">
-          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isDronePath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
+          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isDronePath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
             <HomeIcon size={20} />
             {!isSidebarCollapsed && <span>Inicio</span>}
           </button>
@@ -133,7 +135,7 @@ export function Home({
           )}
 
           {(userCanConsultAssets || user.role === "Tecnico de Mantenimiento") && (
-            <button className={isMissionsPath || isMissionPath ? "active" : undefined} onClick={() => navigateTo("/mis-misiones")} type="button">
+            <button className={isMissionsPath || isMissionPath || isGeneratePlanPath ? "active" : undefined} onClick={() => navigateTo("/mis-misiones")} type="button">
               <Plane size={20} />
               {!isSidebarCollapsed && <span>Misiones</span>}
             </button>
@@ -171,8 +173,8 @@ export function Home({
         </button>
       </aside>
 
-      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isReportsPath || isCreateReportPath || isReportDetailPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
-        {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isHelpPath && !isActivityPath && user.role !== "Tecnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
+      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isReportsPath || isCreateReportPath || isReportDetailPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
+        {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isHelpPath && !isActivityPath && user.role !== "Tecnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">
             <div>
               <p className="eyebrow">Bienvenida, {user.name}</p>
@@ -209,9 +211,18 @@ export function Home({
               setSelectedFlightPlanId(idFlightPlan);
               navigateTo("/configurar-mision");
             }}
+            onGeneratePlan={() => navigateTo("/generar-plan")}
             onViewMission={(idMission) => {
               setSelectedBackendMissionId(idMission);
               navigateTo("/monitorear-mision");
+            }}
+          />
+        ) : isGeneratePlanPath && user.role === "Tecnico de Mantenimiento" ? (
+          <GenerarPlanVueloView
+            onBack={() => navigateTo("/mis-misiones")}
+            onPlanConfirmed={(idFlightPlan) => {
+              setSelectedFlightPlanId(idFlightPlan);
+              navigateTo("/configurar-mision");
             }}
           />
         ) : isMissionPath && user.role === "Tecnico de Mantenimiento" ? (
