@@ -1,0 +1,191 @@
+/* --- Wizard: generar plan de vuelo desde un recorrido manual --- */
+.plan-builder-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-builder-stepper li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  border: 1px solid #dbe6f2;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #8b9caf;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.plan-builder-stepper li.active {
+  border-color: #063b7a;
+  background: rgba(126, 194, 255, 0.16);
+  color: #063b7a;
+}
+
+.plan-builder-stepper li.done {
+  border-color: #0ca75b;
+  color: #0ca75b;
+}
+
+.plan-builder-step-index {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: currentColor;
+  color: #ffffff;
+  font-size: 11px;
+}
+
+/* --- Paso 1: elegir recorrido --- */
+.plan-builder-recording-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.plan-builder-recording-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #172033;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.plan-builder-recording-row:hover {
+  border-color: #0ca75b;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.plan-builder-recording-row.selected {
+  border-color: #063b7a;
+  background: rgba(126, 194, 255, 0.12);
+}
+
+.plan-builder-recording-row strong {
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.plan-builder-recording-row span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+/* --- Paso 2: sensibilidad --- */
+.plan-builder-sensitivity-group {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.plan-builder-sensitivity-label {
+  color: #172033;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.plan-builder-sensitivity-group .flight-plan-option {
+  width: 100%;
+}
+
+.plan-builder-sensitivity-group .flight-plan-option.selected {
+  border-color: #0ca75b;
+  background: rgba(12, 167, 91, 0.08);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+/* --- Paso 3: revisión y ajuste --- */
+.plan-builder-waypoint-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.plan-builder-waypoint-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #edf2f7;
+  border-radius: 8px;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.plan-builder-waypoint-row.selected {
+  border-color: #063b7a;
+  background: rgba(126, 194, 255, 0.12);
+}
+
+.plan-builder-waypoint-info {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.plan-builder-waypoint-info strong {
+  color: #172033;
+  font-size: 12px;
+}
+
+.plan-builder-waypoint-info span {
+  color: #52677a;
+  font-size: 11px;
+}
+
+.plan-builder-actions-row {
+  justify-content: space-between !important;
+}
+
+.plan-builder-actions-row .configure-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  padding: 0 16px;
+}
+
+/* --- Marcadores de waypoint del plan generado --- */
+.leaflet-plan-waypoint-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.leaflet-plan-waypoint-marker span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow:
+    0 6px 14px rgba(2, 18, 30, 0.32),
+    0 0 0 3px rgba(255, 255, 255, 0.28);
+  transition: transform 0.15s ease;
+}
+
+.leaflet-plan-waypoint-marker.selected span {
+  transform: scale(1.1);
+  box-shadow:
+    0 6px 14px rgba(2, 18, 30, 0.4),
+    0 0 0 4px rgba(6, 59, 122, 0.35);
+}

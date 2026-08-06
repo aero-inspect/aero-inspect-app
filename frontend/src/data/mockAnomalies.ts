@@ -1,4 +1,4 @@
-import type { Anomaly } from "../types";
+﻿import type { Anomaly } from "../types";
 
 export const MOCK_ANOMALIES: Anomaly[] = [
   {
@@ -115,4 +115,4 @@ export const MOCK_ANOMALIES: Anomaly[] = [
   }
 ];
 
-// Made with Bob
+

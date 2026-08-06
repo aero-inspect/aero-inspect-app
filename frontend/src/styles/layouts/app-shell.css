@@ -1,7 +1,7 @@
-﻿/* Restored app shell, sidebar, technician home and profile */
-.home-shell-no-header {
+﻿.home-shell-no-header {
+  --sidebar-width: 317px;
   display: grid;
-  grid-template-columns: 214px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   width: var(--app-canvas-width);
   height: var(--app-canvas-height);
   overflow: hidden;
@@ -11,8 +11,10 @@
 .workspace-no-header {
   min-width: 0;
   height: var(--app-canvas-height);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 0;
+  scrollbar-gutter: stable;
 }
 
 .register-workspace {
@@ -20,128 +22,118 @@
 }
 
 .sidebar-full {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: var(--app-canvas-height);
-  padding: 0 12px;
-  border-right: 1px solid #e2e8f0;
-  background: #ffffff;
+  padding: 47px 12px 23px;
+  border-right: 0;
+  background: #063b7a;
+  transition: padding 180ms ease;
 }
 
 .sidebar-brand {
   display: flex;
   align-items: center;
-  /* El padding original es 18px 0. Si el dron se corta arriba, 
-     puedes aumentar el padding superior un poco, ej: padding: 25px 0 18px 0; */
-  padding: 18px 0; 
-  
-  /* 1. FUNDAMENTAL: Punto de referencia para el dron */
-  position: relative; 
+  justify-content: center;
+  height: 83px;
+  min-height: 83px;
+  margin-bottom: 58px;
+  padding: 0;
+  transition: height 180ms ease, min-height 180ms ease, margin 180ms ease, padding 180ms ease;
 }
 
-.sidebar-brand-drone {
-  /* Mantiene las propiedades anteriores */
-  position: absolute;
-  width: 32px;
-  height: auto;
-  filter: drop-shadow(0 4px 8px rgba(0, 135, 191, 0.14));
-  
-  /* IMPORTANTE: z-index para asegurar que flote arriba */
-  z-index: 10; 
-
-  /* --- AJUSTES DE POSICIÓN --- */
-  
-  /* 1. BAJAR: Cambia de negativo a positivo */
-  top: 8px; /* Aumenta este número para que baje más */
-  
-  /* 2. IZQUIERDA: Disminuye este valor */
-  left: 31px; /* Ajusta este número hasta centrarlo sobre la 'I' */
-}
-
-.sidebar-brand-text {
-  color: #10253a;
-  font-size: 1rem;
-  font-weight: 700;
-  
-  /* Como el dron ya no ocupa espacio físico a la izquierda por ser "absolute", 
-     puedes agregar un pequeño margen si no quieres que el texto quede 
-     totalmente pegado al borde izquierdo del sidebar */
-  margin-left: 8px; 
-}
-
-.sidebar-brand-text strong {
-  color: #00d7c7;
+.sidebar-brand-logo {
+  display: block;
+  width: 307px;
+  max-width: 100%;
+  height: 83px;
+  object-fit: contain;
 }
 
 .nav-list {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 20px;
   flex: 1;
   overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.nav-list::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-list button {
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 34px;
+  min-height: 54px;
   padding: 7px 10px;
-  border: 0;
-  border-radius: 9px;
+  border: 1px solid #175298;
+  border-radius: 10px;
   background: transparent;
-  color: #64748b;
+  color: #fbfdfc;
   cursor: pointer;
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 14px;
   font-weight: 500;
+  line-height: 17px;
   text-align: left;
+  transition: background 160ms ease, border-color 160ms ease, padding 180ms ease, justify-content 180ms ease;
 }
 
 .nav-list button svg {
   width: 17px;
   height: 17px;
+  flex-shrink: 0;
+  stroke-width: 2.5;
 }
 
 .nav-list button.active,
 .nav-list button:hover {
-  background: linear-gradient(90deg, rgba(209, 250, 229, 0.95), rgba(220, 252, 231, 0.66));
-  color: #047a3f;
+  border-color: rgba(15, 90, 180, 0.43);
+  background: rgba(15, 90, 180, 0.43);
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .sidebar-user {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
+  min-height: 70px;
   margin-top: auto;
-  margin-bottom: 18px;
-  padding: 9px 8px;
-  border: 1px solid rgba(226, 232, 240, 0.82);
-  border-radius: 12px;
-  background: #f8fafc;
+  margin-bottom: 0;
+  padding: 0 8px 0 10px;
+  border: 1px solid #175298;
+  border-radius: 10px;
+  background: #063b7a;
+  color: #ffffff;
   cursor: pointer;
   font: inherit;
   text-align: left;
+  transition: background 160ms ease, border-color 160ms ease, padding 180ms ease, justify-content 180ms ease;
 }
 
 .sidebar-user.active,
 .sidebar-user:hover {
-  border-color: rgba(187, 247, 208, 0.78);
-  background: linear-gradient(90deg, rgba(220, 252, 231, 0.95), rgba(240, 253, 244, 0.88));
+  border-color: #175298;
+  background: rgba(15, 90, 180, 0.2);
 }
 
 .sidebar-user-avatar {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #0b8f49;
-  color: #ffffff;
-  font-size: 0.78rem;
-  font-weight: 700;
+  background: #fbfdfc;
+  color: #063b7a;
+  font-size: 11px;
+  font-weight: 800;
   object-fit: cover;
 }
 
@@ -150,22 +142,25 @@
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .sidebar-user-name {
   overflow: hidden;
-  color: #10253a;
-  font-size: 0.74rem;
-  font-weight: 700;
+  color: #fbfdfc;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .sidebar-user-role {
   overflow: hidden;
-  color: #64748b;
-  font-size: 0.62rem;
+  color: #fbfdfc;
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -173,38 +168,101 @@
 .sidebar-user-status {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: #059669;
-  font-size: 0.62rem;
-  font-weight: 600;
+  gap: 4px;
+  color: #079246;
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 11px;
 }
 
 .sidebar-user-arrow {
   flex-shrink: 0;
-  color: #047a3f;
+  color: #fbfdfc;
 }
 
 .status-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: #059669;
+  background: #079246;
 }
 
-.sidebar-help-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: fit-content;
-  margin: 0 0 22px;
-  padding: 7px 9px;
+.sidebar-collapse-button {
+  position: absolute;
+  z-index: 3;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   background: transparent;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.78);
   cursor: pointer;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 500;
+  opacity: 0;
+  transition: background 160ms ease, color 160ms ease, opacity 160ms ease;
 }
 
+.sidebar-full:hover .sidebar-collapse-button,
+.sidebar-collapse-button:focus-visible {
+  opacity: 1;
+}
+
+.sidebar-collapse-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.sidebar-collapsed {
+  --sidebar-width: 72px;
+}
+
+.home-shell-no-header,
+.workspace-no-header {
+  transition-duration: 180ms;
+  transition-property: grid-template-columns, padding, width;
+  transition-timing-function: ease;
+}
+
+.sidebar-collapsed .sidebar-full {
+  padding: 44px 8px 24px;
+}
+
+.sidebar-collapsed .sidebar-collapse-button {
+  opacity: 1;
+}
+
+.sidebar-collapsed .sidebar-brand {
+  height: 0;
+  min-height: 0;
+  margin-bottom: 42px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sidebar-collapsed .sidebar-brand-logo {
+  display: none;
+}
+
+.sidebar-collapsed .nav-list {
+  gap: 14px;
+}
+
+.sidebar-collapsed .nav-list button {
+  justify-content: center;
+  min-height: 42px;
+  padding: 0;
+}
+
+.sidebar-collapsed .sidebar-user {
+  justify-content: center;
+  min-height: 46px;
+  padding: 0;
+}
+
+.sidebar-collapsed .sidebar-user-avatar {
+  width: 30px;
+  height: 30px;
+}

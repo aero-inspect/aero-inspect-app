@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Login } from "./pages/Login";
 import { Home } from "./pages/Home";
 import { mapBackendRole } from "./utils/auth";
@@ -11,8 +11,18 @@ type LoginErrorResponse = {
   fieldErrors: Record<string, string> | null;
 };
 
+const NO_AUTH_SESSION: SessionUser = {
+  name: "Desarrollo no-auth",
+  role: "Tecnico de Mantenimiento",
+  token: ""
+};
+
+const isNoAuthMode = import.meta.env.VITE_AUTH_MODE === "no-auth";
+
 export function App() {
-  const [user, setUser] = useState<SessionUser | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(() =>
+    isNoAuthMode ? NO_AUTH_SESSION : null
+  );
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -41,6 +51,11 @@ export function App() {
   const navigateTo = (path: string) => {
     window.history.pushState({}, "", path);
     setCurrentPath(path);
+  };
+
+  const handleLogout = () => {
+    navigateTo("/");
+    setUser(isNoAuthMode ? NO_AUTH_SESSION : null);
   };
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
@@ -98,7 +113,7 @@ export function App() {
         currentPath={currentPath}
         navigateTo={navigateTo}
         user={user}
-        onLogout={() => setUser(null)}
+        onLogout={handleLogout}
         assets={assets}
         missions={missions}
         users={users}

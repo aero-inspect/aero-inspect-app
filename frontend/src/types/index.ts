@@ -1,4 +1,4 @@
-export type SessionUser = {
+﻿export type SessionUser = {
   name: string;
   role: string;
   token: string;
@@ -31,6 +31,7 @@ export type Asset = {
   id: number;
   name: string;
   type: AssetType;
+  status?: "Operativo" | "Mantenimiento" | "Fuera de servicio";
   latitude: string;
   longitude: string;
   description: string;
@@ -99,3 +100,4 @@ export type Anomaly = {
   description: string;
   location?: string;
 };
+

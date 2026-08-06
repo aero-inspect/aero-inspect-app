@@ -1,281 +1,305 @@
-import { useState, useEffect } from "react";
-import { ArrowLeft, MapPin, Navigation, Clock, CheckCircle2, XCircle, Pause } from "lucide-react";
-import type { InspectionMission, Asset, Plant } from "../types";
-import { MissionMonitorMap } from "../components/MissionMonitorMap";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ArrowLeft, Pause, Play, X } from "lucide-react";
+import type { BackendFlightPlan, BackendMission, BackendMissionStatus, BackendMissionWaypoint, BackendPlanWaypoint } from "../api/types";
+import { getFlightPlan, getMission, getMissions, startMission } from "../api/client";
+import { MissionDetailRouteMap } from "../components/MissionDetailRouteMap";
+import { AppTopActions } from "../components/AppTopActions";
+
+type TelemetryUpdate = {
+  missionId: string;
+  timestamp: string;
+  position: { latitude: number; longitude: number; relativeAltitude: number; absoluteAltitude: number } | null;
+  velocity: { groundHorizontalSpeedMs: number; groundVerticalSpeedMs: number; headingDegree: number } | null;
+  battery: { percentage: number; voltageV: number } | null;
+  gps: { fixType: string; satellites: number; hdop: number; vdop: number } | null;
+  flightMode: string | null;
+  currentWaypoint: number | null;
+};
 
 type MonitorMissionViewProps = {
-  missions: InspectionMission[];
-  assets: Asset[];
-  plant: Plant;
+  missionId: string | null;
+  token: string;
   onBack: () => void;
 };
 
-export function MonitorMissionView({ missions, assets, plant, onBack }: MonitorMissionViewProps) {
-  // Find active mission (En ejecución)
-  const [simulatedMission, setSimulatedMission] = useState<InspectionMission | null>(null);
-  const activeMission = simulatedMission || missions.find((m) => m.status === "En ejecución");
-  
-  // Simulated drone position (in real app, this would come from telemetry)
-  const [dronePosition, setDronePosition] = useState<{ lat: number; lng: number } | null>(null);
-  const [completedPoints, setCompletedPoints] = useState<number>(0);
-  const [missionProgress, setMissionProgress] = useState<number>(0);
+type RoutePoint = {
+  sequence: number;
+  latitude: number;
+  longitude: number;
+};
 
-  // Function to simulate an active mission
-  const startSimulation = () => {
-    const centerLat = parseFloat(plant.center.latitude);
-    const centerLng = parseFloat(plant.center.longitude);
-    
-    // Try to use existing mission first
-    let missionToSimulate: InspectionMission | null = null;
-    
-    // 1. Try pending mission
-    const pendingMission = missions.find((m) => m.status === "Pendiente");
-    if (pendingMission && pendingMission.routePoints.length > 0) {
-      missionToSimulate = {
-        ...pendingMission,
-        status: "En ejecución",
-        startedAt: new Date().toISOString()
-      };
-    }
-    // 2. Try any mission with route points
-    else if (missions.length > 0) {
-      const missionWithRoute = missions.find((m) => m.routePoints && m.routePoints.length > 0);
-      if (missionWithRoute) {
-        missionToSimulate = {
-          ...missionWithRoute,
-          status: "En ejecución",
-          startedAt: new Date().toISOString()
-        };
-      }
-    }
-    
-    // 3. Create demo mission if no suitable mission found
-    if (!missionToSimulate) {
-      const demoAssetName = assets.length > 0 ? assets[0].name : "Activo Demo";
-      const demoAssetId = assets.length > 0 ? assets[0].id : 1;
-      
-      missionToSimulate = {
-        id: 9999,
-        name: "Misión de Demostración",
-        assetId: demoAssetId,
-        assetName: demoAssetName,
-        status: "En ejecución",
-        startedAt: new Date().toISOString(),
-        routePoints: [
-          { id: 1, latitude: (centerLat - 0.0002).toString(), longitude: (centerLng - 0.0002).toString() },
-          { id: 2, latitude: (centerLat - 0.0001).toString(), longitude: (centerLng - 0.0002).toString() },
-          { id: 3, latitude: (centerLat).toString(), longitude: (centerLng - 0.0002).toString() },
-          { id: 4, latitude: (centerLat + 0.0001).toString(), longitude: (centerLng - 0.0001).toString() },
-          { id: 5, latitude: (centerLat + 0.0002).toString(), longitude: (centerLng).toString() },
-          { id: 6, latitude: (centerLat + 0.0001).toString(), longitude: (centerLng + 0.0001).toString() },
-          { id: 7, latitude: (centerLat).toString(), longitude: (centerLng + 0.0002).toString() },
-          { id: 8, latitude: (centerLat - 0.0001).toString(), longitude: (centerLng + 0.0001).toString() }
-        ]
-      };
-    }
-    
-    setSimulatedMission(missionToSimulate);
-    setCompletedPoints(0);
-    setMissionProgress(0);
+const EMPTY_VALUE = "-";
+
+type MissionDisplayStatus = "Pendiente" | "Enviando al dron" | "En progreso" | "Completada" | "Cancelada" | "Fallida";
+
+function statusLabel(status: BackendMissionStatus | undefined): MissionDisplayStatus {
+  if (status === "IN_PROGRESS") return "En progreso";
+  if (status === "UPLOADING") return "Enviando al dron";
+  if (status === "COMPLETED") return "Completada";
+  if (status === "CANCELLED") return "Cancelada";
+  if (status === "FAILED") return "Fallida";
+  return "Pendiente";
+}
+
+function statusClass(status: MissionDisplayStatus) {
+  if (status === "Enviando al dron") return "uploading";
+  if (status === "En progreso") return "progress";
+  if (status === "Completada") return "completed";
+  if (status === "Cancelada") return "cancelled";
+  if (status === "Fallida") return "failed";
+  return "pending";
+}
+
+function toRoutePoint(point: BackendMissionWaypoint | BackendPlanWaypoint): RoutePoint {
+  return {
+    sequence: point.sequence,
+    latitude: point.latitude,
+    longitude: point.longitude
   };
+}
 
-  const stopSimulation = () => {
-    setSimulatedMission(null);
-    setCompletedPoints(0);
-    setMissionProgress(0);
-    setDronePosition(null);
-  };
+function formatPercent(value: number | null | undefined) {
+  if (value == null) return EMPTY_VALUE;
+  return `${Math.round(value)}%`;
+}
 
-  // Simulate drone movement along the route
+function formatNumber(value: number | null | undefined, decimals = 1) {
+  if (value == null || Number.isNaN(value)) return EMPTY_VALUE;
+  return value.toFixed(decimals);
+}
+
+export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionViewProps) {
+  const [mission, setMission] = useState<BackendMission | null>(null);
+  const [flightPlan, setFlightPlan] = useState<BackendFlightPlan | null>(null);
+  const [telemetry, setTelemetry] = useState<TelemetryUpdate | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const statusPollRef = useRef<number | null>(null);
+
   useEffect(() => {
-    if (!activeMission || activeMission.routePoints.length === 0) return;
+    let cancelled = false;
+    setLoadError(null);
+    setTelemetry(null);
+    setMission(null);
+    setFlightPlan(null);
+    setStartError(null);
 
-    const interval = setInterval(() => {
-      setCompletedPoints((prev) => {
-        const next = prev + 1;
-        if (next >= activeMission.routePoints.length) {
-          clearInterval(interval);
-          return activeMission.routePoints.length;
-        }
-        
-        // Update drone position to current point
-        const currentPoint = activeMission.routePoints[next];
-        setDronePosition({
-          lat: parseFloat(currentPoint.latitude),
-          lng: parseFloat(currentPoint.longitude)
+    if (statusPollRef.current) {
+      window.clearInterval(statusPollRef.current);
+      statusPollRef.current = null;
+    }
+
+    const loadMission = missionId ? getMission(missionId) : getMissions().then((items) => items[0] ?? null);
+
+    loadMission
+      .then((loadedMission) => {
+        if (cancelled) return;
+        setMission(loadedMission);
+        if (!loadedMission) return null;
+        return getFlightPlan(loadedMission.idFlightPlan);
+      })
+      .then((loadedPlan) => {
+        if (!cancelled && loadedPlan) setFlightPlan(loadedPlan);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setLoadError(error instanceof Error ? error.message : "No se pudo cargar la mision.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [missionId]);
+
+  useEffect(() => {
+    return () => {
+      if (statusPollRef.current) window.clearInterval(statusPollRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    eventSourceRef.current?.close();
+    eventSourceRef.current = null;
+
+    if (!mission?.idMission || !token) return;
+
+    const url = `/api/v1/telemetry/missions/${mission.idMission}/stream?token=${encodeURIComponent(token)}`;
+    const eventSource = new EventSource(url);
+    eventSourceRef.current = eventSource;
+
+    eventSource.addEventListener("telemetry", (event) => {
+      try {
+        setTelemetry(JSON.parse((event as MessageEvent).data));
+      } catch {
+        setTelemetry(null);
+      }
+    });
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      eventSourceRef.current = null;
+    };
+
+    return () => {
+      eventSource.close();
+      eventSourceRef.current = null;
+    };
+  }, [mission?.idMission, token]);
+
+  const routePoints = useMemo(
+    () => (mission?.missionWaypoints?.length ? mission.missionWaypoints.map(toRoutePoint) : flightPlan?.route?.map(toRoutePoint) ?? []),
+    [mission?.missionWaypoints, flightPlan?.route]
+  );
+
+  const currentWaypoint = telemetry?.currentWaypoint ?? null;
+  const totalWaypoints = routePoints.length;
+  const progress = mission?.completionPercentage ?? null;
+  const progressWidth = progress == null ? 0 : Math.max(0, Math.min(100, progress));
+  const missionStatus = statusLabel(mission?.status);
+  const isPendingMission = mission?.status === "PLANNED";
+
+  const pollMissionStatus = (idMission: string) => {
+    if (statusPollRef.current) window.clearInterval(statusPollRef.current);
+
+    let attempts = 0;
+    statusPollRef.current = window.setInterval(() => {
+      attempts += 1;
+      getMission(idMission)
+        .then((updated) => {
+          setMission(updated);
+          if (updated.status !== "UPLOADING" || attempts >= 300) {
+            if (statusPollRef.current) window.clearInterval(statusPollRef.current);
+            statusPollRef.current = null;
+          }
+        })
+        .catch(() => {
+          if (statusPollRef.current) window.clearInterval(statusPollRef.current);
+          statusPollRef.current = null;
         });
-        
-        // Update progress percentage
-        const progress = Math.round((next / activeMission.routePoints.length) * 100);
-        setMissionProgress(progress);
-        
-        return next;
-      });
-    }, 3000); // Move to next point every 3 seconds
+    }, 2000);
+  };
 
-    // Initialize drone at first point
-    if (activeMission.routePoints.length > 0) {
-      const firstPoint = activeMission.routePoints[0];
-      setDronePosition({
-        lat: parseFloat(firstPoint.latitude),
-        lng: parseFloat(firstPoint.longitude)
-      });
-    }
-
-    return () => clearInterval(interval);
-  }, [activeMission]);
-
-  const getStatusIcon = (status?: string) => {
-    switch (status) {
-      case "Finalizada":
-        return <CheckCircle2 size={20} />;
-      case "En ejecución":
-        return <Navigation size={20} />;
-      case "Pendiente":
-        return <Clock size={20} />;
-      default:
-        return <XCircle size={20} />;
+  const handleStartMission = async () => {
+    if (!mission) return;
+    setStartError(null);
+    setIsStarting(true);
+    try {
+      const updated = await startMission(mission.idMission);
+      setMission(updated);
+      pollMissionStatus(updated.idMission);
+    } catch (error) {
+      setStartError(error instanceof Error ? error.message : "No se pudo iniciar la mision.");
+    } finally {
+      setIsStarting(false);
     }
   };
 
-  const getStatusClass = (status?: string) => {
-    switch (status) {
-      case "Finalizada":
-        return "status-completed";
-      case "En ejecución":
-        return "status-active";
-      case "Pendiente":
-        return "status-pending";
-      default:
-        return "status-cancelled";
-    }
-  };
+  const telemetryRows = [
+    ["Bateria", telemetry?.battery ? `${telemetry.battery.percentage}%` : EMPTY_VALUE],
+    ["Altitud", telemetry?.position ? `${formatNumber(telemetry.position.relativeAltitude)} m` : EMPTY_VALUE],
+    ["Velocidad", telemetry?.velocity ? `${formatNumber(telemetry.velocity.groundHorizontalSpeedMs)} m/s` : EMPTY_VALUE],
+    ["Senal GPS", telemetry?.gps?.fixType ?? EMPTY_VALUE],
+    ["Satelites", telemetry?.gps ? String(telemetry.gps.satellites) : EMPTY_VALUE],
+    ["Timestamp", telemetry?.timestamp ? new Date(telemetry.timestamp).toLocaleTimeString("es-AR") : EMPTY_VALUE]
+  ];
 
   return (
-    <section className="monitor-mission-container">
-      <header className="panel-header">
-        <button className="icon-button" onClick={onBack} aria-label="Volver" type="button">
-          <ArrowLeft size={20} aria-hidden="true" />
-        </button>
-        <div>
-          <h2>Monitorear Recorrido del Dron</h2>
-          <p className="panel-subtitle">Seguimiento en tiempo real de la misión en ejecución</p>
+    <section className="monitor-mission-dashboard">
+      <header className="monitor-topbar">
+        <div className="monitor-title-row">
+          <button className="monitor-back-button" onClick={onBack} type="button" aria-label="Volver">
+            <ArrowLeft size={19} />
+          </button>
+          <div>
+            <h1>Monitorear mision</h1>
+            <p>Seguimiento en vivo de las inspecciones a los activos.</p>
+          </div>
         </div>
+        <AppTopActions />
       </header>
 
-      {!activeMission ? (
-        <div className="no-active-mission">
-          <div className="empty-state-icon">
-            <Pause size={48} />
-          </div>
-          <h3>No hay misiones activas</h3>
-          <p>No existe una misión en ejecución para monitorear en este momento.</p>
-          <p className="hint-text">Las misiones deben estar en estado "En ejecución" para poder visualizar el recorrido del dron.</p>
-          <button className="simulate-button" onClick={startSimulation} type="button">
-            <Navigation size={20} />
-            Simular Misión Activa
-          </button>
-        </div>
-      ) : (
-        <div className="monitor-layout">
-          {/* Mission Info Panel */}
-          <aside className="mission-info-panel">
-            <div className="info-card">
-              <div className="info-header">
-                <div>
-                  <h3>Información de Misión</h3>
-                  {simulatedMission && (
-                    <span className="simulation-badge">Simulación</span>
-                  )}
-                </div>
-                <div className="header-actions-group">
-                  <div className={`mission-status-badge ${getStatusClass(activeMission.status)}`}>
-                    {getStatusIcon(activeMission.status)}
-                    <span>{activeMission.status}</span>
+      {loadError && <p className="mission-empty">{loadError}</p>}
+
+      {!loadError && !mission && <p className="mission-empty">Cargando mision...</p>}
+
+      {!loadError && mission && (
+        <section className="monitor-body-grid">
+          <article className="monitor-live-card">
+            <div className="monitor-live-title">
+              <h2>{mission.name}</h2>
+              <span className={`mission-state ${statusClass(missionStatus)}`}>{missionStatus}</span>
+            </div>
+            <p className="monitor-map-label">MAPA SATELITAL - AREA DE PLANTA</p>
+
+            <div className="monitor-map-frame">
+              <MissionDetailRouteMap points={routePoints} />
+              {isPendingMission && (
+                <div className="monitor-pending-overlay">
+                  <div>
+                    <h3>La mision aun no comenzo</h3>
+                    <p>Presione Iniciar para comenzar el vuelo.</p>
                   </div>
-                  {simulatedMission && (
-                    <button className="stop-simulation-btn" onClick={stopSimulation} type="button" title="Detener simulación">
-                      <XCircle size={18} />
-                    </button>
-                  )}
                 </div>
-              </div>
-
-              <div className="info-details">
-                <div className="info-item">
-                  <span className="info-label">Misión</span>
-                  <strong>{activeMission.name}</strong>
-                </div>
-                <div className="info-item">
-                  <span className="info-label">Activo</span>
-                  <strong>{activeMission.assetName}</strong>
-                </div>
-                {activeMission.startedAt && (
-                  <div className="info-item">
-                    <span className="info-label">Inicio</span>
-                    <strong>{new Date(activeMission.startedAt).toLocaleString('es-AR')}</strong>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
-            <div className="progress-card">
-              <div className="progress-header">
-                <h3>Progreso de Misión</h3>
-                <span className="progress-percentage">{missionProgress}%</span>
-              </div>
-              
-              <div className="progress-bar-container">
-                <div 
-                  className="progress-bar-fill" 
-                  style={{ width: `${missionProgress}%` }}
-                />
-              </div>
-
-              <div className="progress-stats">
-                <div className="progress-stat">
-                  <span className="stat-label">Puntos completados</span>
-                  <strong>{completedPoints} / {activeMission.routePoints.length}</strong>
-                </div>
-                <div className="progress-stat">
-                  <span className="stat-label">Puntos restantes</span>
-                  <strong>{activeMission.routePoints.length - completedPoints}</strong>
-                </div>
-              </div>
+            <div className="monitor-main-actions">
+              {isPendingMission && (
+                <button className="monitor-start" type="button" onClick={handleStartMission} disabled={isStarting}>
+                  <Play size={17} />
+                  {isStarting ? "Iniciando..." : "Iniciar"}
+                </button>
+              )}
+              <button className="monitor-pause" type="button">
+                <Pause size={17} />
+                Pausar
+              </button>
+              <button className="monitor-cancel" type="button" onClick={onBack}>
+                <X size={17} />
+                Cancelar
+              </button>
             </div>
+            {startError && <p className="monitor-start-error">{startError}</p>}
+          </article>
 
-            <div className="route-legend">
-              <h4>Leyenda del Mapa</h4>
-              <div className="legend-items">
-                <div className="legend-item">
-                  <div className="legend-marker planned"></div>
-                  <span>Trayectoria planificada</span>
-                </div>
-                <div className="legend-item">
-                  <div className="legend-marker completed"></div>
-                  <span>Recorrido completado</span>
-                </div>
-                <div className="legend-item">
-                  <div className="legend-marker drone"></div>
-                  <span>Posición actual del dron</span>
-                </div>
+          <aside className="monitor-side-column">
+            <article className="monitor-side-card monitor-progress-card">
+              <h2>Progreso de mision</h2>
+              <strong>
+                Punto {currentWaypoint ?? EMPTY_VALUE} de {totalWaypoints || EMPTY_VALUE}
+              </strong>
+              <div className="monitor-progress-track"><span style={{ width: `${progressWidth}%` }} /></div>
+              <p>{formatPercent(progress)} completado</p>
+              <ProgressLine label="Mision" value={mission.idMission.slice(0, 8)} />
+              <ProgressLine label="Plan de vuelo" value={flightPlan?.name ?? EMPTY_VALUE} />
+            </article>
+
+            <article className="monitor-side-card monitor-telemetry-card">
+              <h2>Telemetria</h2>
+              <div className="monitor-telemetry-list">
+                {telemetryRows.map(([label, value]) => (
+                  <ProgressLine key={label} label={label} value={value} />
+                ))}
               </div>
-            </div>
+            </article>
+
+            <article className="monitor-side-card monitor-captures-card">
+              <h2>Capturas recientes</h2>
+              <p className="monitor-empty-media">No hay multimedia disponible en este momento.</p>
+            </article>
           </aside>
-
-          {/* Map View */}
-          <div className="map-container">
-            <MissionMonitorMap
-              plant={plant}
-              routePoints={activeMission.routePoints}
-              completedPoints={completedPoints}
-              dronePosition={dronePosition}
-            />
-          </div>
-        </div>
+        </section>
       )}
     </section>
   );
 }
 
-// Made with Bob
+function ProgressLine({ label, value }: { label: ReactNode; value: ReactNode }) {
+  return (
+    <div className="monitor-data-row">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}

@@ -6,3 +6,4 @@ const BACKEND_ROLE_LABELS: Record<string, string> = {
 export function mapBackendRole(role: string): string {
   return BACKEND_ROLE_LABELS[role] ?? role;
 }
+

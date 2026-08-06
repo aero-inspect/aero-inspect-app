@@ -1,6 +1,8 @@
 ﻿@media (max-width: 900px) {
   .login-shell {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
   }
 
   .home-shell {
@@ -32,12 +34,9 @@
     grid-template-columns: 1fr;
   }
 
-  .login-visual h1 {
-    font-size: 1.9rem;
-  }
-
   .hero-brand {
-    font-size: 4rem;
+    font-size: 64px;
+    line-height: 1.1;
   }
 
   .hero-drone {
@@ -70,13 +69,12 @@
     padding: 22px;
   }
 
-  .login-visual h1,
   .topbar h1 {
     font-size: 1.8rem;
   }
 
   .hero-brand {
-    font-size: 3rem;
+    font-size: 48px;
   }
 
   .hero-drone {
@@ -99,4 +97,5 @@
     width: 100%;
   }
 }
+
 

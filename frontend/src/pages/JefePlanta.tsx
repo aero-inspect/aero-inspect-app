@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Package, AlertTriangle, CheckCircle, Clock, ArrowRight, TrendingUp, Activity } from "lucide-react";
 import type { Asset, Plant, InspectionMission, Anomaly } from "../types";
 import { MOCK_ANOMALIES } from "../data/mockAnomalies";
@@ -17,21 +17,15 @@ export function JefePlantaView({
   plant: Plant;
 }) {
   const [anomalies] = useState<Anomaly[]>(MOCK_ANOMALIES);
-
-  // Statistics
   const totalAssets = assets.filter((a) => a.plantId === plant.id).length;
   const totalMissions = missions.length;
   const completedMissions = missions.filter((m) => m.status === "Finalizada").length;
   const pendingMissions = missions.filter((m) => m.status === "Pendiente").length;
-  
-  // Anomalies stats
   const totalAnomalies = anomalies.length;
   const highSeverity = anomalies.filter((a) => a.severity === "Alta").length;
   const mediumSeverity = anomalies.filter((a) => a.severity === "Media").length;
   const pendingAnomalies = anomalies.filter((a) => a.status === "Pendiente").length;
   const validatedAnomalies = anomalies.filter((a) => a.status === "Validada").length;
-
-  // Recent anomalies (without images)
   const recentAnomalies = anomalies.slice(0, 5);
 
   return (
@@ -43,8 +37,6 @@ export function JefePlantaView({
           <p className="dashboard-subtitle">{plant.province}</p>
         </div>
       </header>
-
-      {/* Main Stats Grid - 4 columns */}
       <div className="stats-grid-clean">
         <div className="stat-card-clean primary">
           <div className="stat-icon-clean">
@@ -86,10 +78,7 @@ export function JefePlantaView({
           </div>
         </div>
       </div>
-
-      {/* Content Grid - 2 columns */}
       <div className="content-grid-clean">
-        {/* Anomalies Summary */}
         <div className="info-card-clean">
           <div className="card-header-clean">
             <div>
@@ -148,8 +137,6 @@ export function JefePlantaView({
             </div>
           )}
         </div>
-
-        {/* Missions Summary */}
         <div className="info-card-clean">
           <div className="card-header-clean">
             <div>
@@ -203,13 +190,11 @@ export function JefePlantaView({
             </div>
           </div>
         </div>
-
-        {/* Recent Anomalies List */}
         <div className="info-card-clean full-width">
           <div className="card-header-clean">
             <div>
               <h2>Anomalías Recientes</h2>
-              <p className="card-subtitle">Últimos hallazgos detectados</p>
+              <p className="card-subtitle">Ãšltimos hallazgos detectados</p>
             </div>
           </div>
 
@@ -254,4 +239,4 @@ export function JefePlantaView({
   );
 }
 
-// Made with Bob
+

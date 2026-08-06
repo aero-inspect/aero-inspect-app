@@ -1,4 +1,4 @@
-import type { AssetType } from "../types";
+﻿import type { AssetType } from "../types";
 
 export const ASSET_TYPES: AssetType[] = ["Silo", "Noria", "Cinta transportadora", "Tuberia", "Techo"];
 export const ASSET_TYPE_COLORS: Record<AssetType, string> = {
@@ -42,3 +42,4 @@ export const SATELLITE_LAYER = MAPTILER_KEY
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       zoomOffset: 0
     };
+
