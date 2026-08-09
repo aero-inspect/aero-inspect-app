@@ -31,10 +31,14 @@ export type Asset = {
   id: number;
   name: string;
   type: AssetType;
-  status?: "Operativo" | "Mantenimiento" | "Fuera de servicio";
+  status?: "Activo" | "En mantenimiento" | "Fuera de servicio";
   latitude: string;
   longitude: string;
   description: string;
+  code?: string;
+  locationDetail?: string;
+  createdAt?: string;
+  lastMaintenanceAt?: string;
   imageName?: string;
   imagePreview?: string;
   images?: AssetImage[];
