@@ -1,11 +1,12 @@
 import L from "leaflet";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip } from "react-leaflet";
-import { Cylinder, MoveHorizontal, RotateCw, Waves, Wind } from "lucide-react";
+import { Camera, Cylinder, MoveHorizontal, RotateCw, Waves, Wind } from "lucide-react";
 import type { BackendAsset, BackendAssetType, BackendFlightPlan, BackendPlanWaypoint } from "../api/types";
 import { BACKEND_ASSET_TYPE_LABELS } from "../api/constants";
 import { SATELLITE_LAYER } from "../constants";
 import { MapSizeController } from "./LeafletHelpers";
+import { photoCountForWaypoint } from "../utils/missionPhotos";
 
 // Un ícono por tipo de activo, en vez de codificar el tipo con el color del círculo
 // (dejaba colores medio arbitrarios, poco intuitivos). El color del círculo queda libre
@@ -137,19 +138,26 @@ function AssetPointsOfInterestPopup({
         <p className="poi-popup-empty">Este activo no tiene puntos de interés configurados en el plan.</p>
       ) : (
         <ul className="poi-popup-list">
-          {pointsOfInterest.map((point) => (
-            <li className="poi-popup-item" key={point.idPlanWaypoint}>
-              <label>
-                <input
-                  checked={selectedWaypointIds.has(point.idPlanWaypoint)}
-                  onChange={() => onToggleWaypoint(point.idPlanWaypoint)}
-                  type="checkbox"
-                />
-                <strong>{point.name}</strong>
-              </label>
-              {point.description && <p>{point.description}</p>}
-            </li>
-          ))}
+          {pointsOfInterest.map((point) => {
+            const photoCount = photoCountForWaypoint(point);
+            return (
+              <li className="poi-popup-item" key={point.idPlanWaypoint}>
+                <label>
+                  <input
+                    checked={selectedWaypointIds.has(point.idPlanWaypoint)}
+                    onChange={() => onToggleWaypoint(point.idPlanWaypoint)}
+                    type="checkbox"
+                  />
+                  <strong>{point.name}</strong>
+                  <span className="poi-popup-photo-badge" title={`${photoCount} foto${photoCount === 1 ? "" : "s"} en este punto`}>
+                    <Camera aria-hidden="true" size={11} />
+                    {photoCount}
+                  </span>
+                </label>
+                {point.description && <p>{point.description}</p>}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

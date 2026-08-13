@@ -19,6 +19,16 @@ export type BackendAsset = {
 
 export type WaypointAction = "TAKEOFF" | "NAVIGATE" | "STOP" | "LAND";
 
+// Un ángulo de cámara deseado en un waypoint punto de interés: pitch (inclinación vertical del
+// gimbal, -135 a 45) + yaw (rotación horizontal relativa al heading del dron, -160 a 160). Cada
+// uno se traduce en su propia foto: el flight-controller apunta el gimbal y saca una foto por
+// cada waypoint STOP que recibe, así que un PlanWaypoint con N cameraAngles se manda como N
+// waypoints STOP consecutivos al iniciar la misión (ver MissionService en general-monolith).
+export type CameraAngle = {
+  pitch: number;
+  yaw: number;
+};
+
 export type BackendPlanWaypoint = {
   idPlanWaypoint: number;
   latitude: number;
@@ -32,7 +42,7 @@ export type BackendPlanWaypoint = {
   idAsset: number | null;
   name: string | null;
   description: string | null;
-  cameraAngles: number[] | null;
+  cameraAngles: CameraAngle[] | null;
 };
 
 export type BackendFlightPlan = {
@@ -48,7 +58,7 @@ export type BackendFlightPlan = {
 export type BackendMissionStatus = "PLANNED" | "UPLOADING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "FAILED";
 
 export type BackendMissionWaypoint = {
-  idMissionWaypoint: number;
+  idMissionWaypoint: string;
   sequence: number;
   latitude: number;
   longitude: number;
@@ -59,7 +69,10 @@ export type BackendMissionWaypoint = {
   droneDegree: number;
   idAsset: number | null;
   name: string | null;
-  cameraAngles: number[] | null;
+  // Ya expandido en el backend (un MissionWaypoint = a lo sumo una foto): null si este stop
+  // no tiene apuntado de gimbal asociado.
+  gimbalPitchDeg: number | null;
+  gimbalYawDeg: number | null;
 };
 
 export type BackendMission = {

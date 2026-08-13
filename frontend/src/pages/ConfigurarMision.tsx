@@ -6,6 +6,7 @@ import { FieldError } from "../components/FieldError";
 import { MissionPlanMap } from "../components/MissionPlanMap";
 import { AppTopActions } from "../components/AppTopActions";
 import type { InspectionPoint } from "../types";
+import { photoCountForWaypoint } from "../utils/missionPhotos";
 
 type FieldErrors = Partial<Record<"name" | "droneId" | "scheduledAt", string>>;
 
@@ -86,6 +87,12 @@ export function ConfigurarMisionView({
       setHasAppliedInitialPlan(true);
     }
   }, [hasAppliedInitialPlan, initialFlightPlanId, flightPlans, selectedFlightPlan]);
+
+  const totalPhotoCount = selectedFlightPlan
+    ? selectedFlightPlan.route
+        .filter((point) => selectedWaypointIds.has(point.idPlanWaypoint))
+        .reduce((total, point) => total + photoCountForWaypoint(point), 0)
+    : 0;
 
   const handleToggleWaypoint = (idPlanWaypoint: number) => {
     setSelectedWaypointIds((current) => {
@@ -201,7 +208,11 @@ export function ConfigurarMisionView({
               )}
 
               <p className="map-field-label">
-                {selectedWaypointIds.size} puntos de interes seleccionados. Toca un activo en el mapa para elegir sus puntos.
+                {selectedWaypointIds.size} puntos de interes seleccionados
+                {selectedWaypointIds.size > 0
+                  ? ` · ${totalPhotoCount} foto${totalPhotoCount === 1 ? "" : "s"} en total`
+                  : ""}
+                . Toca un activo en el mapa para elegir sus puntos.
               </p>
             </article>
 
