@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Battery, Check, Clock, Gauge, MapPin, Plane, Satellite } from "lucide-react";
-import { getMissions } from "../api/client";
-import type { BackendMission } from "../api/types";
+import { getDroneStatuses, getDrones } from "../api/client";
+import type { BackendDrone, BackendDroneStatus } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
 import droneImage from "../assets/drone-image.png";
+
+const HEARTBEAT_POLL_INTERVAL_MS = 3000;
 
 type TelemetryUpdate = {
   missionId: string;
@@ -32,23 +34,24 @@ const EMPTY_VALUE = "--";
 
 export function DroneTelemetryView({ token }: DroneTelemetryViewProps) {
   const [missionId, setMissionId] = useState("");
-  const [missions, setMissions] = useState<BackendMission[]>([]);
+  const [drones, setDrones] = useState<BackendDrone[]>([]);
   const [selectedDroneId, setSelectedDroneId] = useState("");
   const [connected, setConnected] = useState(false);
   const [lastError, setLastError] = useState("");
   const [telemetry, setTelemetry] = useState<TelemetryUpdate | null>(null);
   const [status, setStatus] = useState<StatusEvent | null>(null);
   const [updatedAt, setUpdatedAt] = useState("");
+  const [heartbeat, setHeartbeat] = useState<BackendDroneStatus | null>(null);
+  const [heartbeatError, setHeartbeatError] = useState("");
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    getMissions()
+    getDrones()
       .then((items) => {
-        setMissions(items);
-        const firstDroneId = items.find((mission) => mission.droneId)?.droneId ?? "";
-        setSelectedDroneId((current) => current || firstDroneId);
+        setDrones(items);
+        setSelectedDroneId((current) => current || items[0]?.droneId || "");
       })
-      .catch(() => setMissions([]));
+      .catch(() => setDrones([]));
   }, []);
 
   useEffect(() => {
@@ -57,10 +60,39 @@ export function DroneTelemetryView({ token }: DroneTelemetryViewProps) {
     };
   }, []);
 
-  const droneOptions = useMemo(() => {
-    const uniqueDroneIds = Array.from(new Set(missions.map((mission) => mission.droneId).filter(Boolean)));
-    return uniqueDroneIds.map((droneId) => ({ id: droneId, label: droneId }));
-  }, [missions]);
+  useEffect(() => {
+    if (!selectedDroneId) {
+      setHeartbeat(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const poll = () => {
+      getDroneStatuses()
+        .then((statuses) => {
+          if (cancelled) return;
+          setHeartbeat(statuses.find((droneStatus) => droneStatus.droneId === selectedDroneId) ?? null);
+          setHeartbeatError("");
+        })
+        .catch(() => {
+          if (!cancelled) setHeartbeatError("No se pudo obtener el heartbeat del dron.");
+        });
+    };
+
+    poll();
+    const intervalId = setInterval(poll, HEARTBEAT_POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [selectedDroneId]);
+
+  const droneOptions = useMemo(
+    () => drones.map((drone) => ({ id: drone.droneId, label: drone.name || drone.droneId })),
+    [drones]
+  );
 
   const selectedDroneLabel = droneOptions.find((drone) => drone.id === selectedDroneId)?.label ?? selectedDroneId;
 
@@ -154,6 +186,33 @@ export function DroneTelemetryView({ token }: DroneTelemetryViewProps) {
           <span />
           {connected ? "Conectado" : "Desconectado"}
         </p>
+      </article>
+
+      <article className="drone-heartbeat-card">
+        <header>
+          <span className={heartbeat ? "drone-heartbeat-dot online" : "drone-heartbeat-dot"} />
+          <h2>Heartbeat</h2>
+          <span className="drone-heartbeat-updated">
+            {heartbeat ? `Ultimo: ${new Date(heartbeat.lastSeen).toLocaleTimeString("es-AR")}` : "Sin heartbeat recibido"}
+          </span>
+        </header>
+        <div className="drone-heartbeat-body">
+          <InfoLine label="Enlace MAVLink" value={heartbeat ? (heartbeat.mavlinkLinkOk ? "OK" : "Sin enlace") : EMPTY_VALUE} />
+          <InfoLine label="Armado" value={heartbeat ? (heartbeat.armed ? "Si" : "No") : EMPTY_VALUE} />
+          <InfoLine label="Modo de vuelo" value={heartbeat?.flightMode ?? EMPTY_VALUE} />
+          <InfoLine label="Estado" value={heartbeat?.status ?? EMPTY_VALUE} />
+          <InfoLine
+            label="Bateria"
+            value={heartbeat?.battery ? `${heartbeat.battery.percentage}% (${formatNumber(heartbeat.battery.voltageV, 2)} V)` : EMPTY_VALUE}
+          />
+          <InfoLine
+            label="GPS"
+            value={heartbeat?.gps ? `${heartbeat.gps.fixType} - ${heartbeat.gps.satellites} sat` : EMPTY_VALUE}
+          />
+          <InfoLine label="Mision asignada" value={heartbeat?.missionId ?? "Sin mision (idle)"} />
+          <InfoLine label="Uptime" value={heartbeat?.uptimeSec != null ? `${heartbeat.uptimeSec} s` : EMPTY_VALUE} />
+        </div>
+        {heartbeatError && <p className="drone-sse-error">{heartbeatError}</p>}
       </article>
 
       <article className="drone-mission-connect-card">

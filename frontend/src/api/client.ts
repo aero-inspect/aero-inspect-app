@@ -1,8 +1,11 @@
 import type {
   BackendAsset,
+  BackendDrone,
+  BackendDroneStatus,
   BackendFlightPlan,
   BackendMission,
   CreateAssetPayload,
+  CreateDronePayload,
   CreateMissionPayload,
   SeedResult
 } from "./types";
@@ -75,6 +78,29 @@ export function startMission(idMission: string) {
   return request<BackendMission>(`/api/v1/missions/${idMission}/start`, {
     method: "POST"
   });
+}
+
+export function getDrones() {
+  return request<BackendDrone[]>("/api/v1/drones");
+}
+
+export function createDrone(payload: CreateDronePayload) {
+  return request<BackendDrone>("/api/v1/drones", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteDrone(idDrone: string) {
+  return request<void>(`/api/v1/drones/${idDrone}`, {
+    method: "DELETE"
+  });
+}
+
+// El heartbeat llega continuamente por MQTT, con o sin misión activa, así que sirve para
+// mostrar el estado de un dron idle antes de mandarlo a volar.
+export function getDroneStatuses() {
+  return request<BackendDroneStatus[]>("/api/v1/drones/status");
 }
 
 // POC: crea datos de prueba (Asset + FlightPlan) en general-monolith. Útil mientras no
