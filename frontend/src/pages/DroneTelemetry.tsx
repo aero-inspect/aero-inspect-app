@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Battery, Check, Clock, Gauge, MapPin, Plane, Satellite } from "lucide-react";
+import { Battery, Check, Gauge, MapPin, Plane, Satellite } from "lucide-react";
 import { getDroneStatuses, getDrones } from "../api/client";
 import type { BackendDrone, BackendDroneStatus } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
@@ -146,6 +146,13 @@ export function DroneTelemetryView({ token }: DroneTelemetryViewProps) {
 
   const updatedLabel = updatedAt || EMPTY_VALUE;
 
+  // Telemetria (SSE, solo con mision activa) tiene prioridad por ser mas precisa; heartbeat
+  // (MQTT, siempre presente) cubre el resto del tiempo, incluido el dron idle.
+  const mergedFlightMode = telemetry?.flightMode ?? heartbeat?.flightMode ?? null;
+  const mergedBattery = telemetry?.battery ?? heartbeat?.battery ?? null;
+  const mergedPosition = telemetry?.position ?? heartbeat?.position ?? null;
+  const mergedGps = telemetry?.gps ?? heartbeat?.gps ?? null;
+
   return (
     <section className="drones-dashboard">
       <header className="drones-topbar">
@@ -182,38 +189,13 @@ export function DroneTelemetryView({ token }: DroneTelemetryViewProps) {
           <strong>{updatedLabel}</strong>
         </div>
 
-        <p className={connected ? "drone-sse-status connected" : "drone-sse-status"}>
+        <p className={heartbeat?.mavlinkLinkOk ? "drone-sse-status connected" : "drone-sse-status"}>
           <span />
-          {connected ? "Conectado" : "Desconectado"}
+          {heartbeat?.mavlinkLinkOk ? "Conectado" : "Desconectado"}
         </p>
       </article>
 
-      <article className="drone-heartbeat-card">
-        <header>
-          <span className={heartbeat ? "drone-heartbeat-dot online" : "drone-heartbeat-dot"} />
-          <h2>Heartbeat</h2>
-          <span className="drone-heartbeat-updated">
-            {heartbeat ? `Ultimo: ${new Date(heartbeat.lastSeen).toLocaleTimeString("es-AR")}` : "Sin heartbeat recibido"}
-          </span>
-        </header>
-        <div className="drone-heartbeat-body">
-          <InfoLine label="Enlace MAVLink" value={heartbeat ? (heartbeat.mavlinkLinkOk ? "OK" : "Sin enlace") : EMPTY_VALUE} />
-          <InfoLine label="Armado" value={heartbeat ? (heartbeat.armed ? "Si" : "No") : EMPTY_VALUE} />
-          <InfoLine label="Modo de vuelo" value={heartbeat?.flightMode ?? EMPTY_VALUE} />
-          <InfoLine label="Estado" value={heartbeat?.status ?? EMPTY_VALUE} />
-          <InfoLine
-            label="Bateria"
-            value={heartbeat?.battery ? `${heartbeat.battery.percentage}% (${formatNumber(heartbeat.battery.voltageV, 2)} V)` : EMPTY_VALUE}
-          />
-          <InfoLine
-            label="GPS"
-            value={heartbeat?.gps ? `${heartbeat.gps.fixType} - ${heartbeat.gps.satellites} sat` : EMPTY_VALUE}
-          />
-          <InfoLine label="Mision asignada" value={heartbeat?.missionId ?? "Sin mision (idle)"} />
-          <InfoLine label="Uptime" value={heartbeat?.uptimeSec != null ? `${heartbeat.uptimeSec} s` : EMPTY_VALUE} />
-        </div>
-        {heartbeatError && <p className="drone-sse-error">{heartbeatError}</p>}
-      </article>
+      {heartbeatError && <p className="drone-sse-error">{heartbeatError}</p>}
 
       <article className="drone-mission-connect-card">
         <label htmlFor="mission-id">ID de la mision (UUID)</label>
@@ -239,14 +221,19 @@ export function DroneTelemetryView({ token }: DroneTelemetryViewProps) {
       {lastError && <p className="drone-sse-error">{lastError}</p>}
 
       <section className="drone-telemetry-grid">
+        <DroneInfoCard icon={<Plane size={20} />} title="Estado" tone="blue">
+          <InfoLine label="Estado" value={heartbeat?.status ?? EMPTY_VALUE} />
+          <InfoLine label="Modo de vuelo" value={mergedFlightMode ?? EMPTY_VALUE} />
+        </DroneInfoCard>
+
         <DroneInfoCard icon={<Battery size={20} />} title="Bateria" tone="green">
-          <strong className="drone-big-value">{telemetry?.battery ? `${telemetry.battery.percentage}%` : EMPTY_VALUE}</strong>
-          <InfoLine label="Voltaje" value={telemetry?.battery ? `${formatNumber(telemetry.battery.voltageV, 2)} V` : EMPTY_VALUE} />
+          <strong className="drone-big-value">{mergedBattery ? `${mergedBattery.percentage}%` : EMPTY_VALUE}</strong>
+          <InfoLine label="Voltaje" value={mergedBattery ? `${formatNumber(mergedBattery.voltageV, 2)} V` : EMPTY_VALUE} />
         </DroneInfoCard>
 
         <DroneInfoCard icon={<MapPin size={20} />} title="Posicion" tone="blue">
-          <InfoLine label="Latitud" value={telemetry?.position ? telemetry.position.latitude.toFixed(6) : EMPTY_VALUE} />
-          <InfoLine label="Longitud" value={telemetry?.position ? telemetry.position.longitude.toFixed(6) : EMPTY_VALUE} />
+          <InfoLine label="Latitud" value={mergedPosition ? mergedPosition.latitude.toFixed(6) : EMPTY_VALUE} />
+          <InfoLine label="Longitud" value={mergedPosition ? mergedPosition.longitude.toFixed(6) : EMPTY_VALUE} />
           <InfoLine label="Altitud relativa" value={telemetry?.position ? `${formatNumber(telemetry.position.relativeAltitude)} m` : EMPTY_VALUE} />
           <InfoLine label="Altitud absoluta" value={telemetry?.position ? `${formatNumber(telemetry.position.absoluteAltitude)} m` : EMPTY_VALUE} />
         </DroneInfoCard>
@@ -258,27 +245,14 @@ export function DroneTelemetryView({ token }: DroneTelemetryViewProps) {
         </DroneInfoCard>
 
         <DroneInfoCard icon={<Satellite size={20} />} title="GPS" tone="green">
-          <InfoLine label="Fix" value={telemetry?.gps?.fixType ?? EMPTY_VALUE} />
-          <InfoLine label="Satelites" value={telemetry?.gps ? String(telemetry.gps.satellites) : EMPTY_VALUE} />
+          <InfoLine label="Fix" value={mergedGps?.fixType ?? EMPTY_VALUE} />
+          <InfoLine label="Satelites" value={mergedGps ? String(mergedGps.satellites) : EMPTY_VALUE} />
           <InfoLine label="HDOP" value={telemetry?.gps ? telemetry.gps.hdop.toFixed(2) : EMPTY_VALUE} />
           <InfoLine label="VDOP" value={telemetry?.gps ? telemetry.gps.vdop.toFixed(2) : EMPTY_VALUE} />
-        </DroneInfoCard>
-
-        <DroneInfoCard icon={<Plane size={20} />} title="Vuelo" tone="blue">
-          <InfoLine label="Modo" value={telemetry?.flightMode ?? EMPTY_VALUE} />
-          <InfoLine label="Waypoint actual" value={telemetry?.currentWaypoint != null ? String(telemetry.currentWaypoint) : EMPTY_VALUE} />
-          <InfoLine label="Timestamp" value={telemetry ? new Date(telemetry.timestamp).toLocaleTimeString("es-AR") : EMPTY_VALUE} />
         </DroneInfoCard>
       </section>
 
       <section className="drone-bottom-grid">
-        <DroneInfoCard icon={<Clock size={20} />} title="Ultimo evento de estado" tone="orange" className="drone-event-card">
-          <InfoLine label="Evento" value={status?.event ?? EMPTY_VALUE} />
-          <InfoLine label="Accion" value={status?.action ?? EMPTY_VALUE} />
-          <InfoLine label="Bateria" value={status ? `${status.batteryPercentage}%` : EMPTY_VALUE} />
-          <InfoLine label="Timestamp" value={status ? new Date(status.timestamp).toLocaleTimeString("es-AR") : EMPTY_VALUE} />
-        </DroneInfoCard>
-
         <article className="drone-photo-card">
           <h2>{selectedDroneLabel || "Dron"}</h2>
           <p>Modelo: DJI Matrice 300 RTK</p>
