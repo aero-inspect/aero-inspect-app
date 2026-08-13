@@ -2,19 +2,37 @@
 // No confundir con los tipos de src/types/index.ts, que son del modelo mock/local
 // que todavía usan RegistrarActivo/MisActivos/ConfigurarMision.
 
-export type BackendAssetType = "SILO" | "NORIA" | "CINTA_TRANSPORTADORA" | "SECADORA" | "TUBERIA";
+export type BackendAssetType = "SILO" | "NORIA" | "CINTA_TRANSPORTADORA" | "TUBERIA" | "TECHO";
 export type BackendAssetStatus = "ACTIVE" | "MAINTENANCE" | "OUT_OF_SERVICE";
 
 export type BackendAsset = {
   idAsset: number;
   name: string;
+  code: string;
   description: string | null;
   type: BackendAssetType;
   status: BackendAssetStatus;
   createdAt: string | null;
+  lastMaintenanceAt: string | null;
   locationDetail: string | null;
+  imageName: string | null;
+  imageData: string | null;
   latitude: number;
   longitude: number;
+};
+
+export type CreateAssetPayload = {
+  name: string;
+  code: string;
+  type: BackendAssetType;
+  status: BackendAssetStatus;
+  locationDetail: string;
+  latitude: number;
+  longitude: number;
+  lastMaintenanceAt?: string | null;
+  imageName?: string | null;
+  imageData?: string | null;
+  description?: string | null;
 };
 
 export type WaypointAction = "TAKEOFF" | "NAVIGATE" | "STOP" | "LAND";

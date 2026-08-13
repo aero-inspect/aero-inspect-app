@@ -21,10 +21,10 @@ import { FieldError } from "../components/FieldError";
 import { SuccessModal } from "../components/SuccessModal";
 import { AppTopActions } from "../components/AppTopActions";
 
-type AssetStatus = "Operativo" | "Mantenimiento" | "Fuera de servicio";
+type AssetStatus = "Activo" | "En mantenimiento" | "Fuera de servicio";
 type FormErrorKey = "name" | "type" | "location" | "description";
 
-const STATUS_OPTIONS: AssetStatus[] = ["Operativo", "Mantenimiento", "Fuera de servicio"];
+const STATUS_OPTIONS: AssetStatus[] = ["Activo", "En mantenimiento", "Fuera de servicio"];
 
 const MISSION_SUGGESTIONS: Record<AssetType, string[]> = {
   Silo: ["Inspeccion visual", "Corrosion estructural", "Termografia"],
@@ -51,7 +51,7 @@ export function RegistrarActivoView({
 }) {
   const [name, setName] = useState("");
   const [type, setType] = useState<AssetType>("Silo");
-  const [status, setStatus] = useState<AssetStatus>("Operativo");
+  const [status, setStatus] = useState<AssetStatus>("Activo");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [description, setDescription] = useState("");
@@ -126,7 +126,7 @@ export function RegistrarActivoView({
 
     setName("");
     setType("Silo");
-    setStatus("Operativo");
+    setStatus("Activo");
     setLatitude("");
     setLongitude("");
     setDescription("");
@@ -348,13 +348,13 @@ function getShortAssetType(type: AssetType) {
 }
 
 function getStatusClass(status: AssetStatus) {
-  if (status === "Mantenimiento") return "assets-status warning";
+  if (status === "En mantenimiento") return "assets-status warning";
   if (status === "Fuera de servicio") return "assets-status danger";
   return "assets-status ok";
 }
 
 function getStatusPillClass(status: AssetStatus) {
-  if (status === "Mantenimiento") return "maintenance";
+  if (status === "En mantenimiento") return "maintenance";
   if (status === "Fuera de servicio") return "offline";
   return "operative";
 }

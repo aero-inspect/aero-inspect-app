@@ -2,6 +2,7 @@ import type {
   BackendAsset,
   BackendFlightPlan,
   BackendMission,
+  CreateAssetPayload,
   CreateMissionPayload,
   SeedResult
 } from "./types";
@@ -32,6 +33,19 @@ export function getAssets() {
 
 export function getAsset(idAsset: number) {
   return request<BackendAsset>(`/api/v1/assets/${idAsset}`);
+}
+
+export function createAsset(payload: CreateAssetPayload) {
+  return request<BackendAsset>("/api/v1/assets", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteAsset(idAsset: number) {
+  return request<void>(`/api/v1/assets/${idAsset}`, {
+    method: "DELETE"
+  });
 }
 
 export function getFlightPlans() {
