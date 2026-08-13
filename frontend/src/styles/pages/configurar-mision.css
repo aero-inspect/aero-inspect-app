@@ -709,6 +709,19 @@
   font-size: 12px;
 }
 
+.poi-popup-photo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 10px;
+  font-weight: 700;
+}
+
 .poi-popup-item p {
   margin: 4px 0 0 24px;
   color: #52677a;
