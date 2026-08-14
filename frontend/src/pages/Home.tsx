@@ -238,7 +238,7 @@ export function Home({
             plant={MOCK_PLANT}
           />
         ) : isDronePath && DRONE_OPERATION_ROLES.includes(user.role) ? (
-          <DroneTelemetryView token={user.token} />
+          <DroneTelemetryView />
         ) : isAssetsPath && userCanConsultAssets ? (
           <MisActivosView assets={assets} onBack={() => navigateTo("/")} onDeleteAsset={(assetId) => setAssets((current) => current.filter((asset) => asset.id !== assetId))} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} plant={MOCK_PLANT} />
         ) : isCreateReportPath ? (
