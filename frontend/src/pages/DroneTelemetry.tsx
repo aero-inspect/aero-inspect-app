@@ -1,13 +1,44 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Battery, Check, MapPin, Plane, Satellite } from "lucide-react";
+import { AlertTriangle, Battery, Check, MapPin, Plane, Satellite } from "lucide-react";
 import { getDroneStatuses, getDrones } from "../api/client";
 import type { BackendDrone, BackendDroneStatus } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
-import droneImage from "../assets/drone-image.png";
 
 const HEARTBEAT_POLL_INTERVAL_MS = 3000;
+const LOW_BATTERY_THRESHOLD_PCT = 20;
+const MIN_GPS_SATELLITES = 6;
 
 const EMPTY_VALUE = "--";
+
+type PreflightCheck = {
+  label: string;
+  ok: boolean | null;
+  detail: string;
+};
+
+function buildPreflightChecks(heartbeat: BackendDroneStatus | null): PreflightCheck[] {
+  const batteryPct = heartbeat?.battery?.percentage ?? null;
+  const linkOk = heartbeat?.mavlinkLinkOk ?? null;
+  const gps = heartbeat?.gps ?? null;
+
+  return [
+    {
+      label: "Bateria",
+      ok: batteryPct == null ? null : batteryPct >= LOW_BATTERY_THRESHOLD_PCT,
+      detail: batteryPct == null ? EMPTY_VALUE : `${batteryPct}%`
+    },
+    {
+      label: "Enlace",
+      ok: linkOk,
+      detail: linkOk == null ? EMPTY_VALUE : linkOk ? "Conectado" : "Sin enlace"
+    },
+    {
+      label: "GPS",
+      ok: gps == null ? null : gps.fixType === "3D_FIX" && gps.satellites >= MIN_GPS_SATELLITES,
+      detail: gps == null ? EMPTY_VALUE : `${gps.fixType} - ${gps.satellites} sat`
+    }
+  ];
+}
 
 export function DroneTelemetryView() {
   const [drones, setDrones] = useState<BackendDrone[]>([]);
@@ -60,7 +91,8 @@ export function DroneTelemetryView() {
     [drones]
   );
 
-  const selectedDroneLabel = droneOptions.find((drone) => drone.id === selectedDroneId)?.label ?? selectedDroneId;
+  const preflightChecks = useMemo(() => buildPreflightChecks(heartbeat), [heartbeat]);
+  const allChecksOk = heartbeat != null && preflightChecks.every((check) => check.ok === true);
 
   const formatNumber = (value: number | null | undefined, decimals = 1) => {
     if (value == null || Number.isNaN(value)) return EMPTY_VALUE;
@@ -136,24 +168,18 @@ export function DroneTelemetryView() {
       </section>
 
       <section className="drone-bottom-grid">
-        <article className="drone-photo-card">
-          <h2>{selectedDroneLabel || "Dron"}</h2>
-          <p>Modelo: DJI Matrice 300 RTK</p>
-          <img src={droneImage} alt={selectedDroneLabel || "Dron"} />
-        </article>
-
         <article className="drone-preflight-card">
           <h2>Chequeos prevuelo</h2>
-          {["Bateria", "Helices", "Camara", "Sensores", "Senal y GPS"].map((item) => (
-            <div className="preflight-row" key={item}>
-              <Check size={14} />
-              <span>{item}</span>
-              <strong>OK</strong>
+          {preflightChecks.map((check) => (
+            <div className={`preflight-row ${check.ok === true ? "ok" : check.ok === false ? "warn" : "unknown"}`} key={check.label}>
+              {check.ok === false ? <AlertTriangle size={14} /> : <Check size={14} />}
+              <span>{check.label}</span>
+              <strong>{check.detail}</strong>
             </div>
           ))}
-          <div className="drone-ready-box">
-            <Check size={18} />
-            <strong>Dron listo para operar</strong>
+          <div className={`drone-ready-box ${allChecksOk ? "" : "warn"}`}>
+            {allChecksOk ? <Check size={18} /> : <AlertTriangle size={18} />}
+            <strong>{heartbeat == null ? "Sin datos del dron" : allChecksOk ? "Dron listo para operar" : "Revisar antes de operar"}</strong>
           </div>
         </article>
       </section>
