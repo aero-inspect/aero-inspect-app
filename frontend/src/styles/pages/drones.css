@@ -8,7 +8,6 @@
 
 .drones-topbar,
 .drone-select-card,
-.drone-mission-connect-card,
 .drone-heartbeat-card header,
 .drone-info-card header,
 .drone-info-line,
@@ -43,10 +42,8 @@
 }
 
 .drone-select-card,
-.drone-mission-connect-card,
 .drone-heartbeat-card,
 .drone-info-card,
-.drone-photo-card,
 .drone-preflight-card {
   border: 1px solid #e3ebf2;
   border-radius: 8px;
@@ -104,16 +101,14 @@
   gap: 4px;
 }
 
-.drone-select-field label,
-.drone-mission-connect-card label {
+.drone-select-field label {
   color: #063b7a;
   font-size: 13px;
   line-height: 16px;
   font-weight: 500;
 }
 
-.drone-select-field select,
-.drone-mission-connect-card input {
+.drone-select-field select {
   width: 100%;
   height: 34px;
   border: 1px solid #d8e4f0;
@@ -124,13 +119,6 @@
   font-size: 13px;
   line-height: 17px;
   font-weight: 600;
-}
-
-.drone-select-field select {
-  padding: 0 14px;
-}
-
-.drone-mission-connect-card input {
   padding: 0 14px;
 }
 
@@ -177,44 +165,6 @@
   color: #119b53;
 }
 
-.drone-mission-connect-card {
-  gap: 14px;
-  height: 58px;
-  margin-bottom: 9px;
-  padding: 10px 20px;
-}
-
-.drone-mission-connect-card label {
-  flex: 0 0 150px;
-}
-
-.drone-mission-connect-card input {
-  flex: 0 1 430px;
-}
-
-.drone-mission-connect-card button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 98px;
-  height: 34px;
-  border: 0;
-  border-radius: 6px;
-  background: #063b7a;
-  color: #ffffff;
-  font: inherit;
-  font-size: 13px;
-  line-height: 16px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.drone-mission-connect-card button:disabled {
-  background: #e5e7eb;
-  color: #9aa6b2;
-  cursor: not-allowed;
-}
-
 .drone-sse-error {
   margin: -4px 0 8px;
   color: #a94442;
@@ -225,7 +175,7 @@
 
 .drone-telemetry-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 10px;
 }
@@ -241,7 +191,6 @@
 }
 
 .drone-info-card h2,
-.drone-photo-card h2,
 .drone-preflight-card h2 {
   margin: 0;
   color: #063b7a;
@@ -313,41 +262,15 @@
 
 .drone-bottom-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 0.95fr) minmax(420px, 1.65fr) minmax(260px, 0.8fr);
+  grid-template-columns: minmax(260px, 480px);
   gap: 10px;
-}
-
-.drone-event-card,
-.drone-photo-card,
-.drone-preflight-card {
-  height: 204px;
-}
-
-.drone-photo-card {
-  padding: 14px 20px;
-  overflow: hidden;
-}
-
-.drone-photo-card p {
-  margin: 4px 0 0;
-  color: #5d6f8b;
-  font-size: 13px;
-  line-height: 16px;
-}
-
-.drone-photo-card img {
-  display: block;
-  width: min(500px, 86%);
-  height: 136px;
-  margin: 6px auto 0;
-  object-fit: contain;
-  mix-blend-mode: multiply;
 }
 
 .drone-preflight-card {
   display: grid;
-  grid-template-rows: auto repeat(5, 19px) 1fr;
+  grid-template-rows: auto repeat(3, 19px) 1fr;
   gap: 4px;
+  height: 168px;
   padding: 14px 18px;
 }
 
@@ -363,15 +286,28 @@
   font-weight: 400;
 }
 
-.preflight-row svg,
-.drone-ready-box svg {
+.preflight-row.ok svg,
+.drone-ready-box:not(.warn) svg {
   color: #119b53;
+}
+
+.preflight-row.ok svg {
+  background: #e8f5e9;
+}
+
+.preflight-row.warn svg {
+  color: #d19434;
+  background: #fff4d8;
+}
+
+.preflight-row.unknown svg {
+  color: #9aa6b2;
+  background: #eef1f4;
 }
 
 .preflight-row svg {
   padding: 2px;
   border-radius: 50%;
-  background: #e8f5e9;
 }
 
 .preflight-row strong {
@@ -380,6 +316,14 @@
   font-size: 12px;
   line-height: 15px;
   font-weight: 700;
+}
+
+.preflight-row.warn strong {
+  color: #a15c00;
+}
+
+.preflight-row.unknown strong {
+  color: #9aa6b2;
 }
 
 .drone-ready-box {
@@ -405,35 +349,38 @@
   font-weight: 700;
 }
 
+.drone-ready-box.warn {
+  color: #a15c00;
+  border-top-color: #f3d9a6;
+}
+
+.drone-ready-box.warn svg {
+  color: #d19434;
+  background: #fff4d8;
+}
+
+.drone-ready-box.warn strong {
+  color: #a15c00;
+}
+
 @media (max-width: 1200px) {
   .drones-dashboard {
     overflow-y: auto;
   }
 
-  .drone-telemetry-grid,
-  .drone-bottom-grid {
+  .drone-telemetry-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .drone-heartbeat-body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .drone-photo-card {
-    grid-column: span 2;
   }
 }
 
 @media (max-width: 760px) {
-  .drone-select-card,
-  .drone-mission-connect-card {
+  .drone-select-card {
     display: grid;
     height: auto;
-  }
-
-  .drone-mission-connect-card label,
-  .drone-mission-connect-card input {
-    flex: initial;
   }
 
   .drone-telemetry-grid,
@@ -443,10 +390,6 @@
 
   .drone-heartbeat-body {
     grid-template-columns: 1fr;
-  }
-
-  .drone-photo-card {
-    grid-column: auto;
   }
 }
 
