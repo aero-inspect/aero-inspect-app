@@ -122,3 +122,54 @@ export type SeedResult = {
   assets: BackendAsset[];
   flightPlan: BackendFlightPlan;
 };
+
+export type BackendDrone = {
+  idDrone: string;
+  droneId: string;
+  name: string;
+  model: string | null;
+  serialNumber: string | null;
+  createdAt: string;
+};
+
+export type CreateDronePayload = {
+  droneId: string;
+  name: string;
+  model?: string | null;
+  serialNumber?: string | null;
+};
+
+export type BackendDronePosition = {
+  latitude: number;
+  longitude: number;
+};
+
+export type BackendDroneGps = {
+  fixType: string;
+  satellites: number;
+};
+
+export type BackendDroneBattery = {
+  percentage: number;
+  voltageV: number;
+};
+
+// Refleja DroneStatusDto: el último heartbeat conocido de un dron (llega por MQTT sin
+// necesidad de una misión activa, por eso sirve para ver el estado de un dron idle).
+export type BackendDroneStatus = {
+  droneId: string;
+  lastSeen: string;
+  timestamp: string | null;
+  uptimeSec: number | null;
+  missionId: string | null;
+  mavlinkLinkOk: boolean | null;
+  armed: boolean | null;
+  flightMode: string | null;
+  status: string | null;
+  position: BackendDronePosition | null;
+  signalStrengthDbm: number | null;
+  cpuTempC: number | null;
+  cpuLoadPct: number | null;
+  battery: BackendDroneBattery | null;
+  gps: BackendDroneGps | null;
+};
