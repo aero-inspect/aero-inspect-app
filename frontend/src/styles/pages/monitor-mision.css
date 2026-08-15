@@ -157,7 +157,7 @@
   border-radius: 8px;
 }
 
-.monitor-map-frame .leaflet-container {
+.monitor-map-frame.pending .leaflet-container {
   filter: saturate(0.95) brightness(0.72);
 }
 

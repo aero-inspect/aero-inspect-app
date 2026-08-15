@@ -272,7 +272,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
             </div>
             <p className="monitor-map-label">MAPA SATELITAL - AREA DE PLANTA</p>
 
-            <div className="monitor-map-frame">
+            <div className={`monitor-map-frame${isPendingMission ? " pending" : ""}`}>
               <MissionDetailRouteMap
                 points={routePoints}
                 assets={assets}
