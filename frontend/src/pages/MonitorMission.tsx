@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, Camera, Gauge, Pause, Play, Route, Satellite, X } from "lucide-react";
 import type { BackendAsset, BackendFlightPlan, BackendMission, BackendMissionStatus, BackendMissionWaypoint, BackendPlanWaypoint } from "../api/types";
 import { getAssets, getFlightPlan, getMission, getMissions, startMission } from "../api/client";
-import { MissionDetailRouteMap } from "../components/MissionDetailRouteMap";
+import { MissionDetailRouteMap, type AssetInspectionInfo } from "../components/MissionDetailRouteMap";
+import { photoCountForWaypoint } from "../utils/missionPhotos";
 import { AppTopActions } from "../components/AppTopActions";
 import { Compass } from "../components/Compass";
 import { useMissionTelemetry } from "../hooks/useMissionTelemetry";
-import { useTraveledDistance } from "../hooks/useTraveledDistance";
+import { remainingRouteDistanceMeters, totalRouteDistanceMeters } from "../utils/geo";
 
 type MonitorMissionViewProps = {
   missionId: string | null;
@@ -75,7 +76,6 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
   const statusPollRef = useRef<number | null>(null);
 
   const { telemetry } = useMissionTelemetry(mission?.idMission, token);
-  const distanceTraveledMeters = useTraveledDistance(telemetry?.position, mission?.idMission);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,15 +130,52 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
     [mission?.missionWaypoints, flightPlan?.route]
   );
 
-  const missionAssets = useMemo(() => {
-    const source = mission?.missionWaypoints?.length ? mission.missionWaypoints : flightPlan?.route ?? [];
-    const assetIds = new Set(source.map((point) => point.idAsset).filter((idAsset): idAsset is number => idAsset != null));
-    return assets.filter((asset) => assetIds.has(asset.idAsset));
-  }, [mission?.missionWaypoints, flightPlan?.route, assets]);
-
   const currentWaypoint = telemetry?.currentWaypoint ?? null;
+
+  const assetInspectionInfo = useMemo(() => {
+    const info = new Map<number, AssetInspectionInfo>();
+
+    const entryFor = (idAsset: number) => {
+      let entry = info.get(idAsset);
+      if (!entry) {
+        entry = { inspected: false, totalPhotos: 0, takenPhotos: 0 };
+        info.set(idAsset, entry);
+      }
+      return entry;
+    };
+
+    if (mission?.missionWaypoints?.length) {
+      for (const waypoint of mission.missionWaypoints) {
+        if (waypoint.idAsset == null || waypoint.gimbalPitchDeg == null) continue;
+        const entry = entryFor(waypoint.idAsset);
+        entry.inspected = true;
+        entry.totalPhotos += 1;
+        if (currentWaypoint != null && waypoint.sequence < currentWaypoint) entry.takenPhotos += 1;
+      }
+    } else if (flightPlan?.route?.length) {
+      for (const waypoint of flightPlan.route) {
+        if (waypoint.idAsset == null || !waypoint.pointOfInterest) continue;
+        const entry = entryFor(waypoint.idAsset);
+        entry.inspected = true;
+        entry.totalPhotos += photoCountForWaypoint(waypoint);
+      }
+    }
+
+    return info;
+  }, [mission?.missionWaypoints, flightPlan?.route, currentWaypoint]);
+
   const totalWaypoints = routePoints.length;
-  const progress = mission?.completionPercentage ?? null;
+  const orderedRoutePoints = useMemo(() => [...routePoints].sort((a, b) => a.sequence - b.sequence), [routePoints]);
+  const totalRouteDistanceMetersValue = useMemo(() => totalRouteDistanceMeters(orderedRoutePoints), [orderedRoutePoints]);
+  const distanceRemainingMeters = useMemo(
+    () => remainingRouteDistanceMeters(orderedRoutePoints, telemetry?.position, currentWaypoint),
+    [orderedRoutePoints, telemetry?.position, currentWaypoint]
+  );
+  const distanceTraveledMeters = Math.max(0, totalRouteDistanceMetersValue - distanceRemainingMeters);
+  const progress =
+    totalRouteDistanceMetersValue > 0
+      ? Math.min(100, (distanceTraveledMeters / totalRouteDistanceMetersValue) * 100)
+      : mission?.completionPercentage ?? null;
   const progressWidth = progress == null ? 0 : Math.max(0, Math.min(100, progress));
   const missionStatus = statusLabel(mission?.status);
   const isPendingMission = mission?.status === "PLANNED";
@@ -196,6 +233,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
     ["Velocidad horizontal", telemetry?.velocity ? `${formatNumber(telemetry.velocity.groundHorizontalSpeedMs)} m/s` : EMPTY_VALUE],
     ["Velocidad vertical", telemetry?.velocity ? `${formatNumber(telemetry.velocity.groundVerticalSpeedMs)} m/s` : EMPTY_VALUE],
     ["Distancia recorrida", formatDistance(distanceTraveledMeters)],
+    ["Distancia restante", totalRouteDistanceMetersValue > 0 ? formatDistance(distanceRemainingMeters) : EMPTY_VALUE],
     ["Ultima actualizacion", telemetry?.timestamp ? new Date(telemetry.timestamp).toLocaleTimeString("es-AR") : EMPTY_VALUE]
   ];
 
@@ -237,7 +275,8 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
             <div className="monitor-map-frame">
               <MissionDetailRouteMap
                 points={routePoints}
-                assets={missionAssets}
+                assets={assets}
+                assetInspectionInfo={assetInspectionInfo}
                 dronePosition={dronePosition}
                 completedSequence={currentWaypoint}
               />

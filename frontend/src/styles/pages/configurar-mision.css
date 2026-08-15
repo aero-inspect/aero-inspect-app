@@ -734,3 +734,22 @@
   font-weight: 400 !important;
 }
 
+.poi-popup-status {
+  margin: 0;
+  width: fit-content;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.poi-popup-status.done {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.poi-popup-status.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
