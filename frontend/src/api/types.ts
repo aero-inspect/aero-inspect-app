@@ -139,6 +139,13 @@ export type CreateDronePayload = {
   serialNumber?: string | null;
 };
 
+export type UpdateDronePayload = {
+  droneId: string;
+  name: string;
+  model?: string | null;
+  serialNumber?: string | null;
+};
+
 export type BackendDronePosition = {
   latitude: number;
   longitude: number;

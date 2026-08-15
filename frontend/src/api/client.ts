@@ -7,7 +7,8 @@ import type {
   CreateAssetPayload,
   CreateDronePayload,
   CreateMissionPayload,
-  SeedResult
+  SeedResult,
+  UpdateDronePayload
 } from "./types";
 
 const DEFAULT_ERROR_MESSAGE = "Error de red inesperado";
@@ -87,6 +88,13 @@ export function getDrones() {
 export function createDrone(payload: CreateDronePayload) {
   return request<BackendDrone>("/api/v1/drones", {
     method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateDrone(idDrone: string, payload: UpdateDronePayload) {
+  return request<BackendDrone>(`/api/v1/drones/${idDrone}`, {
+    method: "PUT",
     body: JSON.stringify(payload)
   });
 }

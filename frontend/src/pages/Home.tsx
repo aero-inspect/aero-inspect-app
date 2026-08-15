@@ -10,6 +10,7 @@ import { ConfigurarMisionView } from "./ConfigurarMision";
 import { GenerarPlanVueloView } from "./GenerarPlanVuelo";
 import { MisMisionesView } from "./MisMisiones";
 import { DroneTelemetryView } from "./DroneTelemetry";
+import { DronesAbmView } from "./DronesAbm";
 import { PruebaTelemetriaView } from "./PruebaTelemetria";
 import { LaunchMissionView } from "./LaunchMission";
 import { RegistrarActivoView } from "./RegistrarActivo";
@@ -78,6 +79,7 @@ export function Home({
   const isMissionsPath = currentPath === "/mis-misiones";
   const isGeneratePlanPath = currentPath === "/generar-plan";
   const isDronePath = currentPath === "/dron";
+  const isDronesAbmPath = currentPath === "/gestion-drones";
   const isLaunchPath = currentPath === "/ejecutar-despegue";
   const isProfilePath = currentPath === "/perfil";
   const isRoleMgmtPath = currentPath === "/gestion-roles";
@@ -105,7 +107,7 @@ export function Home({
           <img className="sidebar-brand-logo" src={sidebarLogo} alt="AeroInspect" />
         </div>
         <nav className="nav-list" aria-label="Principal">
-          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isDronePath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
+          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
             <HomeIcon size={20} />
             {!isSidebarCollapsed && <span>Inicio</span>}
           </button>
@@ -131,6 +133,13 @@ export function Home({
             <button className={isDronePath ? "active" : undefined} onClick={() => navigateTo("/dron")} type="button">
               <DroneGlyph />
               {!isSidebarCollapsed && <span>Drones</span>}
+            </button>
+          )}
+
+          {user.role === "Jefe de Planta" && (
+            <button className={isDronesAbmPath ? "active" : undefined} onClick={() => navigateTo("/gestion-drones")} type="button">
+              <DroneGlyph />
+              {!isSidebarCollapsed && <span>Gestión de Drones</span>}
             </button>
           )}
 
@@ -203,6 +212,8 @@ export function Home({
           <RegistrarActivoView assets={assets} onBack={() => navigateTo("/mis-activos")} onCreateAsset={(asset) => setAssets((current) => [...current, { ...asset, id: Date.now(), plantId: MOCK_PLANT.id }])} onGoHome={() => navigateTo("/")} onViewAssets={() => navigateTo("/mis-activos")} plant={MOCK_PLANT} />
         ) : isRoleMgmtPath && user.role === "Jefe de Planta" ? (
           <RoleManagementView users={users} setUsers={setUsers} onBack={() => navigateTo("/")} />
+        ) : isDronesAbmPath && user.role === "Jefe de Planta" ? (
+          <DronesAbmView />
         ) : isMonitorPath && userCanConsultAssets ? (
           <MonitorMissionView missionId={selectedBackendMissionId} token={user.token} onBack={() => navigateTo("/mis-misiones")} />
         ) : isMissionsPath ? (
