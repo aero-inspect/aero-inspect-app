@@ -102,6 +102,35 @@
   box-shadow: 0 5px 12px rgba(2, 18, 30, 0.24);
 }
 
+.leaflet-readonly-asset-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaflet-readonly-asset-marker span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 6px 14px rgba(2, 18, 30, 0.32), 0 0 0 3px rgba(255, 255, 255, 0.24);
+}
+
+.leaflet-drone-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaflet-drone-marker span {
+  display: block;
+  filter: drop-shadow(0 3px 6px rgba(2, 18, 30, 0.35));
+  transition: transform 0.3s ease;
+}
+
 .plant-map-info {
   display: flex;
   flex-direction: column;
