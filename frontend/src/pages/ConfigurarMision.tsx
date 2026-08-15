@@ -1,14 +1,14 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Save, CheckCircle2, AlertCircle } from "lucide-react";
-import type { BackendFlightPlan, BackendAsset } from "../api/types";
-import { getFlightPlans, getAssets, createMission } from "../api/client";
+import type { BackendFlightPlan, BackendAsset, BackendDrone } from "../api/types";
+import { getFlightPlans, getAssets, getDrones, createMission } from "../api/client";
 import { FieldError } from "../components/FieldError";
 import { MissionPlanMap } from "../components/MissionPlanMap";
 import { AppTopActions } from "../components/AppTopActions";
 import type { InspectionPoint } from "../types";
 import { photoCountForWaypoint } from "../utils/missionPhotos";
 
-type FieldErrors = Partial<Record<"name" | "droneId" | "scheduledAt", string>>;
+type FieldErrors = Partial<Record<"name" | "idDrone" | "scheduledAt", string>>;
 
 type MissionDraftStatus = "Pendiente";
 
@@ -34,6 +34,9 @@ export function ConfigurarMisionView({
   const [flightPlansError, setFlightPlansError] = useState<string | null>(null);
   const [hasAppliedInitialPlan, setHasAppliedInitialPlan] = useState(false);
 
+  const [drones, setDrones] = useState<BackendDrone[] | null>(null);
+  const [dronesError, setDronesError] = useState<string | null>(null);
+
   const [selectedFlightPlan, setSelectedFlightPlan] = useState<BackendFlightPlan | null>(null);
   const [planAssets, setPlanAssets] = useState<BackendAsset[]>([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
@@ -42,7 +45,7 @@ export function ConfigurarMisionView({
   const [selectedWaypointIds, setSelectedWaypointIds] = useState<Set<number>>(new Set());
   const [name, setName] = useState("");
   const [objective, setObjective] = useState("");
-  const [droneId, setDroneId] = useState("");
+  const [idDrone, setIdDrone] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -59,6 +62,9 @@ export function ConfigurarMisionView({
 
   useEffect(() => {
     loadFlightPlans();
+    getDrones()
+      .then(setDrones)
+      .catch((error: unknown) => setDronesError(error instanceof Error ? error.message : "No se pudieron cargar los drones."));
   }, []);
 
   const handleSelectFlightPlan = (plan: BackendFlightPlan) => {
@@ -112,7 +118,7 @@ export function ConfigurarMisionView({
     setSelectedWaypointIds(new Set());
     setName("");
     setObjective("");
-    setDroneId("");
+    setIdDrone("");
     setScheduledAt("");
     setFieldErrors({});
     setSubmitError(null);
@@ -126,7 +132,7 @@ export function ConfigurarMisionView({
 
     const nextFieldErrors: FieldErrors = {};
     if (!name.trim()) nextFieldErrors.name = "Ingrese un nombre para la mision.";
-    if (!droneId.trim()) nextFieldErrors.droneId = "Ingrese el identificador del dron.";
+    if (!idDrone) nextFieldErrors.idDrone = "Seleccione un dron.";
     if (!scheduledAt) nextFieldErrors.scheduledAt = "Seleccione fecha y hora programada.";
 
     if (Object.keys(nextFieldErrors).length > 0) {
@@ -141,7 +147,7 @@ export function ConfigurarMisionView({
         idFlightPlan: selectedFlightPlan.idFlightPlan,
         name: name.trim(),
         objective: objective.trim(),
-        droneId: droneId.trim(),
+        idDrone,
         scheduledAt: new Date(scheduledAt).toISOString(),
         selectedPlanWaypointIds: Array.from(selectedWaypointIds)
       });
@@ -248,15 +254,22 @@ export function ConfigurarMisionView({
                 <span>
                   Dron <small className="required-inline">*</small>
                 </span>
-                <input
-                  aria-invalid={Boolean(fieldErrors.droneId)}
-                  className={fieldErrors.droneId ? "field-invalid" : undefined}
-                  onChange={(event) => setDroneId(event.target.value)}
-                  placeholder="Ej: DRONE-01"
-                  type="text"
-                  value={droneId}
-                />
-                {fieldErrors.droneId && <FieldError message={fieldErrors.droneId} />}
+                <select
+                  aria-invalid={Boolean(fieldErrors.idDrone)}
+                  className={fieldErrors.idDrone ? "field-invalid" : undefined}
+                  onChange={(event) => setIdDrone(event.target.value)}
+                  value={idDrone}
+                >
+                  <option value="">
+                    {dronesError ? "No se pudieron cargar los drones" : "Seleccione un dron"}
+                  </option>
+                  {drones?.map((drone) => (
+                    <option key={drone.idDrone} value={drone.idDrone}>
+                      {drone.name} ({drone.droneId})
+                    </option>
+                  ))}
+                </select>
+                {fieldErrors.idDrone && <FieldError message={fieldErrors.idDrone} />}
               </label>
 
               <label>
