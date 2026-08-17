@@ -9,9 +9,8 @@ const MINOR_TICK_ANGLES = Array.from({ length: 12 }, (_, index) => index * 30).f
   (angle) => !MAJOR_TICKS.some((tick) => tick.angle === angle)
 );
 
-// Brujula estilo QGroundControl: la rosa (tarjeta) gira por debajo de un
-// indicador fijo en la parte superior, mientras el icono del dron permanece
-// quieto apuntando siempre "hacia arriba" (referencia del propio vehiculo).
+// Brujula convencional: la rosa (N/E/S/O y marcas) queda fija y es la aguja
+// la que gira para apuntar al rumbo actual, como en una brujula real.
 export function Compass({ headingDegree }: { headingDegree: number | null | undefined }) {
   const hasHeading = headingDegree != null && !Number.isNaN(headingDegree);
   const normalizedHeading = hasHeading ? ((headingDegree % 360) + 360) % 360 : 0;
@@ -22,16 +21,14 @@ export function Compass({ headingDegree }: { headingDegree: number | null | unde
       role="img"
       aria-label={hasHeading ? `Rumbo ${Math.round(normalizedHeading)} grados` : "Rumbo desconocido"}
     >
-      <div className="qgc-compass-readout">{hasHeading ? `${Math.round(normalizedHeading).toString().padStart(3, "0")}°` : "---°"}</div>
+      <div className="qgc-compass-readout">{hasHeading ? `${Math.round(normalizedHeading)}°` : "---°"}</div>
 
       <div className="qgc-compass-dial-frame">
-        <svg className="qgc-compass-pointer" viewBox="0 0 16 10" aria-hidden="true">
-          <path d="M8 10 L0 0 L16 0 Z" fill="#fbbf24" />
-        </svg>
-
-        <div className="qgc-compass-card" style={{ transform: `rotate(${-normalizedHeading}deg)` }}>
+        <div className="qgc-compass-card">
           {MINOR_TICK_ANGLES.map((angle) => (
-            <span key={angle} className="qgc-tick qgc-tick-minor" style={{ transform: `rotate(${angle}deg)` }} />
+            <span key={angle} className="qgc-tick qgc-tick-minor" style={{ transform: `rotate(${angle}deg)` }}>
+              <em style={{ transform: `rotate(${-angle}deg)` }}>{angle}</em>
+            </span>
           ))}
           {MAJOR_TICKS.map(({ angle, label }) => (
             <span key={angle} className="qgc-tick qgc-tick-major" style={{ transform: `rotate(${angle}deg)` }}>
@@ -40,9 +37,16 @@ export function Compass({ headingDegree }: { headingDegree: number | null | unde
           ))}
         </div>
 
-        <div className="qgc-compass-vehicle" style={{ opacity: hasHeading ? 1 : 0.4 }}>
-          <DroneGlyph size={26} />
-        </div>
+        <svg
+          className="qgc-compass-needle"
+          style={{ transform: `rotate(${normalizedHeading}deg)`, opacity: hasHeading ? 1 : 0.35 }}
+          viewBox="0 0 32 32"
+          aria-hidden="true"
+        >
+          <path d="M16 6.5 L20 21 L16 17.5 L12 21 Z" fill="#18d4aa" stroke="#0a1a38" strokeWidth="0.8" strokeLinejoin="round" />
+        </svg>
+
+        <div className="qgc-compass-hub" />
       </div>
     </div>
   );
