@@ -151,13 +151,20 @@ export function MissionDetailRouteMap({
   const positions: Array<[number, number]> = ordered.map((point) => [point.latitude, point.longitude]);
   const center = positions[0];
 
-  // Un tramo se pinta como recorrido recien cuando el dron ya llego al punto
+  // Un waypoint se pinta como recorrido recien cuando el dron ya llego al punto
   // siguiente (no apenas sale del punto actual, que es lo que da currentWaypoint
   // en cuanto arranca a navegar hacia el): por eso el corte es "<" y no "<=".
+  // Despues de esos waypoints "cerrados", se agrega la posicion en vivo del dron
+  // como ultimo punto de la linea: asi el tramo hacia el proximo waypoint se va
+  // pintando de forma progresiva a medida que el dron avanza, en vez de saltar
+  // de golpe recien al llegar.
   const completedPositions: Array<[number, number]> =
     completedSequence != null
       ? ordered.filter((point) => point.sequence < completedSequence).map((point) => [point.latitude, point.longitude])
       : [];
+  if (dronePosition) {
+    completedPositions.push([dronePosition.lat, dronePosition.lng]);
+  }
 
   return (
     <div className="leaflet-map-shell">
