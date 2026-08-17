@@ -1,11 +1,15 @@
 import type {
   BackendAsset,
+  BackendDrone,
+  BackendDroneStatus,
   BackendFlightPlan,
   BackendMission,
   BackendWeather,
   CreateAssetPayload,
+  CreateDronePayload,
   CreateMissionPayload,
-  SeedResult
+  SeedResult,
+  UpdateDronePayload
 } from "./types";
 
 const DEFAULT_ERROR_MESSAGE = "Error de red inesperado";
@@ -78,10 +82,38 @@ export function startMission(idMission: string) {
   });
 }
 
-// La API key de OpenWeather queda del lado del backend; el frontend solo pide
-// el clima de una ciudad y recibe la respuesta ya traducida a nuestro DTO.
 export function getWeather(city: string) {
   return request<BackendWeather>(`/api/v1/weather?city=${encodeURIComponent(city)}`);
+}
+
+export function getDrones() {
+  return request<BackendDrone[]>("/api/v1/drones");
+}
+
+export function createDrone(payload: CreateDronePayload) {
+  return request<BackendDrone>("/api/v1/drones", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateDrone(idDrone: string, payload: UpdateDronePayload) {
+  return request<BackendDrone>(`/api/v1/drones/${idDrone}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteDrone(idDrone: string) {
+  return request<void>(`/api/v1/drones/${idDrone}`, {
+    method: "DELETE"
+  });
+}
+
+// El heartbeat llega continuamente por MQTT, con o sin misión activa, así que sirve para
+// mostrar el estado de un dron idle antes de mandarlo a volar.
+export function getDroneStatuses() {
+  return request<BackendDroneStatus[]>("/api/v1/drones/status");
 }
 
 // POC: crea datos de prueba (Asset + FlightPlan) en general-monolith. Útil mientras no
