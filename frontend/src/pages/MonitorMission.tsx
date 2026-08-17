@@ -66,6 +66,15 @@ function formatDistance(meters: number) {
   return `${(meters / 1000).toFixed(2)} km`;
 }
 
+function formatDuration(totalSeconds: number) {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${minutes}:${pad(secs)}`;
+}
+
 const COMPASS_LABELS = ["Norte", "Noreste", "Este", "Sureste", "Sur", "Suroeste", "Oeste", "Noroeste"];
 
 function headingToCompassLabel(headingDegree: number): string {
@@ -90,6 +99,13 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
   const statusPollRef = useRef<number | null>(null);
 
   const { telemetry } = useMissionTelemetry(mission?.idMission, token);
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (mission?.status !== "IN_PROGRESS") return;
+    const intervalId = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, [mission?.status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -267,11 +283,20 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
     }
   };
 
+  const activeDurationSeconds = useMemo(() => {
+    if (!mission?.startedAt) return null;
+    const start = new Date(mission.startedAt).getTime();
+    if (Number.isNaN(start)) return null;
+    const end = mission.finishedAt ? new Date(mission.finishedAt).getTime() : now;
+    return (end - start) / 1000;
+  }, [mission?.startedAt, mission?.finishedAt, now]);
+
   const flightRows = [
     ["Bateria", telemetry?.battery ? `${telemetry.battery.percentage}%` : EMPTY_VALUE],
     ["Altitud relativa", telemetry?.position ? `${formatNumber(telemetry.position.relativeAltitude)} m` : EMPTY_VALUE],
     ["Velocidad horizontal", telemetry?.velocity ? `${formatNumber(telemetry.velocity.groundHorizontalSpeedMs)} m/s` : EMPTY_VALUE],
     ["Velocidad vertical", telemetry?.velocity ? `${formatNumber(telemetry.velocity.groundVerticalSpeedMs)} m/s` : EMPTY_VALUE],
+    ["Tiempo activo", activeDurationSeconds != null ? formatDuration(activeDurationSeconds) : EMPTY_VALUE],
     ["Distancia recorrida", formatDistance(distanceTraveledMeters)],
     ["Distancia restante", totalRouteDistanceMetersValue > 0 ? formatDistance(distanceRemainingMeters) : EMPTY_VALUE],
     ["Ultima actualizacion", telemetry?.timestamp ? new Date(telemetry.timestamp).toLocaleTimeString("es-AR") : EMPTY_VALUE]
