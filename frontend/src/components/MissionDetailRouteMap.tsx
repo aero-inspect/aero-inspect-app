@@ -28,36 +28,31 @@ export type DroneMapPosition = {
   headingDegree?: number | null;
 };
 
-// Icono de un dron visto desde arriba: cuadricoptero con brazos, helices y
-// gimbal central, mas un anillo pulsante que indica seguimiento en vivo. El
-// cuerpo rota con CSS segun el rumbo (headingDegree); el anillo de pulso queda
-// fuera de esa rotacion para que siempre se vea circular y centrado.
+// Icono de un dron visto desde arriba: silueta de cuadricoptero (brazos en X,
+// motores y fuselaje) con una unica flecha de rumbo bien marcada, para que no
+// se confunda con los marcadores de activos/hallazgos del mismo mapa (esos
+// son circulos rellenos con icono adentro).
 function createDroneIcon(headingDegree: number | null | undefined) {
   const rotation = headingDegree ?? 0;
   return divIcon({
     className: "leaflet-drone-marker",
-    html: `<span class="leaflet-drone-pulse"></span>
+    html: `<span class="leaflet-drone-halo"></span>
     <span class="leaflet-drone-body" style="transform: rotate(${rotation}deg)">
-      <svg width="40" height="40" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <g stroke="#0a1a38" stroke-width="1.6" stroke-linecap="round">
-          <line x1="16" y1="16" x2="6.5" y2="6.5" />
-          <line x1="16" y1="16" x2="25.5" y2="6.5" />
-          <line x1="16" y1="16" x2="6.5" y2="25.5" />
-          <line x1="16" y1="16" x2="25.5" y2="25.5" />
+      <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="#0a1a38" stroke-width="3" stroke-linecap="round">
+          <line x1="20" y1="20" x2="10.5" y2="10.5" />
+          <line x1="20" y1="20" x2="29.5" y2="10.5" />
+          <line x1="20" y1="20" x2="10.5" y2="29.5" />
+          <line x1="20" y1="20" x2="29.5" y2="29.5" />
         </g>
-        <g opacity="0.5" stroke="#0a1a38" stroke-width="1" fill="none">
-          <ellipse cx="6.5" cy="6.5" rx="5.6" ry="1.7" transform="rotate(45 6.5 6.5)" />
-          <ellipse cx="25.5" cy="6.5" rx="5.6" ry="1.7" transform="rotate(-45 25.5 6.5)" />
-          <ellipse cx="6.5" cy="25.5" rx="5.6" ry="1.7" transform="rotate(-45 6.5 25.5)" />
-          <ellipse cx="25.5" cy="25.5" rx="5.6" ry="1.7" transform="rotate(45 25.5 25.5)" />
+        <g fill="#0a1a38" stroke="#ffffff" stroke-width="1.4">
+          <circle cx="10.5" cy="10.5" r="4" />
+          <circle cx="29.5" cy="10.5" r="4" />
+          <circle cx="10.5" cy="29.5" r="4" />
+          <circle cx="29.5" cy="29.5" r="4" />
         </g>
-        <circle cx="6.5" cy="6.5" r="3.6" fill="#ffffff" stroke="#0a1a38" stroke-width="1.3" />
-        <circle cx="25.5" cy="6.5" r="3.6" fill="#ffffff" stroke="#0a1a38" stroke-width="1.3" />
-        <circle cx="6.5" cy="25.5" r="3.6" fill="#ffffff" stroke="#0a1a38" stroke-width="1.3" />
-        <circle cx="25.5" cy="25.5" r="3.6" fill="#ffffff" stroke="#0a1a38" stroke-width="1.3" />
-        <rect x="11.5" y="11.5" width="9" height="9" rx="2.8" fill="#0a1a38" />
-        <circle cx="16" cy="16" r="2" fill="#18d4aa" />
-        <path d="M16 1.5 L19.6 8.5 L12.4 8.5 Z" fill="#18d4aa" stroke="#0a1a38" stroke-width="1" stroke-linejoin="round" />
+        <rect x="14" y="14" width="12" height="12" rx="3.5" fill="#0a1a38" stroke="#ffffff" stroke-width="1.4" />
+        <path d="M20 7 L25 16 L15 16 Z" fill="#fbbf24" stroke="#0a1a38" stroke-width="1.2" stroke-linejoin="round" />
       </svg>
     </span>`,
     iconSize: [40, 40],
