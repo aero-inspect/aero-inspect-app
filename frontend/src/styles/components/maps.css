@@ -125,15 +125,45 @@
 }
 
 .leaflet-drone-marker {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 40px;
+  height: 40px;
 }
 
-.leaflet-drone-marker span {
+.leaflet-drone-pulse {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(24, 212, 170, 0.45);
+  animation: leaflet-drone-pulse 2s ease-out infinite;
+}
+
+.leaflet-drone-body {
+  position: relative;
   display: block;
-  filter: drop-shadow(0 3px 6px rgba(2, 18, 30, 0.35));
+  filter: drop-shadow(0 3px 6px rgba(2, 18, 30, 0.4));
   transition: transform 0.3s ease;
+}
+
+@keyframes leaflet-drone-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
 }
 
 .leaflet-popup-content-wrapper {

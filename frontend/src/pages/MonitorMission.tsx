@@ -66,6 +66,20 @@ function formatDistance(meters: number) {
   return `${(meters / 1000).toFixed(2)} km`;
 }
 
+const COMPASS_LABELS = ["Norte", "Noreste", "Este", "Sureste", "Sur", "Suroeste", "Oeste", "Noroeste"];
+
+function headingToCompassLabel(headingDegree: number): string {
+  const index = Math.round(headingDegree / 45) % 8;
+  return COMPASS_LABELS[index];
+}
+
+function pitchDescription(pitch: number): string {
+  if (pitch > 10) return "hacia arriba";
+  if (pitch < -100) return "cenital (hacia abajo)";
+  if (pitch < -10) return "hacia abajo";
+  return "horizontal";
+}
+
 export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionViewProps) {
   const [mission, setMission] = useState<BackendMission | null>(null);
   const [flightPlan, setFlightPlan] = useState<BackendFlightPlan | null>(null);
@@ -188,8 +202,34 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
     if (currentWaypoint == null || !mission?.missionWaypoints) return null;
     const waypoint = mission.missionWaypoints.find((point) => point.sequence === currentWaypoint);
     if (!waypoint || waypoint.gimbalPitchDeg == null) return null;
-    return { pitch: waypoint.gimbalPitchDeg, yaw: waypoint.gimbalYawDeg ?? 0, assetName: waypoint.name };
-  }, [currentWaypoint, mission?.missionWaypoints]);
+    const pitch = waypoint.gimbalPitchDeg;
+    const yaw = waypoint.gimbalYawDeg ?? 0;
+    const droneHeading = telemetry?.velocity?.headingDegree ?? waypoint.droneDegree;
+    const absoluteHeading = ((droneHeading + yaw) % 360 + 360) % 360;
+    return { pitch, yaw, assetName: waypoint.name, absoluteHeading };
+  }, [currentWaypoint, mission?.missionWaypoints, telemetry?.velocity?.headingDegree]);
+
+  const photoCounts = useMemo(() => {
+    if (mission?.missionWaypoints?.length) {
+      let total = 0;
+      let taken = 0;
+      for (const waypoint of mission.missionWaypoints) {
+        if (waypoint.gimbalPitchDeg == null) continue;
+        total += 1;
+        if (currentWaypoint != null && waypoint.sequence < currentWaypoint) taken += 1;
+      }
+      return { total, taken };
+    }
+    if (flightPlan?.route?.length) {
+      let total = 0;
+      for (const waypoint of flightPlan.route) {
+        if (!waypoint.pointOfInterest) continue;
+        total += photoCountForWaypoint(waypoint);
+      }
+      return { total, taken: 0 };
+    }
+    return { total: 0, taken: 0 };
+  }, [mission?.missionWaypoints, flightPlan?.route, currentWaypoint]);
 
   const pollMissionStatus = (idMission: string) => {
     if (statusPollRef.current) window.clearInterval(statusPollRef.current);
@@ -349,12 +389,20 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
                   <span className="monitor-camera-gimbal">
                     Apuntando {currentGimbal.assetName ? `a ${currentGimbal.assetName}` : "al punto de interes"}
                   </span>
-                  <ProgressLine label="Inclinacion (pitch)" value={`${formatNumber(currentGimbal.pitch, 0)} deg`} />
+                  <ProgressLine
+                    label="Direccion"
+                    value={`${headingToCompassLabel(currentGimbal.absoluteHeading)} (${formatNumber(currentGimbal.absoluteHeading, 0)} deg)`}
+                  />
+                  <ProgressLine label="Inclinacion (pitch)" value={`${pitchDescription(currentGimbal.pitch)} (${formatNumber(currentGimbal.pitch, 0)} deg)`} />
                   <ProgressLine label="Giro (yaw)" value={`${formatNumber(currentGimbal.yaw, 0)} deg`} />
                 </div>
               ) : (
                 <p className="monitor-empty-media">Sin apuntado de camara para este tramo del vuelo.</p>
               )}
+              <ProgressLine
+                label="Fotos capturadas"
+                value={photoCounts.total > 0 ? `${photoCounts.taken} de ${photoCounts.total}` : EMPTY_VALUE}
+              />
             </article>
           </aside>
         </section>
