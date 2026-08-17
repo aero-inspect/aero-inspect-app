@@ -357,7 +357,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
               </strong>
               <div className="monitor-progress-track"><span style={{ width: `${progressWidth}%` }} /></div>
               <p>{formatPercent(progress)} completado</p>
-              <ProgressLine label="Mision" value={mission.idMission.slice(0, 8)} />
+              <ProgressLine label="Mision" value={mission.idMission} />
               <ProgressLine label="Plan de vuelo" value={flightPlan?.name ?? EMPTY_VALUE} />
             </article>
 

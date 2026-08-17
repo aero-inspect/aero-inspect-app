@@ -295,7 +295,8 @@
 
 .monitor-data-row {
   justify-content: space-between;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: 6px 20px;
   color: #5c6e8a;
   font-size: 12px;
   line-height: 15px;
@@ -312,6 +313,8 @@
   line-height: 15px;
   font-weight: 700;
   text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .monitor-telemetry-body {
