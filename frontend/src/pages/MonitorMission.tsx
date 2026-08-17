@@ -75,13 +75,6 @@ function formatDuration(totalSeconds: number) {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${minutes}:${pad(secs)}`;
 }
 
-const COMPASS_LABELS = ["Norte", "Noreste", "Este", "Sureste", "Sur", "Suroeste", "Oeste", "Noroeste"];
-
-function headingToCompassLabel(headingDegree: number): string {
-  const index = Math.round(headingDegree / 45) % 8;
-  return COMPASS_LABELS[index];
-}
-
 function pitchDescription(pitch: number): string {
   if (pitch > 10) return "hacia arriba";
   if (pitch < -100) return "cenital (hacia abajo)";
@@ -220,10 +213,8 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
     if (!waypoint || waypoint.gimbalPitchDeg == null) return null;
     const pitch = waypoint.gimbalPitchDeg;
     const yaw = waypoint.gimbalYawDeg ?? 0;
-    const droneHeading = telemetry?.velocity?.headingDegree ?? waypoint.droneDegree;
-    const absoluteHeading = ((droneHeading + yaw) % 360 + 360) % 360;
-    return { pitch, yaw, assetName: waypoint.name, absoluteHeading };
-  }, [currentWaypoint, mission?.missionWaypoints, telemetry?.velocity?.headingDegree]);
+    return { pitch, yaw, assetName: waypoint.name };
+  }, [currentWaypoint, mission?.missionWaypoints]);
 
   const photoCounts = useMemo(() => {
     if (mission?.missionWaypoints?.length) {
@@ -414,10 +405,6 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
                   <span className="monitor-camera-gimbal">
                     Apuntando {currentGimbal.assetName ? `a ${currentGimbal.assetName}` : "al punto de interes"}
                   </span>
-                  <ProgressLine
-                    label="Direccion"
-                    value={`${headingToCompassLabel(currentGimbal.absoluteHeading)} (${formatNumber(currentGimbal.absoluteHeading, 0)} deg)`}
-                  />
                   <ProgressLine label="Inclinacion (pitch)" value={`${pitchDescription(currentGimbal.pitch)} (${formatNumber(currentGimbal.pitch, 0)} deg)`} />
                   <ProgressLine label="Giro (yaw)" value={`${formatNumber(currentGimbal.yaw, 0)} deg`} />
                 </div>

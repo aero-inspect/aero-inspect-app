@@ -2,6 +2,7 @@ import type {
   BackendAsset,
   BackendFlightPlan,
   BackendMission,
+  BackendWeather,
   CreateAssetPayload,
   CreateMissionPayload,
   SeedResult
@@ -75,6 +76,12 @@ export function startMission(idMission: string) {
   return request<BackendMission>(`/api/v1/missions/${idMission}/start`, {
     method: "POST"
   });
+}
+
+// La API key de OpenWeather queda del lado del backend; el frontend solo pide
+// el clima de una ciudad y recibe la respuesta ya traducida a nuestro DTO.
+export function getWeather(city: string) {
+  return request<BackendWeather>(`/api/v1/weather?city=${encodeURIComponent(city)}`);
 }
 
 // POC: crea datos de prueba (Asset + FlightPlan) en general-monolith. Útil mientras no

@@ -345,6 +345,11 @@
   margin-top: 14px;
 }
 
+.monitor-camera-info + .monitor-data-row,
+.monitor-empty-media + .monitor-data-row {
+  margin-top: 7px;
+}
+
 .monitor-camera-gimbal {
   display: flex;
   align-items: center;

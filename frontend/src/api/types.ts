@@ -21,6 +21,17 @@ export type BackendAsset = {
   longitude: number;
 };
 
+// DTO esperado del endpoint de clima del backend (proxy hacia OpenWeather:
+// la API key vive del lado del servidor, nunca en el bundle del frontend).
+export type BackendWeather = {
+  temp: number;
+  description: string;
+  icon: string;
+  windKmh: number;
+  humidity: number;
+  visibilityKm: number;
+};
+
 export type CreateAssetPayload = {
   name: string;
   code: string;

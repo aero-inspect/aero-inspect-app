@@ -1,13 +1,30 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Bell, UserRound } from "lucide-react";
-import climaImage from "../assets/clima.jpg";
+import { emptyWeather, fetchWeather } from "../services/weather";
+import { getWeatherIcon } from "../utils/weatherIcon";
 
 export function AppTopActions() {
   const [isOpen, setIsOpen] = useState(false);
+  const [weather, setWeather] = useState(emptyWeather);
   const goToProfile = () => {
     window.history.pushState({}, "", "/perfil");
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
+
+  useEffect(() => {
+    const loadWeather = async () => {
+      try {
+        setWeather(await fetchWeather("Buenos Aires"));
+      } catch (error) {
+        console.error("Error fetching weather:", error);
+        setWeather((current) => ({ ...current, desc: "Sin conexión", loading: false }));
+      }
+    };
+
+    loadWeather();
+  }, []);
+
+  const WeatherIcon = getWeatherIcon(weather.icon);
 
   const notifications = [
     { title: "Hallazgo crítico detectado", text: "Se detectó corrosión severa en Silo Norte.", time: "Hace 5 min" },
@@ -18,15 +35,11 @@ export function AppTopActions() {
 
   return (
     <div className="app-top-actions">
-      <div className="app-weather">
-        <img
-          alt="Clima actual"
-          className="weather-icon"
-          src={climaImage}
-        />
+      <div className="app-weather" style={{ opacity: weather.loading ? 0.6 : 1 }}>
+        <WeatherIcon aria-hidden="true" className="weather-icon" size={26} />
         <div>
-          <strong>0{String.fromCharCode(176)}C</strong>
-          <span>Sin Conexion</span>
+          <strong>{weather.loading ? "--" : weather.temp}{String.fromCharCode(176)}C</strong>
+          <span style={{ textTransform: "capitalize" }}>{weather.desc}</span>
         </div>
       </div>
 
