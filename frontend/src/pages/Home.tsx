@@ -21,6 +21,7 @@ import { MonitorMissionView } from "./MonitorMission";
 import { ReportesView } from "./Reportes";
 import { CrearReporteView } from "./CrearReporte";
 import { ReporteDetalleView } from "./ReporteDetalle";
+import { ReporteDetalleRealView } from "./ReporteDetalleReal";
 import { CentroAyudaView } from "./CentroAyuda";
 import { ActividadRecienteView } from "./ActividadReciente";
 import { AppTopActions, DroneGlyph } from "../components/AppTopActions";
@@ -87,6 +88,7 @@ export function Home({
   const isReportsPath = currentPath === "/reportes";
   const isCreateReportPath = currentPath === "/crear-reporte";
   const isReportDetailPath = currentPath === "/reporte-detalle";
+  const isReportDetailRealPath = currentPath === "/reporte-detalle-real";
   const isHelpPath = currentPath === "/centro-ayuda";
   const isActivityPath = currentPath === "/actividad-reciente";
   const isPruebaTelemetriaPath = currentPath === "/prueba-telemetria";
@@ -107,7 +109,7 @@ export function Home({
           <img className="sidebar-brand-logo" src={sidebarLogo} alt="AeroInspect" />
         </div>
         <nav className="nav-list" aria-label="Principal">
-          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
+          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isReportDetailRealPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
             <HomeIcon size={20} />
             {!isSidebarCollapsed && <span>Inicio</span>}
           </button>
@@ -157,7 +159,7 @@ export function Home({
             </button>
           )}
 
-          <button className={isReportsPath || isCreateReportPath || isReportDetailPath ? "active" : undefined} onClick={() => navigateTo("/reportes")} type="button">
+          <button className={isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath ? "active" : undefined} onClick={() => navigateTo("/reportes")} type="button">
             <CheckCircle2 size={20} />
             {!isSidebarCollapsed && <span>Reportes</span>}
           </button>
@@ -182,7 +184,7 @@ export function Home({
         </button>
       </aside>
 
-      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isReportsPath || isCreateReportPath || isReportDetailPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
+      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
         {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isHelpPath && !isActivityPath && user.role !== "Tecnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">
             <div>
@@ -256,12 +258,14 @@ export function Home({
           <CrearReporteView onBack={() => navigateTo("/reportes")} />
         ) : isReportDetailPath ? (
           <ReporteDetalleView onBack={() => navigateTo("/reportes")} />
+        ) : isReportDetailRealPath ? (
+          <ReporteDetalleRealView onBack={() => navigateTo("/reportes")} />
         ) : isHelpPath ? (
           <CentroAyudaView />
         ) : isActivityPath ? (
           <ActividadRecienteView />
         ) : isReportsPath ? (
-          <ReportesView assets={assets} onCreateReport={() => navigateTo("/crear-reporte")} onViewReport={() => navigateTo("/reporte-detalle")} />
+          <ReportesView assets={assets} onCreateReport={() => navigateTo("/crear-reporte")} onViewReport={() => navigateTo("/reporte-detalle-real")} />
         ) : user.role === "Jefe de Planta" ? (
           <JefePlantaView assets={assets} missions={missions} onRegisterAsset={() => navigateTo("/registro-activo")} plant={MOCK_PLANT} />
         ) : user.role === "Tecnico de Mantenimiento" ? (
