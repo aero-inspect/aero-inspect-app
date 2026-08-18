@@ -198,3 +198,21 @@ export type AiCorrosionPrediction = {
   mask: AiEncodedImage;
   overlay: AiEncodedImage;
 };
+
+export type InspectionPhotoStatus =
+  | "PENDING_ANALYSIS"
+  | "ANALYZED"
+  | "ANALYSIS_FAILED";
+
+export type BackendInspectionPhoto = {
+  idInspectionPhoto: string;
+  idMission: string;
+  idMissionWaypoint: string;
+  idAsset: number | null;
+  capturedAt: string;
+  rawImageUrl: string;
+  analyzedImageUrl: string | null;
+  status: InspectionPhotoStatus;
+  findings: string | null;
+  analyzedAt: string | null;
+};

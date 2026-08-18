@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { AlertTriangle, Ban, CalendarDays, CheckCircle2, ImagePlus, LoaderCircle, PenLine, X } from "lucide-react";
-import { analyzeCorrosionImage } from "../api/client";
-import type { AiCorrosionPrediction } from "../api/types";
+import { getInspectionPhoto, getMissions, uploadInspectionPhoto } from "../api/client";
+import type { AiCorrosionReport, BackendInspectionPhoto, BackendMission } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
 
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const CORROSION_AREA_THRESHOLD = 1;
 const ACCEPTED_FILE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const POLL_INTERVAL_MS = 1_000;
+const MAX_POLL_ATTEMPTS = 120;
 
 type ReportState = "pending" | "validated" | "discarded";
 
@@ -21,7 +23,7 @@ type PhotoAnalysis = {
   file: File;
   previewUrl: string;
   photoDate: PhotoDate;
-  analysis: AiCorrosionPrediction | null;
+  analysis: BackendInspectionPhoto | null;
   error: string;
   isAnalyzing: boolean;
 };
@@ -36,10 +38,38 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
   const [signature, setSignature] = useState("");
   const [validationError, setValidationError] = useState("");
   const [reportState, setReportState] = useState<ReportState>("pending");
+  const [selectedMissionId, setSelectedMissionId] = useState("");
+  const [selectedWaypointId, setSelectedWaypointId] = useState("");
+  const [missionsError, setMissionsError] = useState("");
+  const [isLoadingMissions, setIsLoadingMissions] = useState(true);
 
   useEffect(() => {
     const previewUrls = previewUrlsRef.current;
     return () => previewUrls.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMissions()
+      .then((availableMissions) => {
+        if (cancelled) return;
+        const withWaypoints = availableMissions.filter((mission) => getInspectionWaypoints(mission).length);
+        if (withWaypoints[0]) {
+          setSelectedMissionId(withWaypoints[0].idMission);
+          setSelectedWaypointId(getInspectionWaypoints(withWaypoints[0])[0]?.idMissionWaypoint ?? "");
+        } else {
+          setMissionsError("No hay una mision iniciada con puntos de inspeccion disponibles.");
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) setMissionsError(error instanceof Error ? error.message : "No se pudieron cargar las misiones.");
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingMissions(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const isClosed = reportState !== "pending";
@@ -118,6 +148,10 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
       setSelectionError("Seleccione al menos una imagen antes de analizar.");
       return;
     }
+    if (!selectedMissionId || !selectedWaypointId) {
+      setSelectionError("Seleccione una mision y un punto de inspeccion antes de analizar.");
+      return;
+    }
 
     setIsAnalyzingAll(true);
     setSelectionError("");
@@ -126,7 +160,8 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
     for (const photo of photos) {
       updatePhoto(photo.id, { analysis: null, error: "", isAnalyzing: true });
       try {
-        const analysis = await analyzeCorrosionImage(photo.file);
+        const created = await uploadInspectionPhoto(photo.file, selectedMissionId, selectedWaypointId);
+        const analysis = await waitForAnalysis(created);
         updatePhoto(photo.id, { analysis, error: "", isAnalyzing: false });
       } catch (error) {
         updatePhoto(photo.id, {
@@ -190,6 +225,8 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
             </div>
           </div>
 
+          {missionsError && <p className="real-report-error" role="alert">{missionsError}</p>}
+
           {photos.length < MAX_IMAGES && !isClosed && (
             <div className="real-report-upload">
               <ImagePlus size={28} />
@@ -229,7 +266,7 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
 
           <button
             className="real-report-analyze"
-            disabled={!photos.length || isAnalyzingAll || isClosed}
+            disabled={!photos.length || isLoadingMissions || !selectedMissionId || !selectedWaypointId || isAnalyzingAll || isClosed}
             onClick={analyzeAllPhotos}
             type="button"
           >
@@ -288,8 +325,9 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
 }
 
 function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boolean; index: number; onRemove: () => void; photo: PhotoAnalysis }) {
-  const result = photo.analysis ? getResult(photo.analysis) : null;
-  const overlayUrl = photo.analysis ? `data:${photo.analysis.overlay.media_type};base64,${photo.analysis.overlay.data}` : "";
+  const report = parseFindings(photo.analysis?.findings);
+  const result = report ? getResult(report) : null;
+  const overlayUrl = photo.analysis?.analyzedImageUrl ?? "";
 
   return (
     <section className="real-report-photo-card">
@@ -306,7 +344,7 @@ function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boo
       {photo.isAnalyzing && <p className="real-report-photo-progress"><LoaderCircle className="real-report-spinner" size={18} /> Procesando esta imagen...</p>}
       {photo.error && <p className="real-report-error" role="alert">{photo.error}</p>}
 
-      {photo.analysis && result && (
+      {photo.analysis && report && result && (
         <div className="real-report-result" aria-live="polite">
           <div className="real-report-images">
             <figure>
@@ -322,7 +360,7 @@ function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boo
           <dl className="real-report-result-data">
             <div><dt>Tipo de anomalia</dt><dd>Corrosion</dd></div>
             <div><dt>Fecha de la foto</dt><dd><CalendarDays size={15} /> {photo.photoDate.value} <small>({photo.photoDate.source === "captura" ? "metadato de captura" : "fecha del archivo"})</small></dd></div>
-            <div><dt>Area detectada</dt><dd>{photo.analysis.report.detected_area_percent.toFixed(2)}%</dd></div>
+            <div><dt>Area detectada</dt><dd>{report.detected_area_percent.toFixed(2)}%</dd></div>
             <div><dt>Descripcion del resultado</dt><dd>{result.description}</dd></div>
           </dl>
         </div>
@@ -337,8 +375,8 @@ function getReportStatus(state: ReportState) {
   return { label: "Pendiente de validacion", tone: "pending" };
 }
 
-function getResult(prediction: AiCorrosionPrediction) {
-  const area = prediction.report.detected_area_percent;
+function getResult(report: AiCorrosionReport) {
+  const area = report.detected_area_percent;
   if (area > CORROSION_AREA_THRESHOLD) {
     return {
       label: "CORROSION DETECTADA",
@@ -346,7 +384,7 @@ function getResult(prediction: AiCorrosionPrediction) {
       description: "El modelo marco zonas compatibles con corrosion visible en la superficie analizada."
     };
   }
-  if (prediction.report.status === "corrosion_candidate_detected") {
+  if (report.status === "corrosion_candidate_detected") {
     return {
       label: "REQUIERE REVISION",
       tone: "review",
@@ -358,6 +396,38 @@ function getResult(prediction: AiCorrosionPrediction) {
     tone: "clear",
     description: "El modelo no marco zonas compatibles con corrosion visible en esta imagen."
   };
+}
+
+function parseFindings(findings: string | null | undefined): AiCorrosionReport | null {
+  if (!findings) return null;
+  try {
+    return JSON.parse(findings) as AiCorrosionReport;
+  } catch {
+    return null;
+  }
+}
+
+function getInspectionWaypoints(mission: BackendMission) {
+  return (mission.missionWaypoints ?? []).filter(
+    (waypoint) => waypoint.idAsset !== null && (waypoint.pointOfInterest || waypoint.action === "STOP")
+  );
+}
+
+async function waitForAnalysis(initial: BackendInspectionPhoto) {
+  let current = initial;
+  for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt += 1) {
+    if (current.status === "ANALYZED") return current;
+    if (current.status === "ANALYSIS_FAILED") {
+      throw new Error(current.findings || "El worker no pudo analizar la imagen.");
+    }
+    await delay(POLL_INTERVAL_MS);
+    current = await getInspectionPhoto(current.idInspectionPhoto);
+  }
+  throw new Error("El analisis demoro demasiado. Intente nuevamente.");
+}
+
+function delay(milliseconds: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
 async function readPhotoDate(file: File): Promise<PhotoDate> {

@@ -13,11 +13,6 @@ export default defineConfig({
       "/api/v1/auth": {
         target: "http://localhost:8080",
         changeOrigin: true
-      },
-      "/api/ai": {
-        target: "http://127.0.0.1:8000",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/ai/, "")
       }
     }
   }

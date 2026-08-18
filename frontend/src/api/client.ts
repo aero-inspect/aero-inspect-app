@@ -1,9 +1,9 @@
 import type {
-  AiCorrosionPrediction,
   BackendAsset,
   BackendDrone,
   BackendDroneStatus,
   BackendFlightPlan,
+  BackendInspectionPhoto,
   BackendMission,
   CreateAssetPayload,
   CreateDronePayload,
@@ -118,19 +118,24 @@ export function seedDemoData() {
   return request<SeedResult>("/api/v1/seed/demo-data", { method: "POST" });
 }
 
-export async function analyzeCorrosionImage(file: File) {
+export async function uploadInspectionPhoto(file: File, idMission: string, idMissionWaypoint: string) {
   const formData = new FormData();
   formData.append("file", file);
+  const params = new URLSearchParams({ idMission, idMissionWaypoint });
 
-  const response = await fetch("/api/ai/predict", {
+  const response = await fetch(`/api/v1/inspection-photos?${params.toString()}`, {
     method: "POST",
     body: formData
   });
   const body = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(body?.detail ?? body?.message ?? "No se pudo analizar la imagen");
+    throw new Error(body?.detail ?? body?.message ?? "No se pudo enviar la imagen al monolito");
   }
 
-  return body as AiCorrosionPrediction;
+  return body as BackendInspectionPhoto;
+}
+
+export function getInspectionPhoto(idInspectionPhoto: string) {
+  return request<BackendInspectionPhoto>(`/api/v1/inspection-photos/${idInspectionPhoto}`);
 }
