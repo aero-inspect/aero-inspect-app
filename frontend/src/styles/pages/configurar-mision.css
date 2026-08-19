@@ -539,7 +539,8 @@
   font-weight: 600;
 }
 
-.mission-builder-fields input {
+.mission-builder-fields input,
+.mission-builder-fields select {
   width: 100%;
   height: 38px;
   padding: 0 12px;
@@ -548,19 +549,27 @@
   outline: 0;
   background: #ffffff;
   color: #10253a;
+  font: inherit;
   font-size: 13px;
 }
 
-.mission-builder-fields input:focus {
+.mission-builder-fields select {
+  cursor: pointer;
+}
+
+.mission-builder-fields input:focus,
+.mission-builder-fields select:focus {
   border-color: #18d4aa;
   box-shadow: 0 0 0 3px rgba(24, 212, 170, 0.14);
 }
 
-.mission-builder-fields input.field-invalid {
+.mission-builder-fields input.field-invalid,
+.mission-builder-fields select.field-invalid {
   border-color: #da1e28;
 }
 
-.mission-builder-fields input.field-invalid:focus {
+.mission-builder-fields input.field-invalid:focus,
+.mission-builder-fields select.field-invalid:focus {
   box-shadow: 0 0 0 3px rgba(218, 30, 40, 0.12);
 }
 

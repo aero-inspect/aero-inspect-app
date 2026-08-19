@@ -116,7 +116,7 @@ export function MisMisionesView({
 
   const filteredRows = missionRows.filter((row) => {
     const matchesStatus = statusFilter === "Todas" || row.statusLabel === statusFilter;
-    const searchSource = `${row.mission.name} ${row.flightPlanName} ${row.mission.droneId}`.toLowerCase();
+    const searchSource = `${row.mission.name} ${row.flightPlanName} ${row.mission.droneId ?? ""}`.toLowerCase();
     const matchesSearch = !searchTerm.trim() || searchSource.includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
@@ -383,7 +383,7 @@ export function MisMisionesView({
 
               <div className="mission-detail-grid">
                 <MissionInfo label="Plan de vuelo" value={selectedRow.flightPlanName} />
-                <MissionInfo label="Dron" value={selectedRow.mission.droneId} />
+                <MissionInfo label="Dron" value={selectedRow.mission.droneId ?? "--"} />
                 <MissionInfo label="Fecha y hora" value={`${formatDate(selectedRow.mission.scheduledAt)} - ${formatTime(selectedRow.mission.scheduledAt)}`} />
                 <MissionInfo label="Duracion" value={formatDuration(selectedRow.mission.startedAt, selectedRow.mission.finishedAt)} />
                 <MissionInfo label="Objetivo" value={selectedRow.mission.objective || "-"} />
