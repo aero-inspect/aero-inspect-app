@@ -67,11 +67,17 @@ export function MapSizeController({ center, invalidateSignal }: { center?: [numb
     };
   }, [map]);
 
+  const [centerLat, centerLng] = center ?? [];
+
   useEffect(() => {
-    if (!center) return;
-    map.setView(center, map.getZoom(), { animate: false });
+    if (centerLat == null || centerLng == null) return;
+    map.setView([centerLat, centerLng], map.getZoom(), { animate: false });
     map.invalidateSize({ animate: false });
-  }, [center, invalidateSignal, map]);
+    // centerLat/centerLng (not `center`) son las dependencias a proposito: `center` es un
+    // array nuevo en cada render del padre (ej. por telemetria en vivo), lo que reenfocaria
+    // el mapa constantemente y cancelaria cualquier pan/zoom que el usuario este haciendo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [centerLat, centerLng, invalidateSignal, map]);
 
   return null;
 }

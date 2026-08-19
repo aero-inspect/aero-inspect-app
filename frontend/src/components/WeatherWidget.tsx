@@ -1,10 +1,11 @@
 ﻿import { useEffect, useState } from "react";
 import { Droplets, Eye, Wind } from "lucide-react";
-import climaImage from "../assets/clima.jpg";
 import { emptyWeather, fetchWeather } from "../services/weather";
+import { getWeatherIcon } from "../utils/weatherIcon";
 
 export function WeatherWidget({ city = "Bragado", province = "Buenos Aires" }: { city?: string; province?: string }) {
   const [weather, setWeather] = useState(emptyWeather);
+  const WeatherIcon = getWeatherIcon(weather.icon);
 
   useEffect(() => {
     const loadWeather = async () => {
@@ -29,7 +30,7 @@ export function WeatherWidget({ city = "Bragado", province = "Buenos Aires" }: {
       </div>
 
       <div className="weather-display" style={{ opacity: weather.loading ? 0.5 : 1 }}>
-        <img className="weather-main-image" src={climaImage} alt={weather.desc} />
+        <WeatherIcon aria-hidden="true" className="weather-main-icon" size={48} />
         <div>
           <div className="weather-main-temp">{weather.temp}°C</div>
           <div className="weather-main-desc" style={{ textTransform: "capitalize" }}>

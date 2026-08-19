@@ -4,6 +4,7 @@ import type {
   BackendDroneStatus,
   BackendFlightPlan,
   BackendMission,
+  BackendWeather,
   CreateAssetPayload,
   CreateDronePayload,
   CreateMissionPayload,
@@ -79,6 +80,10 @@ export function startMission(idMission: string) {
   return request<BackendMission>(`/api/v1/missions/${idMission}/start`, {
     method: "POST"
   });
+}
+
+export function getWeather(city: string) {
+  return request<BackendWeather>(`/api/v1/weather?city=${encodeURIComponent(city)}`);
 }
 
 export function getDrones() {

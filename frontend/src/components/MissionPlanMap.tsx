@@ -11,7 +11,7 @@ import { photoCountForWaypoint } from "../utils/missionPhotos";
 // Un Ã­cono por tipo de activo, en vez de codificar el tipo con el color del cÃ­rculo
 // (dejaba colores medio arbitrarios, poco intuitivos). El color del cÃ­rculo queda libre
 // para indicar selecciÃ³n: gris si no se tildÃ³ ningÃºn punto de ese activo, verde si sÃ­.
-const ASSET_TYPE_ICONS: Record<BackendAssetType, typeof Cylinder> = {
+export const ASSET_TYPE_ICONS: Record<BackendAssetType, typeof Cylinder> = {
   SILO: Cylinder,
   NORIA: RotateCw,
   CINTA_TRANSPORTADORA: MoveHorizontal,
