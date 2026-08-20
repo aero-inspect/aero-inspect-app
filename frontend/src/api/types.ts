@@ -124,7 +124,7 @@ export type CreateMissionPayload = {
   idFlightPlan: number;
   name: string;
   objective: string;
-  droneId: string;
+  idDrone: string;
   scheduledAt: string;
   selectedPlanWaypointIds: number[];
 };
@@ -190,4 +190,62 @@ export type BackendDroneStatus = {
   cpuLoadPct: number | null;
   battery: BackendDroneBattery | null;
   gps: BackendDroneGps | null;
+};
+
+export type AiCorrosionReport = {
+  status: "corrosion_candidate_detected" | "no_corrosion_detected";
+  warning: string;
+  detected_area_percent: number;
+};
+
+export type AiEncodedImage = {
+  media_type: string;
+  encoding: "base64";
+  data: string;
+};
+
+export type AiCorrosionPrediction = {
+  report: AiCorrosionReport;
+  mask: AiEncodedImage;
+  overlay: AiEncodedImage;
+};
+
+export type InspectionPhotoStatus =
+  | "PENDING_ANALYSIS"
+  | "ANALYZED"
+  | "ANALYSIS_FAILED";
+
+export type BackendInspectionPhoto = {
+  idInspectionPhoto: string;
+  idMission: string;
+  idMissionWaypoint: string;
+  reportCode: string | null;
+  idAsset: number | null;
+  capturedAt: string;
+  rawImageUrl: string;
+  analyzedImageUrl: string | null;
+  status: InspectionPhotoStatus;
+  findings: string | null;
+  analyzedAt: string | null;
+};
+
+export type BackendReportStatus = "PROCESSING" | "PENDING_VALIDATION" | "VALIDATED" | "REJECTED";
+
+export type BackendReport = {
+  idReport: string;
+  code: string;
+  title: string;
+  idMission: string;
+  missionName: string;
+  idAsset: number;
+  assetName: string;
+  createdAt: string;
+  updatedAt: string;
+  status: BackendReportStatus;
+  validatorSignature: string | null;
+  validatorComments: string | null;
+  validatedAt: string | null;
+  severity: "NOT_REPORTED";
+  findingsCount: number;
+  photos: BackendInspectionPhoto[];
 };
