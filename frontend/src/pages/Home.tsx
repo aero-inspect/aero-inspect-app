@@ -18,7 +18,7 @@ import { ProfileView } from "./Perfil";
 import { RoleManagementView } from "./GestionRoles";
 import { JefePlantaView } from "./JefePlanta";
 import { MonitorMissionView } from "./MonitorMission";
-import { ReportesView } from "./Reportes";
+import { ReportesView } from "./ReportesConnected";
 import { CrearReporteView } from "./CrearReporte";
 import { ReporteDetalleView } from "./ReporteDetalle";
 import { ReporteDetalleRealView } from "./ReporteDetalleReal";
@@ -98,6 +98,7 @@ export function Home({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedBackendMissionId, setSelectedBackendMissionId] = useState<string | null>(null);
   const [selectedFlightPlanId, setSelectedFlightPlanId] = useState<number | null>(null);
+  const [selectedReportCode, setSelectedReportCode] = useState<string | null>(null);
   const sidebarRoleLabel = user.role === "Tecnico de Mantenimiento" ? "Técnico de Mantenimiento" : user.role;
   return (
     <main className={isSidebarCollapsed ? "home-shell-no-header sidebar-collapsed" : "home-shell-no-header"}>
@@ -259,13 +260,13 @@ export function Home({
         ) : isReportDetailPath ? (
           <ReporteDetalleView onBack={() => navigateTo("/reportes")} />
         ) : isReportDetailRealPath ? (
-          <ReporteDetalleRealView onBack={() => navigateTo("/reportes")} />
+          <ReporteDetalleRealView reportCode={selectedReportCode} onBack={() => navigateTo("/reportes")} />
         ) : isHelpPath ? (
           <CentroAyudaView />
         ) : isActivityPath ? (
           <ActividadRecienteView />
         ) : isReportsPath ? (
-          <ReportesView assets={assets} onCreateReport={() => navigateTo("/crear-reporte")} onViewReport={() => navigateTo("/reporte-detalle-real")} />
+          <ReportesView onRunAi={() => { setSelectedReportCode(null); navigateTo("/reporte-detalle-real"); }} onViewReport={(code) => { setSelectedReportCode(code); navigateTo("/reporte-detalle-real"); }} />
         ) : user.role === "Jefe de Planta" ? (
           <JefePlantaView assets={assets} missions={missions} onRegisterAsset={() => navigateTo("/registro-activo")} plant={MOCK_PLANT} />
         ) : user.role === "Tecnico de Mantenimiento" ? (

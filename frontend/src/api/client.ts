@@ -5,6 +5,7 @@ import type {
   BackendFlightPlan,
   BackendInspectionPhoto,
   BackendMission,
+  BackendReport,
   CreateAssetPayload,
   CreateDronePayload,
   CreateMissionPayload,
@@ -118,10 +119,11 @@ export function seedDemoData() {
   return request<SeedResult>("/api/v1/seed/demo-data", { method: "POST" });
 }
 
-export async function uploadInspectionPhoto(file: File, idMission: string, idMissionWaypoint: string) {
+export async function uploadInspectionPhoto(file: File, idMission: string, idMissionWaypoint: string, reportCode?: string) {
   const formData = new FormData();
   formData.append("file", file);
   const params = new URLSearchParams({ idMission, idMissionWaypoint });
+  if (reportCode) params.set("reportCode", reportCode);
 
   const response = await fetch(`/api/v1/inspection-photos?${params.toString()}`, {
     method: "POST",
@@ -138,4 +140,22 @@ export async function uploadInspectionPhoto(file: File, idMission: string, idMis
 
 export function getInspectionPhoto(idInspectionPhoto: string) {
   return request<BackendInspectionPhoto>(`/api/v1/inspection-photos/${idInspectionPhoto}`);
+}
+
+export function getReports() { return request<BackendReport[]>("/api/v1/reports"); }
+export function getReport(code: string) { return request<BackendReport>(`/api/v1/reports/${code}`); }
+export function deleteReport(code: string) { return request<void>(`/api/v1/reports/${code}`, { method: "DELETE" }); }
+export function createReport(idMission: string, title?: string) {
+  return request<BackendReport>("/api/v1/reports", { method: "POST", body: JSON.stringify({ idMission, title }) });
+}
+export function validateReport(code: string, signature: string, comments: string, approved: boolean) {
+  return request<BackendReport>(`/api/v1/reports/${code}/validation`, { method: "PUT", body: JSON.stringify({ signature, comments, approved }) });
+}
+export async function downloadReportPdf(code: string, inline = false) {
+  const response = await fetch(`/api/v1/reports/${code}/pdf?v=${Date.now()}`, { cache: "no-store" });
+  if (!response.ok) throw new Error("No se pudo generar el PDF");
+  const url = URL.createObjectURL(await response.blob());
+  if (inline) window.open(url, "_blank", "noopener,noreferrer");
+  else { const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${code}.pdf`; anchor.click(); }
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

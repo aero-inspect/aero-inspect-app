@@ -208,6 +208,7 @@ export type BackendInspectionPhoto = {
   idInspectionPhoto: string;
   idMission: string;
   idMissionWaypoint: string;
+  reportCode: string | null;
   idAsset: number | null;
   capturedAt: string;
   rawImageUrl: string;
@@ -215,4 +216,25 @@ export type BackendInspectionPhoto = {
   status: InspectionPhotoStatus;
   findings: string | null;
   analyzedAt: string | null;
+};
+
+export type BackendReportStatus = "PROCESSING" | "PENDING_VALIDATION" | "VALIDATED" | "REJECTED";
+
+export type BackendReport = {
+  idReport: string;
+  code: string;
+  title: string;
+  idMission: string;
+  missionName: string;
+  idAsset: number;
+  assetName: string;
+  createdAt: string;
+  updatedAt: string;
+  status: BackendReportStatus;
+  validatorSignature: string | null;
+  validatorComments: string | null;
+  validatedAt: string | null;
+  severity: "NOT_REPORTED";
+  findingsCount: number;
+  photos: BackendInspectionPhoto[];
 };

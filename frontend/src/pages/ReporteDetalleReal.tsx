@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { AlertTriangle, Ban, CalendarDays, CheckCircle2, ImagePlus, LoaderCircle, PenLine, X } from "lucide-react";
-import { getInspectionPhoto, getMissions, uploadInspectionPhoto } from "../api/client";
-import type { AiCorrosionReport, BackendInspectionPhoto, BackendMission } from "../api/types";
+import { AlertTriangle, Ban, CalendarDays, CheckCircle2, Download, Eye, ImagePlus, LoaderCircle, PenLine, X } from "lucide-react";
+import { createReport, downloadReportPdf, getInspectionPhoto, getMissions, getReport, uploadInspectionPhoto, validateReport as saveValidation } from "../api/client";
+import type { AiCorrosionReport, BackendInspectionPhoto, BackendMission, BackendReport } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
 
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
-const CORROSION_AREA_THRESHOLD = 1;
+const CORROSION_AREA_THRESHOLD = 70;
 const ACCEPTED_FILE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const POLL_INTERVAL_MS = 1_000;
 const MAX_POLL_ATTEMPTS = 120;
@@ -20,7 +20,7 @@ type PhotoDate = {
 
 type PhotoAnalysis = {
   id: string;
-  file: File;
+  file?: File;
   previewUrl: string;
   photoDate: PhotoDate;
   analysis: BackendInspectionPhoto | null;
@@ -28,7 +28,7 @@ type PhotoAnalysis = {
   isAnalyzing: boolean;
 };
 
-export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
+export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => void; reportCode: string | null }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef(new Set<string>());
   const [photos, setPhotos] = useState<PhotoAnalysis[]>([]);
@@ -42,6 +42,8 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
   const [selectedWaypointId, setSelectedWaypointId] = useState("");
   const [missionsError, setMissionsError] = useState("");
   const [isLoadingMissions, setIsLoadingMissions] = useState(true);
+  const [persistedReport, setPersistedReport] = useState<BackendReport | null>(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(Boolean(reportCode));
 
   useEffect(() => {
     const previewUrls = previewUrlsRef.current;
@@ -71,6 +73,16 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!reportCode) return;
+    getReport(reportCode).then((report) => {
+      setPersistedReport(report); setSelectedMissionId(report.idMission);
+      setReportState(report.status === "VALIDATED" ? "validated" : report.status === "REJECTED" ? "discarded" : "pending");
+      setSignature(report.validatorSignature ?? ""); setValidatorComments(report.validatorComments ?? "");
+      setPhotos(report.photos.map((photo) => ({ id: photo.idInspectionPhoto, previewUrl: photo.rawImageUrl, photoDate: { value: photo.capturedAt, source: "captura" }, analysis: photo, error: "", isAnalyzing: false })));
+    }).catch((error) => setSelectionError(error instanceof Error ? error.message : "No se pudo cargar el reporte")).finally(() => setIsLoadingReport(false));
+  }, [reportCode]);
 
   const isClosed = reportState !== "pending";
 
@@ -157,10 +169,18 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
     setSelectionError("");
     resetDecision();
 
+    let activeReport = persistedReport;
+    try {
+      if (!activeReport) { activeReport = await createReport(selectedMissionId); setPersistedReport(activeReport); }
+    } catch (error) {
+      setSelectionError(error instanceof Error ? error.message : "No se pudo crear el reporte"); setIsAnalyzingAll(false); return;
+    }
+
     for (const photo of photos) {
       updatePhoto(photo.id, { analysis: null, error: "", isAnalyzing: true });
       try {
-        const created = await uploadInspectionPhoto(photo.file, selectedMissionId, selectedWaypointId);
+        if (!photo.file) continue;
+        const created = await uploadInspectionPhoto(photo.file, selectedMissionId, selectedWaypointId, activeReport.code);
         const analysis = await waitForAnalysis(created);
         updatePhoto(photo.id, { analysis, error: "", isAnalyzing: false });
       } catch (error) {
@@ -175,7 +195,7 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
     setIsAnalyzingAll(false);
   };
 
-  const validateReport = () => {
+  const validateReport = async () => {
     if (!photos.length || photos.some((photo) => !photo.analysis)) {
       setValidationError("Todas las imagenes deben analizarse correctamente antes de validar.");
       return;
@@ -185,13 +205,15 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
       return;
     }
 
-    setValidationError("");
-    setReportState("validated");
+    if (!persistedReport) { setValidationError("El reporte todavía no fue generado."); return; }
+    try { const updated = await saveValidation(persistedReport.code, signature, validatorComments, true); setPersistedReport(updated); setValidationError(""); setReportState("validated"); }
+    catch (error) { setValidationError(error instanceof Error ? error.message : "No se pudo validar el reporte"); }
   };
 
-  const discardReport = () => {
-    setValidationError("");
-    setReportState("discarded");
+  const discardReport = async () => {
+    if (!persistedReport || !signature.trim()) { setValidationError("Ingrese la firma antes de rechazar el reporte."); return; }
+    try { const updated = await saveValidation(persistedReport.code, signature, validatorComments, false); setPersistedReport(updated); setValidationError(""); setReportState("discarded"); }
+    catch (error) { setValidationError(error instanceof Error ? error.message : "No se pudo rechazar el reporte"); }
   };
 
   const status = getReportStatus(reportState);
@@ -201,11 +223,14 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
       <header className="real-report-topbar">
         <div>
           <button className="real-report-back" onClick={onBack} type="button">&larr; Volver a reportes</button>
-          <h1>Validacion de reporte</h1>
-          <p>Cargue hasta cinco evidencias, analicelas y valide el resultado.</p>
+          <h1>{reportCode ? "Detalle del reporte" : "Módulo de IA"}</h1>
+          <p>{reportCode ? "Visualice la información del PDF, valide y descargue el reporte." : "Carga manual temporal de evidencias para generar el reporte."}</p>
         </div>
         <AppTopActions />
       </header>
+
+      {persistedReport && <div className="real-report-document-actions"><button onClick={() => void downloadReportPdf(persistedReport.code, true)} type="button"><Eye size={17} /> Visualizar PDF</button><button onClick={() => void downloadReportPdf(persistedReport.code)} type="button"><Download size={17} /> Descargar PDF</button></div>}
+      {isLoadingReport && <p className="reports-feedback"><LoaderCircle className="real-report-spinner" size={20} /> Cargando reporte...</p>}
 
       <div className={`real-report-status ${status.tone}`} role="status">
         {reportState === "validated" ? <CheckCircle2 size={22} /> : reportState === "discarded" ? <Ban size={22} /> : <AlertTriangle size={22} />}
@@ -215,19 +240,25 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
+      {persistedReport && <dl className="real-report-summary">
+        <div><dt>Código</dt><dd>{persistedReport.code}</dd></div><div><dt>Activo</dt><dd>{persistedReport.assetName}</dd></div>
+        <div><dt>Misión</dt><dd>{persistedReport.missionName}</dd></div><div><dt>Fecha</dt><dd>{new Date(persistedReport.createdAt).toLocaleString("es-AR")}</dd></div>
+        <div><dt>Hallazgos</dt><dd>{persistedReport.findingsCount}</dd></div><div><dt>Severidad</dt><dd>No informada por IA</dd></div>
+      </dl>}
+
       <div className="real-report-grid">
         <article className="real-report-card">
           <div className="real-report-card-title">
             <ImagePlus size={22} />
             <div>
-              <h2>Analisis de corrosion</h2>
-              <p>Seleccione entre una y cinco fotografias del activo inspeccionado.</p>
+              <h2>Hallazgos y evidencias</h2>
+              <p>{reportCode ? "Información procesada que integra el PDF." : "Seleccione entre una y cinco fotografías del activo inspeccionado."}</p>
             </div>
           </div>
 
           {missionsError && <p className="real-report-error" role="alert">{missionsError}</p>}
 
-          {photos.length < MAX_IMAGES && !isClosed && (
+          {!reportCode && photos.length < MAX_IMAGES && !isClosed && (
             <div className="real-report-upload">
               <ImagePlus size={28} />
               <strong>Seleccione hasta {MAX_IMAGES - photos.length} {MAX_IMAGES - photos.length === 1 ? "imagen" : "imagenes"}</strong>
@@ -250,7 +281,7 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
             <div className="real-report-photo-list">
               {photos.map((photo, index) => (
                 <PhotoResultCard
-                  canRemove={!isAnalyzingAll && !isClosed}
+                  canRemove={!reportCode && !isAnalyzingAll && !isClosed}
                   index={index}
                   key={photo.id}
                   onRemove={() => removePhoto(photo.id)}
@@ -264,7 +295,7 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
             <p className="real-report-warning"><AlertTriangle size={18} /> Los resultados son preliminares y siempre requieren revision humana.</p>
           )}
 
-          <button
+          {!reportCode && <button
             className="real-report-analyze"
             disabled={!photos.length || isLoadingMissions || !selectedMissionId || !selectedWaypointId || isAnalyzingAll || isClosed}
             onClick={analyzeAllPhotos}
@@ -272,7 +303,7 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
           >
             {isAnalyzingAll ? <LoaderCircle className="real-report-spinner" size={18} /> : <ImagePlus size={18} />}
             {isAnalyzingAll ? "Analizando imagenes..." : photos.length ? `Analizar ${photos.length} ${photos.length === 1 ? "imagen" : "imagenes"}` : "Analizar imagenes"}
-          </button>
+          </button>}
         </article>
 
         <article className="real-report-card real-report-validation">
@@ -309,11 +340,11 @@ export function ReporteDetalleRealView({ onBack }: { onBack: () => void }) {
           {validationError && <p className="real-report-error" role="alert">{validationError}</p>}
 
           <div className="real-report-decision-actions">
-            <button className="real-report-discard" disabled={isClosed} onClick={discardReport} type="button">
+            <button className="real-report-discard" disabled={isClosed} onClick={() => void discardReport()} type="button">
               <Ban size={18} />
               {reportState === "discarded" ? "Reporte descartado" : "Descartar"}
             </button>
-            <button className="real-report-validate" disabled={isClosed} onClick={validateReport} type="button">
+            <button className="real-report-validate" disabled={isClosed} onClick={() => void validateReport()} type="button">
               <CheckCircle2 size={18} />
               {reportState === "validated" ? "Reporte validado" : "Validar"}
             </button>
@@ -335,8 +366,8 @@ function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boo
         <img alt={`Evidencia ${index + 1}`} src={photo.previewUrl} />
         <div>
           <span>Evidencia {index + 1}</span>
-          <strong>{photo.file.name}</strong>
-          <small>{formatFileSize(photo.file.size)}</small>
+          <strong>{photo.file?.name ?? `Evidencia ${index + 1}`}</strong>
+          <small>{photo.file ? formatFileSize(photo.file.size) : new Date(photo.photoDate.value).toLocaleString("es-AR")}</small>
         </div>
         {canRemove && <button aria-label={`Quitar imagen ${index + 1}`} onClick={onRemove} type="button"><X size={18} /></button>}
       </header>
@@ -365,6 +396,7 @@ function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boo
           </dl>
         </div>
       )}
+      {photo.analysis && !report && <div className="real-report-result"><div className="real-report-result-badge review">RESULTADO DISPONIBLE</div><dl className="real-report-result-data"><div><dt>Tipo</dt><dd>Análisis de imagen</dd></div><div><dt>Severidad</dt><dd>No informada por IA</dd></div><div><dt>Resultado</dt><dd>{photo.analysis.findings ?? photo.analysis.status}</dd></div></dl></div>}
     </section>
   );
 }

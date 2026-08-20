@@ -102,6 +102,14 @@
   font-size: 19px;
 }
 
+.real-report-document-actions { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 12px; }
+.real-report-document-actions button { display: inline-flex; align-items: center; gap: 7px; padding: 10px 15px; border: 1px solid #2d4f91; border-radius: 9px; color: #2d4f91; background: #fff; font-weight: 700; cursor: pointer; }
+.real-report-document-actions button:last-child { color: #fff; background: #2d4f91; }
+.real-report-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0 0 18px; overflow: hidden; border: 1px solid #dbe4f1; border-radius: 12px; background: #dbe4f1; }
+.real-report-summary div { padding: 13px 16px; background: #fff; }
+.real-report-summary dt { margin-bottom: 4px; color: #71809a; font-size: 12px; }
+.real-report-summary dd { margin: 0; color: #17346d; font-weight: 700; }
+
 .real-report-file-input {
   position: static;
   width: min(100%, 480px);
