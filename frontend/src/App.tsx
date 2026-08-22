@@ -12,6 +12,7 @@ type LoginErrorResponse = {
 };
 
 const NO_AUTH_SESSION: SessionUser = {
+  username: "no-auth",
   name: "Desarrollo no-auth",
   role: "Tecnico de Mantenimiento",
   token: ""
@@ -41,6 +42,12 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (!isNoAuthMode && currentPath === "/login") {
+      setUser(null);
+    }
+  }, [currentPath]);
+
+  useEffect(() => {
     window.localStorage.setItem("aeroinspect.assets", JSON.stringify(assets));
   }, [assets]);
 
@@ -54,7 +61,7 @@ export function App() {
   };
 
   const handleLogout = () => {
-    navigateTo("/");
+    navigateTo("/login");
     setUser(isNoAuthMode ? NO_AUTH_SESSION : null);
   };
 
@@ -72,10 +79,13 @@ export function App() {
       if (response.ok) {
         const data = await response.json();
         setUser({
+          username: data.user.username,
           name: data.user.name,
           role: mapBackendRole(data.user.role),
-          token: data.token
+          token: data.token,
+          profileImage: data.user.profileImage ?? ""
         });
+        navigateTo("/");
         return;
       }
 
@@ -124,6 +134,7 @@ export function App() {
         setAssets={setAssets}
         setMissions={setMissions}
         setUsers={setUsers}
+        setUser={setUser}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 ﻿import { Fragment, useState } from "react";
-import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, AlertTriangle, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, AlertTriangle, Search, ChevronLeft, ChevronRight, UsersRound } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { MockUser, InspectionMission, Asset, Plant, SessionUser, MapMarker } from "../types";
 import { canConsultAssets, getRoleHomeTitle } from "../utils/helpers";
@@ -16,7 +16,6 @@ import { LaunchMissionView } from "./LaunchMission";
 import { RegistrarActivoView } from "./RegistrarActivo";
 import { ProfileView } from "./Perfil";
 import { RoleManagementView } from "./GestionRoles";
-import { JefePlantaView } from "./JefePlanta";
 import { MonitorMissionView } from "./MonitorMission";
 import { ReportesView } from "./ReportesConnected";
 import { CrearReporteView } from "./CrearReporte";
@@ -57,7 +56,8 @@ export function Home({
   setBattery,
   setAssets,
   setMissions,
-  setUsers
+  setUsers,
+  setUser
 }: {
   currentPath: string;
   navigateTo: (path: string) => void;
@@ -73,6 +73,7 @@ export function Home({
   setAssets: Dispatch<SetStateAction<Asset[]>>;
   setMissions: Dispatch<SetStateAction<InspectionMission[]>>;
   setUsers: Dispatch<SetStateAction<MockUser[]>>;
+  setUser: Dispatch<SetStateAction<SessionUser | null>>;
 }) {
   const isRegisterAssetPath = currentPath === "/registro-activo";
   const isAssetsPath = currentPath === "/mis-activos";
@@ -93,8 +94,7 @@ export function Home({
   const isActivityPath = currentPath === "/actividad-reciente";
   const isPruebaTelemetriaPath = currentPath === "/prueba-telemetria";
   const userCanConsultAssets = canConsultAssets(user.role);
-  const currentUser = users.find((u) => u.name === user.name);
-  const currentProfileImage = currentUser?.profileImage ?? "";
+  const currentProfileImage = user.profileImage ?? "";
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedBackendMissionId, setSelectedBackendMissionId] = useState<string | null>(null);
   const [selectedFlightPlanId, setSelectedFlightPlanId] = useState<number | null>(null);
@@ -110,26 +110,16 @@ export function Home({
           <img className="sidebar-brand-logo" src={sidebarLogo} alt="AeroInspect" />
         </div>
         <nav className="nav-list" aria-label="Principal">
-          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isReportDetailRealPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
+          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isReportDetailRealPath && !isRoleMgmtPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
             <HomeIcon size={20} />
             {!isSidebarCollapsed && <span>Inicio</span>}
           </button>
 
-          {(userCanConsultAssets || user.role === "Jefe de Planta") && (
-            <>
-              {user.role === "Jefe de Planta" && (
-                <button className={isRegisterAssetPath ? "active" : undefined} onClick={() => navigateTo("/registro-activo")} type="button">
-                  <Package size={20} />
-                  {!isSidebarCollapsed && <span>Activos</span>}
-                </button>
-              )}
-              {userCanConsultAssets && (
-                <button className={isAssetsPath ? "active" : undefined} onClick={() => navigateTo("/mis-activos")} type="button">
-                  <Package size={20} />
-                  {!isSidebarCollapsed && <span>Activos</span>}
-                </button>
-              )}
-            </>
+          {userCanConsultAssets && (
+            <button className={isRegisterAssetPath || isAssetsPath ? "active" : undefined} onClick={() => navigateTo("/mis-activos")} type="button">
+              <Package size={20} />
+              {!isSidebarCollapsed && <span>Activos</span>}
+            </button>
           )}
 
           {DRONE_OPERATION_ROLES.includes(user.role) && (
@@ -153,17 +143,16 @@ export function Home({
             </button>
           )}
 
-          {user.role === "Jefe de Planta" && (
-            <button onClick={() => navigateTo("/hallazgos")} type="button">
-              <AlertTriangle size={20} />
-              {!isSidebarCollapsed && <span>Hallazgos IA</span>}
-            </button>
-          )}
-
           <button className={isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath ? "active" : undefined} onClick={() => navigateTo("/reportes")} type="button">
             <CheckCircle2 size={20} />
             {!isSidebarCollapsed && <span>Reportes</span>}
           </button>
+          {user.role === "Jefe de Planta" && (
+            <button className={isRoleMgmtPath ? "active" : undefined} onClick={() => navigateTo("/gestion-roles")} type="button">
+              <UsersRound size={20} />
+              {!isSidebarCollapsed && <span>Gestión de personal</span>}
+            </button>
+          )}
         </nav>
         <button className="sidebar-user" onClick={() => navigateTo("/perfil")} type="button">
           {currentProfileImage ? (
@@ -185,7 +174,7 @@ export function Home({
         </button>
       </aside>
 
-      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
+      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isRoleMgmtPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
         {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isHelpPath && !isActivityPath && user.role !== "Tecnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">
             <div>
@@ -210,11 +199,11 @@ export function Home({
         {isPruebaTelemetriaPath ? (
           <PruebaTelemetriaView token={user.token} onBack={() => navigateTo("/dron")} />
         ) : isProfilePath ? (
-          <ProfileView user={user} users={users} setUsers={setUsers} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onViewActivity={() => navigateTo("/actividad-reciente")} onLogout={() => { navigateTo("/"); onLogout(); }} />
+          <ProfileView user={user} setUser={setUser} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onViewActivity={() => navigateTo("/actividad-reciente")} onLogout={onLogout} />
         ) : isRegisterAssetPath && (userCanConsultAssets || user.role === "Jefe de Planta") ? (
           <RegistrarActivoView assets={assets} onBack={() => navigateTo("/mis-activos")} onCreateAsset={(asset) => setAssets((current) => [...current, { ...asset, id: Date.now(), plantId: MOCK_PLANT.id }])} onGoHome={() => navigateTo("/")} onViewAssets={() => navigateTo("/mis-activos")} plant={MOCK_PLANT} />
         ) : isRoleMgmtPath && user.role === "Jefe de Planta" ? (
-          <RoleManagementView users={users} setUsers={setUsers} onBack={() => navigateTo("/")} />
+          <RoleManagementView user={user} onBack={() => navigateTo("/perfil")} />
         ) : isDronesAbmPath && user.role === "Jefe de Planta" ? (
           <DronesAbmView />
         ) : isMonitorPath && userCanConsultAssets ? (
@@ -231,7 +220,7 @@ export function Home({
               navigateTo("/monitorear-mision");
             }}
           />
-        ) : isGeneratePlanPath && user.role === "Tecnico de Mantenimiento" ? (
+        ) : isGeneratePlanPath && userCanConsultAssets ? (
           <GenerarPlanVueloView
             onBack={() => navigateTo("/mis-misiones")}
             onPlanConfirmed={(idFlightPlan) => {
@@ -239,7 +228,7 @@ export function Home({
               navigateTo("/configurar-mision");
             }}
           />
-        ) : isMissionPath && user.role === "Tecnico de Mantenimiento" ? (
+        ) : isMissionPath && userCanConsultAssets ? (
           <ConfigurarMisionView initialFlightPlanId={selectedFlightPlanId} onBack={() => navigateTo("/mis-misiones")} onViewMissions={() => navigateTo("/mis-misiones")} />
         ) : isLaunchPath && DRONE_OPERATION_ROLES.includes(user.role) ? (
           <LaunchMissionView
@@ -267,9 +256,7 @@ export function Home({
           <ActividadRecienteView />
         ) : isReportsPath ? (
           <ReportesView onRunAi={() => { setSelectedReportCode(null); navigateTo("/reporte-detalle-real"); }} onViewReport={(code) => { setSelectedReportCode(code); navigateTo("/reporte-detalle-real"); }} />
-        ) : user.role === "Jefe de Planta" ? (
-          <JefePlantaView assets={assets} missions={missions} onRegisterAsset={() => navigateTo("/registro-activo")} plant={MOCK_PLANT} />
-        ) : user.role === "Tecnico de Mantenimiento" ? (
+        ) : user.role === "Jefe de Planta" || user.role === "Tecnico de Mantenimiento" ? (
           <InspectionHomeView navigateTo={navigateTo} plant={MOCK_PLANT} />
         ) : (
           <Fragment>
