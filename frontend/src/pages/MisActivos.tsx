@@ -20,7 +20,7 @@ import {
 import type { Asset, Plant } from "../types";
 import type { BackendAsset, BackendAssetStatus, BackendAssetType } from "../api/types";
 import { createAsset as createBackendAsset, deleteAsset as deleteBackendAsset, getAssets } from "../api/client";
-import { LeafletSatelliteMap } from "../components/LeafletSatelliteMap";
+import { AssetsOverviewMap } from "../components/AssetsOverviewMap";
 import { AppTopActions } from "../components/AppTopActions";
 
 type AssetStatus = "Activo" | "En mantenimiento" | "Fuera de servicio";
@@ -180,14 +180,6 @@ export function MisActivosView({
         asset.displayStatus.toLowerCase().includes(normalizedSearch))
     );
   }, [plantAssets, searchTerm, statusFilter, typeFilter]);
-
-  const markers = plantAssets.map((asset) => ({
-    id: asset.id,
-    latitude: asset.latitude,
-    longitude: asset.longitude,
-    label: asset.name,
-    type: asset.type
-  }));
 
   const totals = {
     all: plantAssets.length,
@@ -424,7 +416,7 @@ export function MisActivosView({
         </section>
 
         <section className="assets-map-card" aria-label="Mapa de activos">
-          <LeafletSatelliteMap markers={markers} plant={plant} />
+          <AssetsOverviewMap assets={backendAssets ?? []} plant={plant} />
         </section>
       </section>
 
@@ -659,8 +651,8 @@ export function MisActivosView({
             </header>
 
             <div className="asset-coordinate-map-frame">
-              <LeafletSatelliteMap
-                markers={markers}
+              <AssetsOverviewMap
+                assets={backendAssets ?? []}
                 onSelect={setPendingLocation}
                 plant={plant}
                 selectedLocation={pendingLocation}

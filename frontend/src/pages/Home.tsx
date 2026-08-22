@@ -1,10 +1,12 @@
-﻿import { Fragment, useState } from "react";
+﻿import { Fragment, useEffect, useState } from "react";
 import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, AlertTriangle, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
-import type { MockUser, InspectionMission, Asset, Plant, SessionUser, MapMarker } from "../types";
+import type { MockUser, InspectionMission, Asset, Plant, SessionUser } from "../types";
+import type { BackendAsset } from "../api/types";
+import { getAssets } from "../api/client";
 import { canConsultAssets, getRoleHomeTitle } from "../utils/helpers";
 import { DRONE_OPERATION_ROLES } from "../constants";
-import { LeafletSatelliteMap } from "../components/LeafletSatelliteMap";
+import { AssetsOverviewMap } from "../components/AssetsOverviewMap";
 import { MisActivosView } from "./MisActivos";
 import { ConfigurarMisionView } from "./ConfigurarMision";
 import { GenerarPlanVueloView } from "./GenerarPlanVuelo";
@@ -457,12 +459,13 @@ const inspectionKpis = [
 ];
 
 function InspectionHomeView({ navigateTo, plant }: InspectionHomeViewProps) {
-  const plantMarkers: MapMarker[] = [
-    { id: "silo", label: "Silo Norte", latitude: "-35.14031", longitude: "-60.45857", type: "Silo" },
-    { id: "noria", label: "Noria Principal", latitude: "-35.14069", longitude: "-60.45809", type: "Noria" },
-    { id: "cinta", label: "Cinta Transportadora", latitude: "-35.14098", longitude: "-60.45843", type: "Cinta transportadora" },
-    { id: "tuberia", label: "Tubería", latitude: "-35.14047", longitude: "-60.45772", type: "Tuberia" }
-  ];
+  const [assets, setAssets] = useState<BackendAsset[]>([]);
+
+  useEffect(() => {
+    getAssets()
+      .then(setAssets)
+      .catch(() => setAssets([]));
+  }, []);
 
   return (
     <div className="tech-dashboard inspection-home">
@@ -514,7 +517,7 @@ function InspectionHomeView({ navigateTo, plant }: InspectionHomeViewProps) {
         <section className="inspection-map-card">
           <h2>Mapa de la planta</h2>
           <div className="inspection-map-shell">
-            <LeafletSatelliteMap markers={plantMarkers} plant={plant} />
+            <AssetsOverviewMap assets={assets} plant={plant} />
           </div>
         </section>
 
