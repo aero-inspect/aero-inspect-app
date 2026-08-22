@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { AlertTriangle, Ban, CalendarDays, CheckCircle2, Download, Eye, ImagePlus, LoaderCircle, PenLine, X } from "lucide-react";
 import { createReport, downloadReportPdf, getInspectionPhoto, getMissions, getReport, uploadInspectionPhoto, validateReport as saveValidation } from "../api/client";
-import type { AiCorrosionReport, BackendInspectionPhoto, BackendMission, BackendReport } from "../api/types";
+import type { AiAnalysisFindings, AiCorrosionReport, AiSeverityReport, BackendInspectionPhoto, BackendMission, BackendReport } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
 
 const MAX_IMAGES = 5;
@@ -192,6 +192,12 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
       }
     }
 
+    try {
+      setPersistedReport(await getReport(activeReport.code));
+    } catch {
+      // Cada resultado individual ya se muestra; el resumen se actualizará al recargar.
+    }
+
     setIsAnalyzingAll(false);
   };
 
@@ -243,7 +249,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
       {persistedReport && <dl className="real-report-summary">
         <div><dt>Código</dt><dd>{persistedReport.code}</dd></div><div><dt>Activo</dt><dd>{persistedReport.assetName}</dd></div>
         <div><dt>Misión</dt><dd>{persistedReport.missionName}</dd></div><div><dt>Fecha</dt><dd>{new Date(persistedReport.createdAt).toLocaleString("es-AR")}</dd></div>
-        <div><dt>Hallazgos</dt><dd>{persistedReport.findingsCount}</dd></div><div><dt>Severidad</dt><dd>No informada por IA</dd></div>
+        <div><dt>Hallazgos</dt><dd>{persistedReport.findingsCount}</dd></div><div><dt>Severidad</dt><dd>{getBackendSeverityLabel(persistedReport.severity)}</dd></div>
       </dl>}
 
       <div className="real-report-grid">
@@ -356,8 +362,10 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
 }
 
 function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boolean; index: number; onRemove: () => void; photo: PhotoAnalysis }) {
-  const report = parseFindings(photo.analysis?.findings);
-  const result = report ? getResult(report) : null;
+  const findings = parseFindings(photo.analysis?.findings);
+  const report = findings?.corrosion ?? null;
+  const severity = findings?.severity ?? null;
+  const result = report ? getResult(report, severity) : null;
   const overlayUrl = photo.analysis?.analyzedImageUrl ?? "";
 
   return (
@@ -392,6 +400,7 @@ function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boo
             <div><dt>Tipo de anomalia</dt><dd>Corrosion</dd></div>
             <div><dt>Fecha de la foto</dt><dd><CalendarDays size={15} /> {photo.photoDate.value} <small>({photo.photoDate.source === "captura" ? "metadato de captura" : "fecha del archivo"})</small></dd></div>
             <div><dt>Area detectada</dt><dd>{report.detected_area_percent.toFixed(2)}%</dd></div>
+            <div><dt>Severidad estimada</dt><dd><span className={`real-report-severity ${severityTone(severity)}`}>{getSeverityLabel(severity)}</span></dd></div>
             <div><dt>Descripcion del resultado</dt><dd>{result.description}</dd></div>
           </dl>
         </div>
@@ -407,20 +416,26 @@ function getReportStatus(state: ReportState) {
   return { label: "Pendiente de validacion", tone: "pending" };
 }
 
-function getResult(report: AiCorrosionReport) {
+function getResult(report: AiCorrosionReport, severity: AiSeverityReport | null) {
   const area = report.detected_area_percent;
+  const severityDescription = severity ? {
+    baja: "El modelo detecto una cantidad baja de corrosion visible en la superficie analizada.",
+    media: "El modelo detecto una cantidad moderada de corrosion visible en la superficie analizada.",
+    alta: "El modelo detecto una cantidad alta de corrosion visible en la superficie analizada.",
+    sin_corrosion: "El modelo no marco zonas compatibles con corrosion visible en esta imagen."
+  }[severity.predicted_severity] : "El modelo detecto indicios compatibles con corrosion visible en la superficie analizada.";
   if (area > CORROSION_AREA_THRESHOLD) {
     return {
       label: "CORROSION DETECTADA",
       tone: "detected",
-      description: "El modelo marco zonas compatibles con corrosion visible en la superficie analizada."
+      description: severityDescription
     };
   }
   if (report.status === "corrosion_candidate_detected") {
     return {
       label: "REQUIERE REVISION",
       tone: "review",
-      description: "El modelo encontro una zona pequena que debe ser confirmada por una persona."
+      description: severityDescription
     };
   }
   return {
@@ -430,13 +445,29 @@ function getResult(report: AiCorrosionReport) {
   };
 }
 
-function parseFindings(findings: string | null | undefined): AiCorrosionReport | null {
+function parseFindings(findings: string | null | undefined): AiAnalysisFindings | null {
   if (!findings) return null;
   try {
-    return JSON.parse(findings) as AiCorrosionReport;
+    const parsed = JSON.parse(findings) as AiAnalysisFindings | AiCorrosionReport;
+    if ("corrosion" in parsed) return parsed;
+    if ("status" in parsed) return { corrosion: parsed, severity: null };
+    return null;
   } catch {
     return null;
   }
+}
+
+function getSeverityLabel(severity: AiSeverityReport | null) {
+  if (!severity || severity.predicted_severity === "sin_corrosion") return "No aplica";
+  return { baja: "Baja", media: "Media", alta: "Alta" }[severity.predicted_severity];
+}
+
+function severityTone(severity: AiSeverityReport | null) {
+  return severity?.predicted_severity ?? "sin_corrosion";
+}
+
+function getBackendSeverityLabel(severity: BackendReport["severity"]) {
+  return { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica", NOT_REPORTED: "No informada" }[severity];
 }
 
 function getInspectionWaypoints(mission: BackendMission) {
