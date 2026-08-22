@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Login } from "./pages/Login";
 import { Home } from "./pages/Home";
+import { setApiAuthToken } from "./api/client";
+import { setPlanBuilderAuthToken } from "./api/planBuilder";
 import { mapBackendRole } from "./utils/auth";
 import { loadStoredAssets, loadStoredMissions } from "./utils/assets";
 import { REGISTERED_USERS } from "./data/mockUsers";
@@ -61,6 +63,8 @@ export function App() {
   };
 
   const handleLogout = () => {
+    setApiAuthToken("");
+    setPlanBuilderAuthToken("");
     navigateTo("/login");
     setUser(isNoAuthMode ? NO_AUTH_SESSION : null);
   };
@@ -78,6 +82,8 @@ export function App() {
 
       if (response.ok) {
         const data = await response.json();
+        setApiAuthToken(data.token);
+        setPlanBuilderAuthToken(data.token);
         setUser({
           username: data.user.username,
           name: data.user.name,

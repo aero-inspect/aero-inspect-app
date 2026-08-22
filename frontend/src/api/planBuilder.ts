@@ -5,9 +5,19 @@
 
 const DEFAULT_ERROR_MESSAGE = "Error de red inesperado";
 
+let authToken = "";
+
+export function setPlanBuilderAuthToken(token: string) {
+  authToken = token;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...options?.headers
+    },
     ...options
   });
 

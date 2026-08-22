@@ -16,9 +16,19 @@ import type {
 
 const DEFAULT_ERROR_MESSAGE = "Error de red inesperado";
 
+let authToken = "";
+
+export function setApiAuthToken(token: string) {
+  authToken = token;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...options?.headers
+    },
     ...options
   });
 
@@ -132,6 +142,7 @@ export async function uploadInspectionPhoto(file: File, idMission: string, idMis
 
   const response = await fetch(`/api/v1/inspection-photos?${params.toString()}`, {
     method: "POST",
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
     body: formData
   });
   const body = await response.json().catch(() => null);
@@ -157,7 +168,10 @@ export function validateReport(code: string, signature: string, comments: string
   return request<BackendReport>(`/api/v1/reports/${code}/validation`, { method: "PUT", body: JSON.stringify({ signature, comments, approved }) });
 }
 export async function downloadReportPdf(code: string, inline = false) {
-  const response = await fetch(`/api/v1/reports/${code}/pdf?v=${Date.now()}`, { cache: "no-store" });
+  const response = await fetch(`/api/v1/reports/${code}/pdf?v=${Date.now()}`, {
+    cache: "no-store",
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined
+  });
   if (!response.ok) throw new Error("No se pudo generar el PDF");
   const url = URL.createObjectURL(await response.blob());
   if (inline) window.open(url, "_blank", "noopener,noreferrer");
