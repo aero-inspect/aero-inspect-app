@@ -282,6 +282,23 @@
   font-weight: 600;
 }
 
+.asset-popup-view-button {
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.asset-popup-view-button:hover {
+  background: #1e293b;
+}
+
 .plant-map-info {
   display: flex;
   flex-direction: column;

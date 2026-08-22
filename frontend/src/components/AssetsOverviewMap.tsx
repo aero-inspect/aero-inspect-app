@@ -24,7 +24,7 @@ function createAssetIcon(type: BackendAssetType) {
   });
 }
 
-function AssetPopup({ asset }: { asset: BackendAsset }) {
+function AssetPopup({ asset, onViewAsset }: { asset: BackendAsset; onViewAsset?: (idAsset: number) => void }) {
   const TypeIcon = ASSET_TYPE_ICONS[asset.type];
 
   return (
@@ -38,6 +38,11 @@ function AssetPopup({ asset }: { asset: BackendAsset }) {
           <span className="asset-popup-type">{BACKEND_ASSET_TYPE_LABELS[asset.type]}</span>
         </div>
       </div>
+      {onViewAsset && (
+        <button className="asset-popup-view-button" onClick={() => onViewAsset(asset.idAsset)} type="button">
+          Ver activo
+        </button>
+      )}
     </div>
   );
 }
@@ -46,11 +51,13 @@ export function AssetsOverviewMap({
   assets,
   plant,
   onSelect,
+  onViewAsset,
   selectedLocation
 }: {
   assets: BackendAsset[];
   plant: Plant;
   onSelect?: (location: { latitude: string; longitude: string }) => void;
+  onViewAsset?: (idAsset: number) => void;
   selectedLocation?: { latitude: string; longitude: string };
 }) {
   const center: [number, number] =
@@ -85,7 +92,7 @@ export function AssetsOverviewMap({
               {asset.name}
             </Tooltip>
             <Popup minWidth={200}>
-              <AssetPopup asset={asset} />
+              <AssetPopup asset={asset} onViewAsset={onViewAsset} />
             </Popup>
           </Marker>
         ))}
