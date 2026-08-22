@@ -5,11 +5,13 @@ import { createAssetMarkerIcon, selectedMarkerIcon, MapClickHandler, MapSizeCont
 
 export function LeafletSatelliteMap({
   markers,
+  onMarkerClick,
   onSelect,
   plant,
   selectedLocation
 }: {
   markers: MapMarker[];
+  onMarkerClick?: (marker: MapMarker) => void;
   onSelect?: (location: { latitude: string; longitude: string }) => void;
   plant: Plant;
   selectedLocation?: { latitude: string; longitude: string };
@@ -32,6 +34,7 @@ export function LeafletSatelliteMap({
         {markers.map((marker) => (
           <Marker
             bubblingMouseEvents={false}
+            eventHandlers={onMarkerClick ? { click: () => onMarkerClick(marker) } : undefined}
             icon={createAssetMarkerIcon(marker.type, ASSET_TYPE_COLORS[marker.type])}
             key={marker.id}
             position={[Number(marker.latitude), Number(marker.longitude)]}

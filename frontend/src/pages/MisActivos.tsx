@@ -115,6 +115,7 @@ function formatDateTime(iso?: string) {
 export function MisActivosView({
   assets: fallbackAssets,
   onDeleteAsset,
+  selectedAssetId,
   plant
 }: {
   assets: Asset[];
@@ -122,6 +123,7 @@ export function MisActivosView({
   onDeleteAsset: (assetId: number) => void;
   onRegisterAsset: () => void;
   onUpdateAsset: (asset: Asset) => void;
+  selectedAssetId?: number | null;
   plant: Plant;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -195,6 +197,12 @@ export function MisActivosView({
     maintenance: plantAssets.filter((asset) => asset.displayStatus === "En mantenimiento").length,
     outOfService: plantAssets.filter((asset) => asset.displayStatus === "Fuera de servicio").length
   };
+
+  useEffect(() => {
+    if (selectedAssetId == null || !plantAssets.length) return;
+    const selectedAsset = plantAssets.find((asset) => asset.id === selectedAssetId);
+    if (selectedAsset) setDetailAsset(selectedAsset);
+  }, [plantAssets, selectedAssetId]);
 
   const createTypeLabel = form.type
     ? ASSET_TYPE_OPTIONS.find((option) => option.value === form.type)?.label ?? "-"
