@@ -1,7 +1,7 @@
-import { MapContainer, Marker, Popup, TileLayer, Tooltip } from "react-leaflet";
+import { MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
 import { divIcon } from "leaflet";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MapPin } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 import { SATELLITE_LAYER } from "../constants";
 import { MapClickHandler, MapSizeController, selectedMarkerIcon } from "./LeafletHelpers";
 import { ASSET_TYPE_ICONS } from "./MissionPlanMap";
@@ -34,15 +34,27 @@ function createAssetIcon(type: BackendAssetType) {
   });
 }
 
+// locationDetail viene completo (ej. "Planta de acopio, sector norte"); en el popup solo
+// interesa el ultimo tramo, que es el que ubica al activo dentro de la planta.
+function shortLocation(locationDetail: string) {
+  const parts = locationDetail.split(",");
+  return parts[parts.length - 1].trim();
+}
+
 function AssetPopup({ asset, onViewAsset }: { asset: BackendAsset; onViewAsset?: (idAsset: number) => void }) {
   const TypeIcon = ASSET_TYPE_ICONS[asset.type];
   const statusInfo = ASSET_STATUS_INFO[asset.status];
+  const map = useMap();
 
   return (
     <div className="asset-popup asset-popup-rich">
+      <button aria-label="Cerrar" className="asset-popup-close" onClick={() => map.closePopup()} type="button">
+        <X size={13} strokeWidth={2.5} />
+      </button>
       {asset.imageData && (
         <div className="asset-popup-photo-wrap">
           <img alt={asset.name} className="asset-popup-photo" src={asset.imageData} />
+          <span aria-hidden="true" className="asset-popup-photo-scrim" />
           <span className={`asset-popup-status-badge ${statusInfo.tone}`}>{statusInfo.label}</span>
         </div>
       )}
@@ -58,11 +70,16 @@ function AssetPopup({ asset, onViewAsset }: { asset: BackendAsset; onViewAsset?:
         </div>
         {!asset.imageData && <span className={`asset-popup-status-badge ${statusInfo.tone}`}>{statusInfo.label}</span>}
       </div>
-      {asset.locationDetail && (
-        <p className="asset-popup-location">
-          <MapPin aria-hidden="true" size={12} />
-          {asset.locationDetail}
-        </p>
+      {(asset.locationDetail || asset.description) && (
+        <div className="asset-popup-meta">
+          {asset.locationDetail && (
+            <p className="asset-popup-location">
+              <MapPin aria-hidden="true" size={12} />
+              {shortLocation(asset.locationDetail)}
+            </p>
+          )}
+          {asset.description && <p className="asset-popup-description">{asset.description}</p>}
+        </div>
       )}
       {onViewAsset && (
         <button className="asset-popup-view-button" onClick={() => onViewAsset(asset.idAsset)} type="button">
