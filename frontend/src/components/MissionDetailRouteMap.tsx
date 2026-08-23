@@ -84,6 +84,11 @@ function AssetInspectionPopup({ asset, info }: { asset: BackendAsset; info: Asse
 
   return (
     <div className="asset-popup">
+      {asset.imageData && (
+        <div className="asset-popup-photo-wrap">
+          <img alt={asset.name} className="asset-popup-photo" src={asset.imageData} />
+        </div>
+      )}
       <div className="asset-popup-header">
         <span className="asset-popup-icon" style={{ background: iconColor }}>
           <TypeIcon color="#ffffff" size={15} strokeWidth={2.4} />

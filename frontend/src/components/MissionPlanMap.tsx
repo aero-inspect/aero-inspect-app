@@ -8,9 +8,9 @@ import { SATELLITE_LAYER } from "../constants";
 import { MapSizeController } from "./LeafletHelpers";
 import { photoCountForWaypoint } from "../utils/missionPhotos";
 
-// Un Ã­cono por tipo de activo, en vez de codificar el tipo con el color del cÃ­rculo
-// (dejaba colores medio arbitrarios, poco intuitivos). El color del cÃ­rculo queda libre
-// para indicar selecciÃ³n: gris si no se tildÃ³ ningÃºn punto de ese activo, verde si sÃ­.
+// Un ícono por tipo de activo, en vez de codificar el tipo con el color del círculo
+// (dejaba colores medio arbitrarios, poco intuitivos). El color del círculo queda libre
+// para indicar selección: gris si no se tildó ningún punto de ese activo, verde si sí.
 export const ASSET_TYPE_ICONS: Record<BackendAssetType, typeof Cylinder> = {
   SILO: Cylinder,
   NORIA: RotateCw,
@@ -19,9 +19,9 @@ export const ASSET_TYPE_ICONS: Record<BackendAssetType, typeof Cylinder> = {
   TECHO: Building2
 };
 
-// Marcador grande y clickeable para elegir activos en el mapa de armado de misiÃ³n.
+// Marcador grande y clickeable para elegir activos en el mapa de armado de misión.
 // Independiente de .leaflet-asset-marker (10px, usado en otros mapas de solo lectura):
-// acÃ¡ el activo ES la interacciÃ³n principal de la pantalla, tiene que invitar al click.
+// acá el activo ES la interacción principal de la pantalla, tiene que invitar al click.
 function createSelectableAssetMarkerIcon(type: BackendAssetType, hasSelection: boolean) {
   const IconComponent = ASSET_TYPE_ICONS[type];
   const iconSvg = renderToStaticMarkup(<IconComponent color="#ffffff" size={16} strokeWidth={2.4} />);
@@ -100,7 +100,7 @@ export function MissionPlanMap({
             >
               <Tooltip className="leaflet-asset-tooltip" direction="top" offset={[0, -18]} permanent>
                 {asset.name}
-                {pointsOfInterest.length > 0 ? ` Â· ${selectedCount}/${pointsOfInterest.length}` : ""}
+                {pointsOfInterest.length > 0 ? ` · ${selectedCount}/${pointsOfInterest.length}` : ""}
               </Tooltip>
               <Popup minWidth={240}>
                 <AssetPointsOfInterestPopup
@@ -131,11 +131,16 @@ function AssetPointsOfInterestPopup({
 }) {
   return (
     <div className="poi-popup">
+      {asset.imageData && (
+        <div className="asset-popup-photo-wrap">
+          <img alt={asset.name} className="asset-popup-photo" src={asset.imageData} />
+        </div>
+      )}
       <h3>
-        {asset.name} <span className="poi-popup-meta">Â· {BACKEND_ASSET_TYPE_LABELS[asset.type]}</span>
+        {asset.name} <span className="poi-popup-meta">· {BACKEND_ASSET_TYPE_LABELS[asset.type]}</span>
       </h3>
       {pointsOfInterest.length === 0 ? (
-        <p className="poi-popup-empty">Este activo no tiene puntos de interÃ©s configurados en el plan.</p>
+        <p className="poi-popup-empty">Este activo no tiene puntos de interés configurados en el plan.</p>
       ) : (
         <ul className="poi-popup-list">
           {pointsOfInterest.map((point) => {
