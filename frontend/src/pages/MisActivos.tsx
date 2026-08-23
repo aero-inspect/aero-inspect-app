@@ -424,7 +424,14 @@ export function MisActivosView({
         </section>
 
         <section className="assets-map-card" aria-label="Mapa de activos">
-          <AssetsOverviewMap assets={backendAssets ?? []} plant={plant} />
+          <AssetsOverviewMap
+            assets={backendAssets ?? []}
+            onViewAsset={(idAsset) => {
+              const found = plantAssets.find((asset) => asset.id === idAsset);
+              if (found) setDetailAsset(found);
+            }}
+            plant={plant}
+          />
         </section>
       </section>
 

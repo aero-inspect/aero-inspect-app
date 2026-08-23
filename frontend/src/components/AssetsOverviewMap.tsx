@@ -1,12 +1,22 @@
 import { MapContainer, Marker, Popup, TileLayer, Tooltip } from "react-leaflet";
 import { divIcon } from "leaflet";
 import { renderToStaticMarkup } from "react-dom/server";
+import { MapPin } from "lucide-react";
 import { SATELLITE_LAYER } from "../constants";
 import { MapClickHandler, MapSizeController, selectedMarkerIcon } from "./LeafletHelpers";
 import { ASSET_TYPE_ICONS } from "./MissionPlanMap";
 import { BACKEND_ASSET_TYPE_COLORS, BACKEND_ASSET_TYPE_LABELS } from "../api/constants";
-import type { BackendAsset, BackendAssetType } from "../api/types";
+import type { BackendAsset, BackendAssetStatus, BackendAssetType } from "../api/types";
 import type { Plant } from "../types";
+
+// Mismo criterio de mapeo/colores que MisActivos.tsx (backendStatusToDisplay/statusTone),
+// repetido acá en chico porque el popup necesita el badge y no vale la pena acoplar
+// este componente compartido (Home + Mis Activos) al modulo de la pagina de activos.
+const ASSET_STATUS_INFO: Record<BackendAssetStatus, { label: string; tone: "ok" | "warning" | "danger" }> = {
+  ACTIVE: { label: "Activo", tone: "ok" },
+  MAINTENANCE: { label: "En mantenimiento", tone: "warning" },
+  OUT_OF_SERVICE: { label: "Fuera de servicio", tone: "danger" }
+};
 
 // Mismo estilo de marcador (icono por tipo, sobre un circulo de color) que
 // MissionDetailRouteMap/MissionPlanMap usan para activos, para que el mapa de
@@ -26,18 +36,34 @@ function createAssetIcon(type: BackendAssetType) {
 
 function AssetPopup({ asset, onViewAsset }: { asset: BackendAsset; onViewAsset?: (idAsset: number) => void }) {
   const TypeIcon = ASSET_TYPE_ICONS[asset.type];
+  const statusInfo = ASSET_STATUS_INFO[asset.status];
 
   return (
-    <div className="asset-popup">
+    <div className="asset-popup asset-popup-rich">
+      {asset.imageData && (
+        <div className="asset-popup-photo-wrap">
+          <img alt={asset.name} className="asset-popup-photo" src={asset.imageData} />
+          <span className={`asset-popup-status-badge ${statusInfo.tone}`}>{statusInfo.label}</span>
+        </div>
+      )}
       <div className="asset-popup-header">
         <span className="asset-popup-icon" style={{ background: BACKEND_ASSET_TYPE_COLORS[asset.type] }}>
           <TypeIcon color="#ffffff" size={15} strokeWidth={2.4} />
         </span>
         <div className="asset-popup-heading">
           <h3>{asset.name}</h3>
-          <span className="asset-popup-type">{BACKEND_ASSET_TYPE_LABELS[asset.type]}</span>
+          <span className="asset-popup-type">
+            {BACKEND_ASSET_TYPE_LABELS[asset.type]} · {asset.code}
+          </span>
         </div>
+        {!asset.imageData && <span className={`asset-popup-status-badge ${statusInfo.tone}`}>{statusInfo.label}</span>}
       </div>
+      {asset.locationDetail && (
+        <p className="asset-popup-location">
+          <MapPin aria-hidden="true" size={12} />
+          {asset.locationDetail}
+        </p>
+      )}
       {onViewAsset && (
         <button className="asset-popup-view-button" onClick={() => onViewAsset(asset.idAsset)} type="button">
           Ver activo
@@ -91,7 +117,7 @@ export function AssetsOverviewMap({
             <Tooltip className="leaflet-asset-tooltip" direction="top" offset={[0, -14]} permanent>
               {asset.name}
             </Tooltip>
-            <Popup minWidth={200}>
+            <Popup className="asset-popup-leaflet" maxWidth={240} minWidth={220}>
               <AssetPopup asset={asset} onViewAsset={onViewAsset} />
             </Popup>
           </Marker>
