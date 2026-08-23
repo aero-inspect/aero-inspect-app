@@ -301,7 +301,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  margin: 0;
+  margin-bottom: 0!important;
   color: #64748b;
   font-size: 11px;
   line-height: 1.15;
@@ -314,7 +314,7 @@
 
 .asset-popup-description {
   display: -webkit-box;
-  margin: 0;
+  margin-top: 10px !important;
   overflow: hidden;
   color: #475569;
   font-size: 11px;
