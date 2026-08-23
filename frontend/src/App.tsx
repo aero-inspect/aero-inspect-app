@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Login } from "./pages/Login";
 import { Home } from "./pages/Home";
+import { setApiAuthToken } from "./api/client";
+import { setPlanBuilderAuthToken } from "./api/planBuilder";
 import { mapBackendRole } from "./utils/auth";
 import { loadStoredAssets, loadStoredMissions } from "./utils/assets";
 import { REGISTERED_USERS } from "./data/mockUsers";
@@ -12,6 +14,7 @@ type LoginErrorResponse = {
 };
 
 const NO_AUTH_SESSION: SessionUser = {
+  username: "no-auth",
   name: "Desarrollo no-auth",
   role: "Tecnico de Mantenimiento",
   token: ""
@@ -41,6 +44,12 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (!isNoAuthMode && currentPath === "/login") {
+      setUser(null);
+    }
+  }, [currentPath]);
+
+  useEffect(() => {
     window.localStorage.setItem("aeroinspect.assets", JSON.stringify(assets));
   }, [assets]);
 
@@ -54,7 +63,9 @@ export function App() {
   };
 
   const handleLogout = () => {
-    navigateTo("/");
+    setApiAuthToken("");
+    setPlanBuilderAuthToken("");
+    navigateTo("/login");
     setUser(isNoAuthMode ? NO_AUTH_SESSION : null);
   };
 
@@ -71,11 +82,16 @@ export function App() {
 
       if (response.ok) {
         const data = await response.json();
+        setApiAuthToken(data.token);
+        setPlanBuilderAuthToken(data.token);
         setUser({
+          username: data.user.username,
           name: data.user.name,
           role: mapBackendRole(data.user.role),
-          token: data.token
+          token: data.token,
+          profileImage: data.user.profileImage ?? ""
         });
+        navigateTo("/");
         return;
       }
 
@@ -124,6 +140,7 @@ export function App() {
         setAssets={setAssets}
         setMissions={setMissions}
         setUsers={setUsers}
+        setUser={setUser}
       />
     </div>
   );

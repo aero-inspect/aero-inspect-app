@@ -126,10 +126,39 @@
   border-radius: 50%;
   background: #e3e6eb;
   color: #4b5250;
+  overflow: hidden;
 }
 
 .profile-photo svg {
   stroke-width: 1.5;
+}
+
+.profile-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-photo-button {
+  position: relative;
+  border: 0;
+  cursor: pointer;
+}
+
+.profile-photo-editor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 118px;
+  gap: 8px;
+}
+
+.profile-photo-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 3;
 }
 
 .profile-identity-copy h2 {
@@ -531,6 +560,22 @@
   box-shadow: 0 0 0 3px rgba(68, 107, 80, 0.12);
 }
 
+.profile-password-error,
+.profile-password-success {
+  margin: 12px 0 0 !important;
+  font-size: 11px !important;
+  line-height: 14px !important;
+  font-weight: 600 !important;
+}
+
+.profile-password-error {
+  color: #a94442 !important;
+}
+
+.profile-password-success {
+  color: #446b50 !important;
+}
+
 .profile-modal-actions {
   display: flex;
   justify-content: center;
@@ -565,6 +610,11 @@
   border: 1px solid #446b50;
   background: #e8f5e9;
   color: #446b50;
+}
+
+.profile-modal-primary:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 .profile-delete-account-button {
   align-self: flex-start;
@@ -672,13 +722,47 @@
   color: #063b7a;
 }
 
-.profile-photo-editing span {
-  max-width: 86px;
-  color: #596e8a;
-  font-size: 9px;
-  line-height: 11px;
-  font-weight: 400;
-  text-align: center;
+.profile-dashboard-editing .profile-photo-editing img {
+  position: absolute;
+  inset: 0;
+}
+
+.profile-photo-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.profile-photo-edit-button,
+.profile-photo-delete-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.profile-photo-edit-button {
+  border: 1px solid rgba(100, 116, 139, 0.32);
+  background: rgba(226, 232, 240, 0.56);
+  color: #64748b;
+}
+
+.profile-photo-edit-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.profile-photo-delete-button {
+  border: 1px solid rgba(169, 68, 66, 0.32);
+  background: rgba(252, 232, 232, 0.45);
+  color: #a94442;
 }
 
 .profile-dashboard-editing .profile-modern-field input {
@@ -728,6 +812,28 @@
   border: 1px solid #295b87;
   background: rgba(126, 194, 255, 0.22);
   color: #295b87;
+}
+
+.profile-edit-save-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.profile-status-text,
+.profile-error-text {
+  margin: 0 12px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.profile-status-text {
+  color: #596e8a;
+}
+
+.profile-error-text {
+  margin-bottom: 10px;
+  color: #a94442;
+  font-weight: 600;
 }
 
 .profile-dashboard-editing .profile-info-row-boxed {

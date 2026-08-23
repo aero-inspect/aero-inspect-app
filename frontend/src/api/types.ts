@@ -210,6 +210,19 @@ export type AiCorrosionPrediction = {
   overlay: AiEncodedImage;
 };
 
+export type AiSeverityReport = {
+  status: "provisional_human_review_required" | "not_applicable_no_corrosion_detected";
+  predicted_severity: "baja" | "media" | "alta" | "sin_corrosion";
+  corroded_area_percent?: number;
+  warning?: string;
+};
+
+export type AiAnalysisFindings = {
+  schema_version?: "2.0";
+  corrosion: AiCorrosionReport;
+  severity: AiSeverityReport | null;
+};
+
 export type InspectionPhotoStatus =
   | "PENDING_ANALYSIS"
   | "ANALYZED"

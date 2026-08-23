@@ -1,7 +1,9 @@
 ﻿export type SessionUser = {
+  username: string;
   name: string;
   role: string;
   token: string;
+  profileImage?: string;
 };
 
 export type MockUser = {

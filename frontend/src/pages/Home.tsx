@@ -1,9 +1,12 @@
 ﻿import { Fragment, useState } from "react";
-import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, AlertTriangle, Search, ChevronLeft, ChevronRight } from "lucide-react";
-import type { Dispatch, SetStateAction } from "react";
+import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, ChevronLeft, ChevronRight, UsersRound } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import type { CSSProperties, Dispatch, SetStateAction } from "react";
 import type { MockUser, InspectionMission, Asset, Plant, SessionUser, MapMarker } from "../types";
 import { canConsultAssets, getRoleHomeTitle } from "../utils/helpers";
 import { DRONE_OPERATION_ROLES } from "../constants";
+import { getAssets, getMissions } from "../api/client";
+import type { BackendAsset, BackendAssetType, BackendMission } from "../api/types";
 import { LeafletSatelliteMap } from "../components/LeafletSatelliteMap";
 import { MisActivosView } from "./MisActivos";
 import { ConfigurarMisionView } from "./ConfigurarMision";
@@ -16,7 +19,6 @@ import { LaunchMissionView } from "./LaunchMission";
 import { RegistrarActivoView } from "./RegistrarActivo";
 import { ProfileView } from "./Perfil";
 import { RoleManagementView } from "./GestionRoles";
-import { JefePlantaView } from "./JefePlanta";
 import { MonitorMissionView } from "./MonitorMission";
 import { ReportesView } from "./ReportesConnected";
 import { CrearReporteView } from "./CrearReporte";
@@ -57,7 +59,8 @@ export function Home({
   setBattery,
   setAssets,
   setMissions,
-  setUsers
+  setUsers,
+  setUser
 }: {
   currentPath: string;
   navigateTo: (path: string) => void;
@@ -73,6 +76,7 @@ export function Home({
   setAssets: Dispatch<SetStateAction<Asset[]>>;
   setMissions: Dispatch<SetStateAction<InspectionMission[]>>;
   setUsers: Dispatch<SetStateAction<MockUser[]>>;
+  setUser: Dispatch<SetStateAction<SessionUser | null>>;
 }) {
   const isRegisterAssetPath = currentPath === "/registro-activo";
   const isAssetsPath = currentPath === "/mis-activos";
@@ -93,12 +97,12 @@ export function Home({
   const isActivityPath = currentPath === "/actividad-reciente";
   const isPruebaTelemetriaPath = currentPath === "/prueba-telemetria";
   const userCanConsultAssets = canConsultAssets(user.role);
-  const currentUser = users.find((u) => u.name === user.name);
-  const currentProfileImage = currentUser?.profileImage ?? "";
+  const currentProfileImage = user.profileImage ?? "";
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedBackendMissionId, setSelectedBackendMissionId] = useState<string | null>(null);
   const [selectedFlightPlanId, setSelectedFlightPlanId] = useState<number | null>(null);
   const [selectedReportCode, setSelectedReportCode] = useState<string | null>(null);
+  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const sidebarRoleLabel = user.role === "Tecnico de Mantenimiento" ? "Técnico de Mantenimiento" : user.role;
   return (
     <main className={isSidebarCollapsed ? "home-shell-no-header sidebar-collapsed" : "home-shell-no-header"}>
@@ -110,26 +114,16 @@ export function Home({
           <img className="sidebar-brand-logo" src={sidebarLogo} alt="AeroInspect" />
         </div>
         <nav className="nav-list" aria-label="Principal">
-          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isReportDetailRealPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
+          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isReportDetailRealPath && !isRoleMgmtPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
             <HomeIcon size={20} />
             {!isSidebarCollapsed && <span>Inicio</span>}
           </button>
 
-          {(userCanConsultAssets || user.role === "Jefe de Planta") && (
-            <>
-              {user.role === "Jefe de Planta" && (
-                <button className={isRegisterAssetPath ? "active" : undefined} onClick={() => navigateTo("/registro-activo")} type="button">
-                  <Package size={20} />
-                  {!isSidebarCollapsed && <span>Activos</span>}
-                </button>
-              )}
-              {userCanConsultAssets && (
-                <button className={isAssetsPath ? "active" : undefined} onClick={() => navigateTo("/mis-activos")} type="button">
-                  <Package size={20} />
-                  {!isSidebarCollapsed && <span>Activos</span>}
-                </button>
-              )}
-            </>
+          {userCanConsultAssets && (
+            <button className={isRegisterAssetPath || isAssetsPath ? "active" : undefined} onClick={() => navigateTo("/mis-activos")} type="button">
+              <Package size={20} />
+              {!isSidebarCollapsed && <span>Activos</span>}
+            </button>
           )}
 
           {DRONE_OPERATION_ROLES.includes(user.role) && (
@@ -153,17 +147,16 @@ export function Home({
             </button>
           )}
 
-          {user.role === "Jefe de Planta" && (
-            <button onClick={() => navigateTo("/hallazgos")} type="button">
-              <AlertTriangle size={20} />
-              {!isSidebarCollapsed && <span>Hallazgos IA</span>}
-            </button>
-          )}
-
           <button className={isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath ? "active" : undefined} onClick={() => navigateTo("/reportes")} type="button">
             <CheckCircle2 size={20} />
             {!isSidebarCollapsed && <span>Reportes</span>}
           </button>
+          {user.role === "Jefe de Planta" && (
+            <button className={isRoleMgmtPath ? "active" : undefined} onClick={() => navigateTo("/gestion-roles")} type="button">
+              <UsersRound size={20} />
+              {!isSidebarCollapsed && <span>Gestión de personal</span>}
+            </button>
+          )}
         </nav>
         <button className="sidebar-user" onClick={() => navigateTo("/perfil")} type="button">
           {currentProfileImage ? (
@@ -185,7 +178,7 @@ export function Home({
         </button>
       </aside>
 
-      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
+      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isRoleMgmtPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
         {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isHelpPath && !isActivityPath && user.role !== "Tecnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">
             <div>
@@ -210,11 +203,11 @@ export function Home({
         {isPruebaTelemetriaPath ? (
           <PruebaTelemetriaView token={user.token} onBack={() => navigateTo("/dron")} />
         ) : isProfilePath ? (
-          <ProfileView user={user} users={users} setUsers={setUsers} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onViewActivity={() => navigateTo("/actividad-reciente")} onLogout={() => { navigateTo("/"); onLogout(); }} />
+          <ProfileView user={user} setUser={setUser} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onViewActivity={() => navigateTo("/actividad-reciente")} onLogout={onLogout} />
         ) : isRegisterAssetPath && (userCanConsultAssets || user.role === "Jefe de Planta") ? (
           <RegistrarActivoView assets={assets} onBack={() => navigateTo("/mis-activos")} onCreateAsset={(asset) => setAssets((current) => [...current, { ...asset, id: Date.now(), plantId: MOCK_PLANT.id }])} onGoHome={() => navigateTo("/")} onViewAssets={() => navigateTo("/mis-activos")} plant={MOCK_PLANT} />
         ) : isRoleMgmtPath && user.role === "Jefe de Planta" ? (
-          <RoleManagementView users={users} setUsers={setUsers} onBack={() => navigateTo("/")} />
+          <RoleManagementView user={user} onBack={() => navigateTo("/perfil")} />
         ) : isDronesAbmPath && user.role === "Jefe de Planta" ? (
           <DronesAbmView />
         ) : isMonitorPath && userCanConsultAssets ? (
@@ -231,7 +224,7 @@ export function Home({
               navigateTo("/monitorear-mision");
             }}
           />
-        ) : isGeneratePlanPath && user.role === "Tecnico de Mantenimiento" ? (
+        ) : isGeneratePlanPath && userCanConsultAssets ? (
           <GenerarPlanVueloView
             onBack={() => navigateTo("/mis-misiones")}
             onPlanConfirmed={(idFlightPlan) => {
@@ -239,7 +232,7 @@ export function Home({
               navigateTo("/configurar-mision");
             }}
           />
-        ) : isMissionPath && user.role === "Tecnico de Mantenimiento" ? (
+        ) : isMissionPath && userCanConsultAssets ? (
           <ConfigurarMisionView initialFlightPlanId={selectedFlightPlanId} onBack={() => navigateTo("/mis-misiones")} onViewMissions={() => navigateTo("/mis-misiones")} />
         ) : isLaunchPath && DRONE_OPERATION_ROLES.includes(user.role) ? (
           <LaunchMissionView
@@ -254,7 +247,7 @@ export function Home({
         ) : isDronePath && DRONE_OPERATION_ROLES.includes(user.role) ? (
           <DroneTelemetryView />
         ) : isAssetsPath && userCanConsultAssets ? (
-          <MisActivosView assets={assets} onBack={() => navigateTo("/")} onDeleteAsset={(assetId) => setAssets((current) => current.filter((asset) => asset.id !== assetId))} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} plant={MOCK_PLANT} />
+          <MisActivosView assets={assets} onBack={() => navigateTo("/")} onDeleteAsset={(assetId) => setAssets((current) => current.filter((asset) => asset.id !== assetId))} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} selectedAssetId={selectedAssetId} plant={MOCK_PLANT} />
         ) : isCreateReportPath ? (
           <CrearReporteView onBack={() => navigateTo("/reportes")} />
         ) : isReportDetailPath ? (
@@ -267,10 +260,19 @@ export function Home({
           <ActividadRecienteView />
         ) : isReportsPath ? (
           <ReportesView onRunAi={() => { setSelectedReportCode(null); navigateTo("/reporte-detalle-real"); }} onViewReport={(code) => { setSelectedReportCode(code); navigateTo("/reporte-detalle-real"); }} />
-        ) : user.role === "Jefe de Planta" ? (
-          <JefePlantaView assets={assets} missions={missions} onRegisterAsset={() => navigateTo("/registro-activo")} plant={MOCK_PLANT} />
-        ) : user.role === "Tecnico de Mantenimiento" ? (
-          <InspectionHomeView navigateTo={navigateTo} plant={MOCK_PLANT} />
+        ) : user.role === "Jefe de Planta" || user.role === "Tecnico de Mantenimiento" ? (
+          <InspectionHomeView
+            navigateTo={navigateTo}
+            onViewAsset={(idAsset) => {
+              setSelectedAssetId(idAsset);
+              navigateTo("/mis-activos");
+            }}
+            onViewMission={(idMission) => {
+              setSelectedBackendMissionId(idMission);
+              navigateTo("/monitorear-mision");
+            }}
+            plant={MOCK_PLANT}
+          />
         ) : (
           <Fragment>
             <header className="dashboard-header">
@@ -416,124 +418,178 @@ export function Home({
 
 type InspectionHomeViewProps = {
   navigateTo: (path: string) => void;
+  onViewAsset: (idAsset: number) => void;
+  onViewMission: (idMission: string) => void;
   plant: Plant;
 };
 
-const inspectionItems = [
-  {
-    name: "Silo Norte",
-    asset: "Silo Norte",
-    datetime: "Hace 15 min",
-    findings: 14,
-    severity: "Crítica",
-    severityClass: "critical"
-  },
-  {
-    name: "Cinta Transportadora",
-    asset: "Cinta Transportadora 2",
-    datetime: "Hace 35 min",
-    findings: 8,
-    severity: "Media",
-    severityClass: "medium"
-  },
-  {
-    name: "Noria Principal",
-    asset: "Noria Principal",
-    datetime: "Hace 2 h",
-    findings: 3,
-    severity: "Baja",
-    severityClass: "low"
-  },
-  {
-    name: "Tubería de Vapor",
-    asset: "Tubería de Vapor",
-    datetime: "Ayer 16:20",
-    findings: 6,
-    severity: "Baja",
-    severityClass: "low"
-  }
-];
+const assetTypeLabels: Record<BackendAssetType, MapMarker["type"]> = {
+  SILO: "Silo",
+  NORIA: "Noria",
+  CINTA_TRANSPORTADORA: "Cinta transportadora",
+  TUBERIA: "Tuberia",
+  TECHO: "Techo"
+};
 
-const inspectionKpis = [
-  { label: "Inspecciones hoy", value: "3", tone: "blue", icon: <Search size={21} /> },
-  { label: "En progreso", value: "2", tone: "amber", icon: <Clock size={18} /> },
-  { label: "Hallazgos críticos", value: "7", tone: "red", icon: <AlertTriangle size={20} /> },
-  { label: "Drones disponibles", value: "1 / 2", tone: "gray", icon: <DroneGlyph size={22} /> }
-];
+const missionStatusLabels: Record<BackendMission["status"], string> = {
+  PLANNED: "Planificada",
+  UPLOADING: "Enviando",
+  IN_PROGRESS: "En progreso",
+  COMPLETED: "Completada",
+  CANCELLED: "Cancelada",
+  FAILED: "Fallida"
+};
 
-function InspectionHomeView({ navigateTo, plant }: InspectionHomeViewProps) {
-  const plantMarkers: MapMarker[] = [
-    { id: "silo", label: "Silo Norte", latitude: "-35.14031", longitude: "-60.45857", type: "Silo" },
-    { id: "noria", label: "Noria Principal", latitude: "-35.14069", longitude: "-60.45809", type: "Noria" },
-    { id: "cinta", label: "Cinta Transportadora", latitude: "-35.14098", longitude: "-60.45843", type: "Cinta transportadora" },
-    { id: "tuberia", label: "Tubería", latitude: "-35.14047", longitude: "-60.45772", type: "Tuberia" }
-  ];
+const missionStatusClasses: Record<BackendMission["status"], "low" | "medium" | "critical"> = {
+  PLANNED: "medium",
+  UPLOADING: "medium",
+  IN_PROGRESS: "medium",
+  COMPLETED: "low",
+  CANCELLED: "critical",
+  FAILED: "critical"
+};
+
+function missionDisplayDate(mission: BackendMission) {
+  const date = mission.finishedAt ?? mission.startedAt ?? mission.scheduledAt;
+  if (!date) return "Sin fecha";
+  return new Date(date).toLocaleString("es-AR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function missionSortTime(mission: BackendMission) {
+  const date = mission.finishedAt ?? mission.startedAt ?? mission.scheduledAt;
+  return date ? new Date(date).getTime() : 0;
+}
+
+function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: InspectionHomeViewProps) {
+  const [assets, setAssets] = useState<BackendAsset[]>([]);
+  const [missions, setMissions] = useState<BackendMission[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    setLoadError("");
+
+    Promise.all([getAssets(), getMissions()])
+      .then(([nextAssets, nextMissions]) => {
+        if (!active) return;
+        setAssets(nextAssets);
+        setMissions(nextMissions);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setLoadError(error instanceof Error ? error.message : "No se pudieron cargar los datos de inicio.");
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const plantMarkers = useMemo<MapMarker[]>(
+    () =>
+      assets
+        .filter((asset) => Number.isFinite(asset.latitude) && Number.isFinite(asset.longitude))
+        .map((asset) => ({
+          id: asset.idAsset,
+          label: asset.name,
+          latitude: String(asset.latitude),
+          longitude: String(asset.longitude),
+          type: assetTypeLabels[asset.type]
+        })),
+    [assets]
+  );
+
+  const latestMissions = useMemo(
+    () => [...missions].sort((left, right) => missionSortTime(right) - missionSortTime(left)).slice(0, 4),
+    [missions]
+  );
+
+  const completedMissions = missions.filter((mission) => mission.status === "COMPLETED").length;
+  const totalMissions = missions.length;
+  const completionPercentage = totalMissions === 0 ? 0 : Math.round((completedMissions / totalMissions) * 100);
+  const pendingMissions = totalMissions - completedMissions;
 
   return (
     <div className="tech-dashboard inspection-home">
       <div className="inspection-home-header">
         <div>
           <h1>Inicio</h1>
-          <p>Resumen de inspecciones y hallazgos detectados.</p>
+          <p>Resumen de misiones y activos de la planta.</p>
         </div>
         <AppTopActions />
       </div>
 
       <div className="inspection-home-layout">
-        <section className="inspection-kpi-grid" aria-label="Resumen del día">
-          {inspectionKpis.map((item) => (
-            <article className="inspection-kpi-card" key={item.label}>
-              <span className={`inspection-kpi-icon ${item.tone}`}>{item.icon}</span>
-              <div>
-                <p>{item.label}</p>
-                <strong>{item.value}</strong>
-              </div>
-            </article>
-          ))}
-        </section>
-
         <section className="inspection-latest-card">
           <header>
-            <h2>Últimas inspecciones</h2>
+            <h2>Últimas misiones</h2>
             <button type="button" onClick={() => navigateTo("/mis-misiones")}>Ver todas</button>
           </header>
           <div className="inspection-latest-list">
-            {inspectionItems.map((inspection) => (
-              <button className="inspection-latest-row" key={inspection.name} onClick={() => navigateTo("/monitorear-mision")} type="button">
-                <span className={`inspection-severity-line ${inspection.severityClass}`} />
+            {isLoading ? (
+              <p className="inspection-home-feedback">Cargando misiones...</p>
+            ) : loadError ? (
+              <p className="inspection-home-feedback error">{loadError}</p>
+            ) : latestMissions.length ? (
+              latestMissions.map((mission) => (
+              <button className="inspection-latest-row" key={mission.idMission} onClick={() => onViewMission(mission.idMission)} type="button">
+                <span className={`inspection-severity-line ${missionStatusClasses[mission.status]}`} />
                 <span className="inspection-latest-name">
-                  <strong>{inspection.name}</strong>
-                  <small>{inspection.datetime}</small>
+                  <strong>{mission.name}</strong>
+                  <small>{missionDisplayDate(mission)}</small>
                 </span>
-                <span className={`inspection-severity-badge ${inspection.severityClass}`}>{inspection.severity}</span>
+                <span className={`inspection-severity-badge ${missionStatusClasses[mission.status]}`}>{missionStatusLabels[mission.status]}</span>
                 <span className="inspection-finding-count">
-                  <strong>{inspection.findings}</strong>
-                  <small>hallazgos</small>
+                  <strong>{mission.completionPercentage}%</strong>
+                  <small>avance</small>
                 </span>
                 <span className="inspection-chevron">›</span>
               </button>
-            ))}
+              ))
+            ) : (
+              <p className="inspection-home-feedback">Todavía no hay misiones registradas.</p>
+            )}
           </div>
         </section>
 
         <section className="inspection-map-card">
           <h2>Mapa de la planta</h2>
           <div className="inspection-map-shell">
-            <LeafletSatelliteMap markers={plantMarkers} plant={plant} />
+            <LeafletSatelliteMap
+              markers={plantMarkers}
+              onMarkerClick={(marker) => {
+                if (typeof marker.id === "number") onViewAsset(marker.id);
+              }}
+              plant={plant}
+            />
           </div>
         </section>
 
         <section className="inspection-progress-card">
           <h2>Progreso semanal</h2>
           <div className="weekly-progress-content">
-            <div className="weekly-progress-ring" aria-label="68% completado">
-              <span>68%</span>
+            <div
+              className="weekly-progress-ring"
+              style={{ "--mission-progress": `${completionPercentage}%` } as CSSProperties}
+              aria-label={`${completionPercentage}% completado`}
+            >
+              <span>{completionPercentage}%</span>
             </div>
             <div className="weekly-progress-copy">
-              <p>Inspecciones completadas</p>
-              <strong>24 de 35</strong>
-              <div className="weekly-progress-bar"><span /></div>
-              <small>11 pendientes</small>
+              <p>Misiones completadas</p>
+              <strong>{completedMissions} de {totalMissions}</strong>
+              <div className="weekly-progress-bar"><span style={{ width: `${completionPercentage}%` }} /></div>
+              <small>{pendingMissions} pendientes o en curso</small>
             </div>
           </div>
         </section>

@@ -365,6 +365,19 @@
   font-weight: 500;
 }
 
+.real-report-severity {
+  display: inline-flex;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.real-report-severity.baja { color: #316d3d; background: #e8f5ea; }
+.real-report-severity.media { color: #8a6418; background: #fff2cf; }
+.real-report-severity.alta { color: #9c302b; background: #fde9e7; }
+.real-report-severity.sin_corrosion { color: #52627c; background: #edf1f7; }
+
 .real-report-warning {
   display: flex;
   gap: 8px;

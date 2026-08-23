@@ -1,60 +1,249 @@
-﻿import { useState, type Dispatch, type SetStateAction } from "react";
-import { AlertCircle, ArrowRight, Edit3, HelpCircle, Lock, LogOut, UserRound } from "lucide-react";
-import type { MockUser, SessionUser } from "../types";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { AlertCircle, ArrowRight, Camera, Edit3, HelpCircle, Lock, LogOut, Trash2, UserRound } from "lucide-react";
+import type { SessionUser } from "../types";
 import { AppTopActions } from "../components/AppTopActions";
+import { mapBackendRole } from "../utils/auth";
+
+type ProfileData = {
+  username: string;
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  company: string;
+  location: string;
+  role: string;
+  active: boolean;
+  profileImage: string;
+  registeredAt: string | null;
+  lastAccessAt: string | null;
+};
+
+type ProfileFormData = Pick<ProfileData, "firstName" | "lastName" | "phone" | "email" | "company" | "location" | "profileImage">;
+
+const EMPTY_PROFILE: ProfileFormData = {
+  firstName: "",
+  lastName: "",
+  phone: "",
+  email: "",
+  company: "",
+  location: "",
+  profileImage: ""
+};
 
 export function ProfileView({
-  users,
-  setUsers,
+  user,
+  setUser,
   onViewActivity,
   onLogout
 }: {
   user: SessionUser;
-  users: MockUser[];
-  setUsers: Dispatch<SetStateAction<MockUser[]>>;
+  setUser: Dispatch<SetStateAction<SessionUser | null>>;
   onBack: () => void;
   onAssignRoles: () => void;
   onViewActivity: () => void;
   onLogout: () => void;
 }) {
-  const userEntry = users.find((item) => item.username === "tecnico") ?? users[0] ?? null;
-  const initialData = {
-    firstName: userEntry?.firstName || "Emilia",
-    lastName: userEntry?.lastName || "Andersen",
-    phone: userEntry?.phone || "+54 11 1234 5678",
-    email: userEntry?.email || "emilia.andersen@planta.com",
-    company: userEntry?.company || "Agroindustrial del Norte S.A.",
-    location: userEntry?.location || "Planta Principal - Sector Norte"
-  };
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [formData, setFormData] = useState<ProfileFormData>(EMPTY_PROFILE);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState(initialData);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [passwordData, setPasswordData] = useState({ current: "", next: "", repeat: "" });
+  const [passwordFeedback, setPasswordFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
+  const [isPasswordSaving, setIsPasswordSaving] = useState(false);
 
-  const displayName = "María Emilia Andersen";
+  useEffect(() => {
+    let active = true;
+
+    async function loadProfile() {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch("/api/v1/users/me", {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+
+        if (!response.ok) throw new Error("No se pudo cargar el perfil.");
+
+        const data: ProfileData = await response.json();
+        const normalized = normalizeProfile(data);
+        if (!active) return;
+        setProfile(normalized);
+        setFormData(toFormData(normalized));
+        setUser((current) =>
+          current
+            ? {
+                ...current,
+                username: normalized.username,
+                name: normalized.fullName,
+                role: mapBackendRole(normalized.role),
+                profileImage: normalized.profileImage
+              }
+            : current
+        );
+      } catch {
+        if (active) setError("No se pudo cargar el perfil.");
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    }
+
+    loadProfile();
+    return () => {
+      active = false;
+    };
+  }, [setUser, user.token]);
+
+  const displayName = useMemo(() => {
+    if (profile?.fullName) return profile.fullName;
+    return `${formData.firstName} ${formData.lastName}`.trim() || user.name;
+  }, [formData.firstName, formData.lastName, profile?.fullName, user.name]);
+
+  const displayRole = mapBackendRole(profile?.role ?? user.role);
 
   const cancelProfileEdit = () => {
-    setFormData(initialData);
+    if (profile) setFormData(toFormData(profile));
     setIsEditing(false);
+    setError("");
   };
 
-  const saveProfile = () => {
-    if (userEntry) {
-      setUsers((current) =>
-        current.map((item) =>
-          item.username === userEntry.username
-            ? { ...item, ...formData }
-            : item
-        )
+  const saveProfile = async () => {
+    setIsSaving(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/v1/users/me", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (!response.ok) throw new Error("No se pudo guardar el perfil.");
+
+      const data: ProfileData = await response.json();
+      const normalized = normalizeProfile(data);
+      setProfile(normalized);
+      setFormData(toFormData(normalized));
+      setUser((current) =>
+        current
+          ? {
+              ...current,
+              username: normalized.username,
+              name: normalized.fullName,
+              role: mapBackendRole(normalized.role),
+              profileImage: normalized.profileImage
+            }
+          : current
       );
+      setIsEditing(false);
+    } catch {
+      setError("No se pudo guardar el perfil.");
+    } finally {
+      setIsSaving(false);
     }
-    setIsEditing(false);
+  };
+
+  const handleProfileImageChange = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Seleccioná una imagen JPG, PNG o WEBP.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const size = Math.min(image.width, image.height);
+        const sourceX = (image.width - size) / 2;
+        const sourceY = (image.height - size) / 2;
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const context = canvas.getContext("2d");
+
+        if (!context) {
+          setError("No se pudo procesar la imagen.");
+          return;
+        }
+
+        context.drawImage(image, sourceX, sourceY, size, size, 0, 0, 512, 512);
+        const profileImage = canvas.toDataURL("image/jpeg", 0.86);
+        setFormData((current) => ({ ...current, profileImage }));
+        setError("");
+      };
+      image.onerror = () => setError("No se pudo leer la imagen seleccionada.");
+      image.src = String(reader.result ?? "");
+    };
+    reader.onerror = () => setError("No se pudo leer la imagen seleccionada.");
+    reader.readAsDataURL(file);
   };
 
   const closePasswordModal = () => {
     setPasswordData({ current: "", next: "", repeat: "" });
+    setPasswordFeedback(null);
     setIsPasswordModalOpen(false);
+  };
+
+  const changePassword = async () => {
+    setPasswordFeedback(null);
+
+    if (!passwordData.current || !passwordData.next || !passwordData.repeat) {
+      setPasswordFeedback({ type: "error", message: "Completá los tres campos." });
+      return;
+    }
+    if (passwordData.next.length < 8) {
+      setPasswordFeedback({ type: "error", message: "La nueva contraseña debe tener al menos 8 caracteres." });
+      return;
+    }
+    if (passwordData.next !== passwordData.repeat) {
+      setPasswordFeedback({ type: "error", message: "Las contraseñas nuevas no coinciden." });
+      return;
+    }
+
+    setIsPasswordSaving(true);
+    try {
+      const response = await fetch("/api/v1/users/me/password", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.current,
+          newPassword: passwordData.next,
+          repeatPassword: passwordData.repeat
+        })
+      });
+
+      if (!response.ok) {
+        let message = "No se pudo cambiar la contraseña.";
+        try {
+          const errorBody = await response.json();
+          message = errorBody.message ?? message;
+        } catch {
+          // Keep fallback message.
+        }
+        setPasswordFeedback({ type: "error", message });
+        return;
+      }
+
+      setPasswordData({ current: "", next: "", repeat: "" });
+      setPasswordFeedback({ type: "success", message: "Contraseña actualizada correctamente." });
+    } catch {
+      setPasswordFeedback({ type: "error", message: "No se pudo conectar con el servidor." });
+    } finally {
+      setIsPasswordSaving(false);
+    }
   };
 
   const goToHelp = () => {
@@ -75,19 +264,40 @@ export function ProfileView({
       <div className="profile-layout">
         <main className="profile-main-column profile-main-column-no-role">
           <section className="profile-identity-card" aria-label="Perfil de usuario">
-            <div className={isEditing ? "profile-photo profile-photo-editing" : "profile-photo"}>
-              {isEditing ? (
-                <>
-                  <Edit3 size={32} />
-                  <span>JPG, PNG o WEBP.<br />Tamaño máximo:<br />2MB</span>
-                </>
-              ) : (
-                <UserRound size={54} />
-              )}
-            </div>
+            {isEditing ? (
+              <div className="profile-photo-editor">
+                <label className="profile-photo profile-photo-editing profile-photo-button">
+                  {formData.profileImage ? (
+                    <img src={formData.profileImage} alt="Foto de perfil" />
+                  ) : (
+                    <UserRound size={54} />
+                  )}
+                  <input accept="image/jpeg,image/png,image/webp" onChange={(event) => handleProfileImageChange(event.target.files?.[0])} type="file" />
+                </label>
+                <div className="profile-photo-actions">
+                  <label className="profile-photo-edit-button" aria-label="Cambiar foto de perfil">
+                    <Camera size={14} />
+                    <input accept="image/jpeg,image/png,image/webp" onChange={(event) => handleProfileImageChange(event.target.files?.[0])} type="file" />
+                  </label>
+                  {formData.profileImage && (
+                    <button className="profile-photo-delete-button" onClick={() => setFormData((current) => ({ ...current, profileImage: "" }))} type="button" aria-label="Borrar foto de perfil">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="profile-photo">
+                {profile?.profileImage ? (
+                  <img src={profile.profileImage} alt="Foto de perfil" />
+                ) : (
+                  <UserRound size={54} />
+                )}
+              </div>
+            )}
             <div className="profile-identity-copy">
               <h2>{displayName}</h2>
-              <p>Técnico de Mantenimiento</p>
+              <p>{displayRole}</p>
             </div>
           </section>
 
@@ -102,25 +312,32 @@ export function ProfileView({
               )}
             </div>
 
-            <div className="profile-form-grid">
-              <ProfileField disabled={!isEditing} label="Nombre" onChange={(value) => setFormData((current) => ({ ...current, firstName: value }))} value={formData.firstName} />
-              <ProfileField disabled={!isEditing} label="Apellido" onChange={(value) => setFormData((current) => ({ ...current, lastName: value }))} value={formData.lastName} />
-              <ProfileField disabled={!isEditing} label="Teléfono" onChange={(value) => setFormData((current) => ({ ...current, phone: value }))} value={formData.phone} />
-              <ProfileField disabled={!isEditing} label="Email" onChange={(value) => setFormData((current) => ({ ...current, email: value }))} value={formData.email} />
-              <ProfileField disabled={!isEditing} label="Empresa" onChange={(value) => setFormData((current) => ({ ...current, company: value }))} value={formData.company} />
-              <ProfileField disabled={!isEditing} label="Ubicación" onChange={(value) => setFormData((current) => ({ ...current, location: value }))} value={formData.location} />
-            </div>
+            {isLoading ? (
+              <p className="profile-status-text">Cargando perfil...</p>
+            ) : (
+              <>
+                {error && <p className="profile-error-text">{error}</p>}
+                <div className="profile-form-grid">
+                  <ProfileField disabled={!isEditing} label="Nombre" onChange={(value) => setFormData((current) => ({ ...current, firstName: value }))} value={formData.firstName} />
+                  <ProfileField disabled={!isEditing} label="Apellido" onChange={(value) => setFormData((current) => ({ ...current, lastName: value }))} value={formData.lastName} />
+                  <ProfileField disabled={!isEditing} label="Teléfono" onChange={(value) => setFormData((current) => ({ ...current, phone: value }))} value={formData.phone} />
+                  <ProfileField disabled={!isEditing} label="Email" onChange={(value) => setFormData((current) => ({ ...current, email: value }))} value={formData.email} />
+                  <ProfileField disabled={!isEditing} label="Empresa" onChange={(value) => setFormData((current) => ({ ...current, company: value }))} value={formData.company} />
+                  <ProfileField disabled={!isEditing} label="Ubicación" onChange={(value) => setFormData((current) => ({ ...current, location: value }))} value={formData.location} />
+                </div>
 
-            {isEditing && (
-              <div className="profile-edit-actions">
-                <button className="profile-edit-cancel-button" onClick={cancelProfileEdit} type="button">
-                  Cancelar
-                </button>
-                <button className="profile-edit-save-button" onClick={saveProfile} type="button">
-                  <Edit3 size={20} />
-                  Guardar datos
-                </button>
-              </div>
+                {isEditing && (
+                  <div className="profile-edit-actions">
+                    <button className="profile-edit-cancel-button" onClick={cancelProfileEdit} type="button">
+                      Cancelar
+                    </button>
+                    <button className="profile-edit-save-button" disabled={isSaving} onClick={saveProfile} type="button">
+                      <Edit3 size={20} />
+                      {isSaving ? "Guardando" : "Guardar datos"}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </section>
 
@@ -158,10 +375,10 @@ export function ProfileView({
         <aside className="profile-side-column">
           <section className="profile-side-card profile-account-card">
             <h2>Información de la cuenta</h2>
-            <ProfileInfoRow boxed={isEditing} label="Usuario" value="emilia.andersen" />
-            <ProfileInfoRow label="Fecha de registro" value="12/03/2025" />
-            <ProfileInfoRow label="Último acceso" value="Hoy, 08:42" />
-            <ProfileInfoRow label="Estado de la cuenta" value="Activa" highlight />
+            <ProfileInfoRow boxed={isEditing} label="Usuario" value={profile?.username ?? user.username} />
+            <ProfileInfoRow label="Fecha de registro" value={formatDate(profile?.registeredAt)} />
+            <ProfileInfoRow label="Último acceso" value={formatDateTime(profile?.lastAccessAt)} />
+            <ProfileInfoRow label="Estado de la cuenta" value={profile?.active ? "Activa" : "Inactiva"} highlight />
             {!isEditing && (
               <button className="profile-delete-account-button" onClick={() => setIsDeleteModalOpen(true)} type="button">
                 Eliminar cuenta
@@ -217,24 +434,29 @@ export function ProfileView({
             <p>Actualiza tu contraseña de acceso. Debe tener al menos 8 caracteres.</p>
             <div className="profile-modal-fields">
               <label>
-                <span>Repetir contraseña</span>
-                <input onChange={(event) => setPasswordData((current) => ({ ...current, repeat: event.target.value }))} placeholder="••••••••" type="password" value={passwordData.repeat} />
+                <span>Contraseña actual</span>
+                <input onChange={(event) => setPasswordData((current) => ({ ...current, current: event.target.value }))} placeholder="••••••••" type="password" value={passwordData.current} />
               </label>
               <label>
                 <span>Nueva contraseña</span>
                 <input onChange={(event) => setPasswordData((current) => ({ ...current, next: event.target.value }))} placeholder="••••••••" type="password" value={passwordData.next} />
               </label>
               <label>
-                <span>Contraseña actual</span>
-                <input onChange={(event) => setPasswordData((current) => ({ ...current, current: event.target.value }))} placeholder="••••••••" type="password" value={passwordData.current} />
+                <span>Repetir contraseña</span>
+                <input onChange={(event) => setPasswordData((current) => ({ ...current, repeat: event.target.value }))} placeholder="••••••••" type="password" value={passwordData.repeat} />
               </label>
             </div>
+            {passwordFeedback && (
+              <p className={passwordFeedback.type === "success" ? "profile-password-success" : "profile-password-error"}>
+                {passwordFeedback.message}
+              </p>
+            )}
             <div className="profile-modal-actions">
               <button className="profile-modal-secondary" onClick={closePasswordModal} type="button">
                 Cancelar
               </button>
-              <button className="profile-modal-primary" onClick={closePasswordModal} type="button">
-                Continuar
+              <button className="profile-modal-primary" disabled={isPasswordSaving} onClick={changePassword} type="button">
+                {isPasswordSaving ? "Guardando" : "Continuar"}
               </button>
             </div>
           </section>
@@ -242,6 +464,47 @@ export function ProfileView({
       )}
     </section>
   );
+}
+
+function normalizeProfile(profile: ProfileData): ProfileData {
+  return {
+    ...profile,
+    firstName: profile.firstName ?? "",
+    lastName: profile.lastName ?? "",
+    phone: profile.phone ?? "",
+    email: profile.email ?? "",
+    company: profile.company ?? "",
+    location: profile.location ?? "",
+    profileImage: profile.profileImage ?? ""
+  };
+}
+
+function toFormData(profile: ProfileData): ProfileFormData {
+  return {
+    firstName: profile.firstName ?? "",
+    lastName: profile.lastName ?? "",
+    phone: profile.phone ?? "",
+    email: profile.email ?? "",
+    company: profile.company ?? "",
+    location: profile.location ?? "",
+    profileImage: profile.profileImage ?? ""
+  };
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("es-AR").format(new Date(`${value}T00:00:00`));
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
 }
 
 function ProfileField({
@@ -283,4 +546,3 @@ function ProfileActivity({ detail, time, title }: { detail: string; time: string
     </div>
   );
 }
-
