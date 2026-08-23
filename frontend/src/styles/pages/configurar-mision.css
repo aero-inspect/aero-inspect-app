@@ -667,6 +667,7 @@
 }
 
 .poi-popup {
+  position: relative;
   display: grid;
   gap: 8px;
   min-width: 200px;

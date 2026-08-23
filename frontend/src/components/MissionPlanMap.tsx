@@ -1,7 +1,7 @@
 ﻿import L from "leaflet";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip } from "react-leaflet";
-import { Camera, Cylinder, MoveHorizontal, RotateCw, Waves, Wind, Building2 } from "lucide-react";
+import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { Camera, Cylinder, MoveHorizontal, RotateCw, Waves, Wind, Building2, X } from "lucide-react";
 import type { BackendAsset, BackendAssetType, BackendFlightPlan, BackendPlanWaypoint } from "../api/types";
 import { BACKEND_ASSET_TYPE_LABELS } from "../api/constants";
 import { SATELLITE_LAYER } from "../constants";
@@ -102,7 +102,7 @@ export function MissionPlanMap({
                 {asset.name}
                 {pointsOfInterest.length > 0 ? ` · ${selectedCount}/${pointsOfInterest.length}` : ""}
               </Tooltip>
-              <Popup minWidth={240}>
+              <Popup className="asset-popup-leaflet" minWidth={240}>
                 <AssetPointsOfInterestPopup
                   asset={asset}
                   onToggleWaypoint={onToggleWaypoint}
@@ -129,8 +129,13 @@ function AssetPointsOfInterestPopup({
   selectedWaypointIds: Set<number>;
   onToggleWaypoint: (idPlanWaypoint: number) => void;
 }) {
+  const map = useMap();
+
   return (
     <div className="poi-popup">
+      <button aria-label="Cerrar" className="asset-popup-close" onClick={() => map.closePopup()} type="button">
+        <X size={13} strokeWidth={2.5} />
+      </button>
       {asset.imageData && (
         <div className="asset-popup-photo-wrap">
           <img alt={asset.name} className="asset-popup-photo" src={asset.imageData} />

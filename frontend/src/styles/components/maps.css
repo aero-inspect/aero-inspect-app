@@ -183,6 +183,7 @@
 }
 
 .asset-popup {
+  position: relative;
   display: grid;
   gap: 10px;
   min-width: 200px;
