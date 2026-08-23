@@ -1,13 +1,12 @@
-﻿import { Fragment, useState } from "react";
+﻿import { Fragment, useEffect, useMemo, useState } from "react";
 import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, ChevronLeft, ChevronRight, UsersRound } from "lucide-react";
-import { useEffect, useMemo } from "react";
 import type { CSSProperties, Dispatch, SetStateAction } from "react";
-import type { MockUser, InspectionMission, Asset, Plant, SessionUser, MapMarker } from "../types";
+import type { MockUser, InspectionMission, Asset, Plant, SessionUser } from "../types";
+import type { BackendAsset, BackendMission } from "../api/types";
+import { getAssets, getMissions } from "../api/client";
 import { canConsultAssets, getRoleHomeTitle } from "../utils/helpers";
 import { DRONE_OPERATION_ROLES } from "../constants";
-import { getAssets, getMissions } from "../api/client";
-import type { BackendAsset, BackendAssetType, BackendMission } from "../api/types";
-import { LeafletSatelliteMap } from "../components/LeafletSatelliteMap";
+import { AssetsOverviewMap } from "../components/AssetsOverviewMap";
 import { MisActivosView } from "./MisActivos";
 import { ConfigurarMisionView } from "./ConfigurarMision";
 import { GenerarPlanVueloView } from "./GenerarPlanVuelo";
@@ -423,14 +422,6 @@ type InspectionHomeViewProps = {
   plant: Plant;
 };
 
-const assetTypeLabels: Record<BackendAssetType, MapMarker["type"]> = {
-  SILO: "Silo",
-  NORIA: "Noria",
-  CINTA_TRANSPORTADORA: "Cinta transportadora",
-  TUBERIA: "Tuberia",
-  TECHO: "Techo"
-};
-
 const missionStatusLabels: Record<BackendMission["status"], string> = {
   PLANNED: "Planificada",
   UPLOADING: "Enviando",
@@ -495,20 +486,6 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
     };
   }, []);
 
-  const plantMarkers = useMemo<MapMarker[]>(
-    () =>
-      assets
-        .filter((asset) => Number.isFinite(asset.latitude) && Number.isFinite(asset.longitude))
-        .map((asset) => ({
-          id: asset.idAsset,
-          label: asset.name,
-          latitude: String(asset.latitude),
-          longitude: String(asset.longitude),
-          type: assetTypeLabels[asset.type]
-        })),
-    [assets]
-  );
-
   const latestMissions = useMemo(
     () => [...missions].sort((left, right) => missionSortTime(right) - missionSortTime(left)).slice(0, 4),
     [missions]
@@ -565,13 +542,7 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
         <section className="inspection-map-card">
           <h2>Mapa de la planta</h2>
           <div className="inspection-map-shell">
-            <LeafletSatelliteMap
-              markers={plantMarkers}
-              onMarkerClick={(marker) => {
-                if (typeof marker.id === "number") onViewAsset(marker.id);
-              }}
-              plant={plant}
-            />
+            <AssetsOverviewMap assets={assets} onViewAsset={onViewAsset} plant={plant} />
           </div>
         </section>
 

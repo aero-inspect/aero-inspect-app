@@ -129,11 +129,6 @@ export type CreateMissionPayload = {
   selectedPlanWaypointIds: number[];
 };
 
-export type SeedResult = {
-  assets: BackendAsset[];
-  flightPlan: BackendFlightPlan;
-};
-
 export type BackendDrone = {
   idDrone: string;
   droneId: string;

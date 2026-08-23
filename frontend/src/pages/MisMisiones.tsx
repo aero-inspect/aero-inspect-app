@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertCircle, Box, CalendarCheck, CheckCircle2, Clock3, Database, Eye, Play, Plus, RefreshCw, Route, Search, Trash2, X, XCircle } from "lucide-react";
+import { AlertCircle, Box, CalendarCheck, CheckCircle2, Clock3, Eye, Play, Plus, RefreshCw, Route, Search, Trash2, X, XCircle } from "lucide-react";
 import type { BackendFlightPlan, BackendMission, BackendMissionStatus } from "../api/types";
-import { getFlightPlans, getMission, getMissions, seedDemoData, startMission } from "../api/client";
+import { getFlightPlans, getMission, getMissions, startMission } from "../api/client";
 import { MissionDetailRouteMap } from "../components/MissionDetailRouteMap";
 import { AppTopActions } from "../components/AppTopActions";
 
@@ -68,10 +68,8 @@ export function MisMisionesView({
   const [searchTerm, setSearchTerm] = useState("");
   const [startingId, setStartingId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
-  const [planModal, setPlanModal] = useState<"seed" | "choose" | null>(null);
+  const [planModal, setPlanModal] = useState<"choose" | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
-  const [isSeeding, setIsSeeding] = useState(false);
-  const [seedError, setSeedError] = useState<string | null>(null);
   const activePolls = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
@@ -149,26 +147,8 @@ export function MisMisionesView({
   };
 
   const handleOpenCreateMission = () => {
-    setSeedError(null);
     setSelectedPlanId(null);
-    setPlanModal(flightPlans.length > 0 ? "choose" : "seed");
-  };
-
-  const handleSeed = async () => {
-    setIsSeeding(true);
-    setSeedError(null);
-    try {
-      await seedDemoData();
-      const nextPlans = await getFlightPlans();
-      setFlightPlans(nextPlans);
-      setFlightPlansById(new Map(nextPlans.map((plan) => [plan.idFlightPlan, plan])));
-      setSelectedPlanId(nextPlans[0]?.idFlightPlan ?? null);
-      setPlanModal("choose");
-    } catch (error) {
-      setSeedError(error instanceof Error ? error.message : "No se pudieron cargar los datos de prueba.");
-    } finally {
-      setIsSeeding(false);
-    }
+    setPlanModal("choose");
   };
 
   const handleContinuePlan = () => {
@@ -450,44 +430,31 @@ export function MisMisionesView({
             </button>
             <div className="mission-plan-modal-header">
               <span className="mission-plan-modal-icon" aria-hidden="true">
-                {planModal === "seed" ? <Database size={20} /> : <Box size={20} />}
+                <Box size={20} />
               </span>
-              <h2>{planModal === "seed" ? "Cargar datos de prueba" : "Elegir plan de vuelo"}</h2>
+              <h2>Elegir plan de vuelo</h2>
             </div>
             <div className="mission-plan-modal-divider" />
 
-            {planModal === "seed" ? (
-              <div className="mission-plan-modal-body">
-                <p>Apreta el boton cargar para subir los datos de prueba.</p>
-                {seedError && <p className="mission-plan-modal-error">{seedError}</p>}
-              </div>
-            ) : (
-              <div className="mission-plan-list" role="radiogroup" aria-label="Planes de vuelo">
-                {flightPlans.map((plan) => (
-                  <button
-                    className={selectedPlanId === plan.idFlightPlan ? "mission-plan-row selected" : "mission-plan-row"}
-                    key={plan.idFlightPlan}
-                    onClick={() => setSelectedPlanId(plan.idFlightPlan)}
-                    type="button"
-                    role="radio"
-                    aria-checked={selectedPlanId === plan.idFlightPlan}
-                  >
-                    <span>{plan.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="mission-plan-list" role="radiogroup" aria-label="Planes de vuelo">
+              {flightPlans.map((plan) => (
+                <button
+                  className={selectedPlanId === plan.idFlightPlan ? "mission-plan-row selected" : "mission-plan-row"}
+                  key={plan.idFlightPlan}
+                  onClick={() => setSelectedPlanId(plan.idFlightPlan)}
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedPlanId === plan.idFlightPlan}
+                >
+                  <span>{plan.name}</span>
+                </button>
+              ))}
+            </div>
 
             <div className="mission-plan-modal-footer">
-              {planModal === "seed" ? (
-                <button className="mission-plan-modal-primary" disabled={isSeeding} onClick={handleSeed} type="button">
-                  {isSeeding ? "Cargando..." : "Cargar"}
-                </button>
-              ) : (
-                <button className="mission-plan-modal-primary" disabled={selectedPlanId == null} onClick={handleContinuePlan} type="button">
-                  Continuar
-                </button>
-              )}
+              <button className="mission-plan-modal-primary" disabled={selectedPlanId == null} onClick={handleContinuePlan} type="button">
+                Continuar
+              </button>
             </div>
           </section>
         </div>

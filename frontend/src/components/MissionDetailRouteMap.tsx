@@ -1,7 +1,7 @@
-import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip } from "react-leaflet";
+import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
 import { divIcon } from "leaflet";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Camera } from "lucide-react";
+import { Camera, X } from "lucide-react";
 import { SATELLITE_LAYER } from "../constants";
 import { MapSizeController } from "./LeafletHelpers";
 import { ASSET_TYPE_ICONS } from "./MissionPlanMap";
@@ -81,9 +81,18 @@ function AssetInspectionPopup({ asset, info }: { asset: BackendAsset; info: Asse
   const TypeIcon = ASSET_TYPE_ICONS[asset.type];
   const inspected = info?.inspected ?? false;
   const iconColor = inspected ? BACKEND_ASSET_TYPE_COLORS[asset.type] : "#8b95a1";
+  const map = useMap();
 
   return (
     <div className="asset-popup">
+      <button aria-label="Cerrar" className="asset-popup-close" onClick={() => map.closePopup()} type="button">
+        <X size={13} strokeWidth={2.5} />
+      </button>
+      {asset.imageData && (
+        <div className="asset-popup-photo-wrap">
+          <img alt={asset.name} className="asset-popup-photo" src={asset.imageData} />
+        </div>
+      )}
       <div className="asset-popup-header">
         <span className="asset-popup-icon" style={{ background: iconColor }}>
           <TypeIcon color="#ffffff" size={15} strokeWidth={2.4} />
@@ -210,7 +219,7 @@ export function MissionDetailRouteMap({
               <Tooltip className="leaflet-asset-tooltip" direction="top" offset={[0, -14]} permanent>
                 {asset.name}
               </Tooltip>
-              <Popup minWidth={200}>
+              <Popup className="asset-popup-leaflet" minWidth={200}>
                 <AssetInspectionPopup asset={asset} info={info} />
               </Popup>
             </Marker>
