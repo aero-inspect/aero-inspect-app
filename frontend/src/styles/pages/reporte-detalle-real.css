@@ -110,6 +110,35 @@
 .real-report-summary dt { margin-bottom: 4px; color: #71809a; font-size: 12px; }
 .real-report-summary dd { margin: 0; color: #17346d; font-weight: 700; }
 
+.real-report-selectors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.real-report-selectors label {
+  display: grid;
+  gap: 6px;
+  color: #2f4671;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.real-report-selectors select {
+  padding: 10px 12px;
+  border: 1px solid #cfd9e8;
+  border-radius: 8px;
+  color: #213a69;
+  background: #fff;
+  font: inherit;
+  font-weight: 500;
+}
+
+.real-report-selectors select:disabled {
+  background: #f3f5f8;
+}
+
 .real-report-file-input {
   position: static;
   width: min(100%, 480px);
@@ -435,6 +464,7 @@
   }
 
   .real-report-images,
+  .real-report-selectors,
   .real-report-result-data div {
     grid-template-columns: 1fr;
   }

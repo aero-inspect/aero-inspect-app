@@ -38,6 +38,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
   const [signature, setSignature] = useState("");
   const [validationError, setValidationError] = useState("");
   const [reportState, setReportState] = useState<ReportState>("pending");
+  const [missions, setMissions] = useState<BackendMission[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState("");
   const [selectedWaypointId, setSelectedWaypointId] = useState("");
   const [missionsError, setMissionsError] = useState("");
@@ -56,6 +57,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
       .then((availableMissions) => {
         if (cancelled) return;
         const withWaypoints = availableMissions.filter((mission) => getInspectionWaypoints(mission).length);
+        setMissions(withWaypoints);
         if (withWaypoints[0]) {
           setSelectedMissionId(withWaypoints[0].idMission);
           setSelectedWaypointId(getInspectionWaypoints(withWaypoints[0])[0]?.idMissionWaypoint ?? "");
@@ -89,6 +91,12 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
   const resetDecision = () => {
     setReportState("pending");
     setValidationError("");
+  };
+
+  const handleMissionChange = (idMission: string) => {
+    setSelectedMissionId(idMission);
+    const mission = missions.find((candidate) => candidate.idMission === idMission);
+    setSelectedWaypointId(mission ? getInspectionWaypoints(mission)[0]?.idMissionWaypoint ?? "" : "");
   };
 
   const updatePhoto = (id: string, changes: Partial<PhotoAnalysis>) => {
@@ -164,6 +172,12 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
       setSelectionError("Seleccione una mision y un punto de inspeccion antes de analizar.");
       return;
     }
+    const selectedMission = missions.find((mission) => mission.idMission === selectedMissionId);
+    const selectedWaypoint = selectedMission && getInspectionWaypoints(selectedMission).find((waypoint) => waypoint.idMissionWaypoint === selectedWaypointId);
+    if (!selectedWaypoint?.idAsset) {
+      setSelectionError("El punto de inspeccion seleccionado no tiene un activo asociado.");
+      return;
+    }
 
     setIsAnalyzingAll(true);
     setSelectionError("");
@@ -171,7 +185,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
 
     let activeReport = persistedReport;
     try {
-      if (!activeReport) { activeReport = await createReport(selectedMissionId); setPersistedReport(activeReport); }
+      if (!activeReport) { activeReport = await createReport(selectedMissionId, selectedWaypoint.idAsset); setPersistedReport(activeReport); }
     } catch (error) {
       setSelectionError(error instanceof Error ? error.message : "No se pudo crear el reporte"); setIsAnalyzingAll(false); return;
     }
@@ -263,6 +277,40 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
           </div>
 
           {missionsError && <p className="real-report-error" role="alert">{missionsError}</p>}
+
+          {!reportCode && !persistedReport && !!missions.length && (
+            <div className="real-report-selectors">
+              <label>
+                Mision
+                <select
+                  disabled={isLoadingMissions || isAnalyzingAll}
+                  onChange={(event) => handleMissionChange(event.target.value)}
+                  value={selectedMissionId}
+                >
+                  {missions.map((mission) => (
+                    <option key={mission.idMission} value={mission.idMission}>{mission.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Punto de inspeccion (activo)
+                <select
+                  disabled={isLoadingMissions || isAnalyzingAll}
+                  onChange={(event) => setSelectedWaypointId(event.target.value)}
+                  value={selectedWaypointId}
+                >
+                  {missions
+                    .find((mission) => mission.idMission === selectedMissionId)
+                    ? getInspectionWaypoints(missions.find((mission) => mission.idMission === selectedMissionId)!).map((waypoint) => (
+                        <option key={waypoint.idMissionWaypoint} value={waypoint.idMissionWaypoint}>
+                          {waypoint.name ?? `Punto ${waypoint.sequence}`} (activo #{waypoint.idAsset})
+                        </option>
+                      ))
+                    : null}
+                </select>
+              </label>
+            </div>
+          )}
 
           {!reportCode && photos.length < MAX_IMAGES && !isClosed && (
             <div className="real-report-upload">

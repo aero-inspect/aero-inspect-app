@@ -161,8 +161,8 @@ export function getInspectionPhoto(idInspectionPhoto: string) {
 export function getReports() { return request<BackendReport[]>("/api/v1/reports"); }
 export function getReport(code: string) { return request<BackendReport>(`/api/v1/reports/${code}`); }
 export function deleteReport(code: string) { return request<void>(`/api/v1/reports/${code}`, { method: "DELETE" }); }
-export function createReport(idMission: string, title?: string) {
-  return request<BackendReport>("/api/v1/reports", { method: "POST", body: JSON.stringify({ idMission, title }) });
+export function createReport(idMission: string, idAsset: number, title?: string) {
+  return request<BackendReport>("/api/v1/reports", { method: "POST", body: JSON.stringify({ idMission, idAsset, title }) });
 }
 export function validateReport(code: string, signature: string, comments: string, approved: boolean) {
   return request<BackendReport>(`/api/v1/reports/${code}/validation`, { method: "PUT", body: JSON.stringify({ signature, comments, approved }) });
