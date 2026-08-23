@@ -245,7 +245,7 @@ export type BackendReport = {
   validatorSignature: string | null;
   validatorComments: string | null;
   validatedAt: string | null;
-  severity: "NOT_REPORTED";
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" | "NOT_REPORTED";
   findingsCount: number;
   photos: BackendInspectionPhoto[];
 };

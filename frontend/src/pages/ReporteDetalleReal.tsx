@@ -38,6 +38,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
   const [signature, setSignature] = useState("");
   const [validationError, setValidationError] = useState("");
   const [reportState, setReportState] = useState<ReportState>("pending");
+  const [missions, setMissions] = useState<BackendMission[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState("");
   const [selectedWaypointId, setSelectedWaypointId] = useState("");
   const [missionsError, setMissionsError] = useState("");
@@ -56,6 +57,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
       .then((availableMissions) => {
         if (cancelled) return;
         const withWaypoints = availableMissions.filter((mission) => getInspectionWaypoints(mission).length);
+        setMissions(withWaypoints);
         if (withWaypoints[0]) {
           setSelectedMissionId(withWaypoints[0].idMission);
           setSelectedWaypointId(getInspectionWaypoints(withWaypoints[0])[0]?.idMissionWaypoint ?? "");
@@ -89,6 +91,12 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
   const resetDecision = () => {
     setReportState("pending");
     setValidationError("");
+  };
+
+  const handleMissionChange = (idMission: string) => {
+    setSelectedMissionId(idMission);
+    const mission = missions.find((candidate) => candidate.idMission === idMission);
+    setSelectedWaypointId(mission ? getInspectionWaypoints(mission)[0]?.idMissionWaypoint ?? "" : "");
   };
 
   const updatePhoto = (id: string, changes: Partial<PhotoAnalysis>) => {
@@ -164,6 +172,12 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
       setSelectionError("Seleccione una mision y un punto de inspeccion antes de analizar.");
       return;
     }
+    const selectedMission = missions.find((mission) => mission.idMission === selectedMissionId);
+    const selectedWaypoint = selectedMission && getInspectionWaypoints(selectedMission).find((waypoint) => waypoint.idMissionWaypoint === selectedWaypointId);
+    if (!selectedWaypoint?.idAsset) {
+      setSelectionError("El punto de inspeccion seleccionado no tiene un activo asociado.");
+      return;
+    }
 
     setIsAnalyzingAll(true);
     setSelectionError("");
@@ -171,7 +185,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
 
     let activeReport = persistedReport;
     try {
-      if (!activeReport) { activeReport = await createReport(selectedMissionId); setPersistedReport(activeReport); }
+      if (!activeReport) { activeReport = await createReport(selectedMissionId, selectedWaypoint.idAsset); setPersistedReport(activeReport); }
     } catch (error) {
       setSelectionError(error instanceof Error ? error.message : "No se pudo crear el reporte"); setIsAnalyzingAll(false); return;
     }
@@ -243,7 +257,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
       {persistedReport && <dl className="real-report-summary">
         <div><dt>Código</dt><dd>{persistedReport.code}</dd></div><div><dt>Activo</dt><dd>{persistedReport.assetName}</dd></div>
         <div><dt>Misión</dt><dd>{persistedReport.missionName}</dd></div><div><dt>Fecha</dt><dd>{new Date(persistedReport.createdAt).toLocaleString("es-AR")}</dd></div>
-        <div><dt>Hallazgos</dt><dd>{persistedReport.findingsCount}</dd></div><div><dt>Severidad</dt><dd>No informada por IA</dd></div>
+        <div><dt>Hallazgos</dt><dd>{persistedReport.findingsCount}</dd></div><div><dt>Severidad</dt><dd>{REPORT_SEVERITY_LABELS[persistedReport.severity]}</dd></div>
       </dl>}
 
       <div className="real-report-grid">
@@ -257,6 +271,40 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
           </div>
 
           {missionsError && <p className="real-report-error" role="alert">{missionsError}</p>}
+
+          {!reportCode && !persistedReport && !!missions.length && (
+            <div className="real-report-selectors">
+              <label>
+                Mision
+                <select
+                  disabled={isLoadingMissions || isAnalyzingAll}
+                  onChange={(event) => handleMissionChange(event.target.value)}
+                  value={selectedMissionId}
+                >
+                  {missions.map((mission) => (
+                    <option key={mission.idMission} value={mission.idMission}>{mission.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Punto de inspeccion (activo)
+                <select
+                  disabled={isLoadingMissions || isAnalyzingAll}
+                  onChange={(event) => setSelectedWaypointId(event.target.value)}
+                  value={selectedWaypointId}
+                >
+                  {missions
+                    .find((mission) => mission.idMission === selectedMissionId)
+                    ? getInspectionWaypoints(missions.find((mission) => mission.idMission === selectedMissionId)!).map((waypoint) => (
+                        <option key={waypoint.idMissionWaypoint} value={waypoint.idMissionWaypoint}>
+                          {waypoint.name ?? `Punto ${waypoint.sequence}`} (activo #{waypoint.idAsset})
+                        </option>
+                      ))
+                    : null}
+                </select>
+              </label>
+            </div>
+          )}
 
           {!reportCode && photos.length < MAX_IMAGES && !isClosed && (
             <div className="real-report-upload">
@@ -356,7 +404,9 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
 }
 
 function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boolean; index: number; onRemove: () => void; photo: PhotoAnalysis }) {
-  const report = parseFindings(photo.analysis?.findings);
+  const parsed = parseFindings(photo.analysis?.findings);
+  const report = parsed?.corrosion ?? null;
+  const predictedSeverity = parsed?.predictedSeverity ?? null;
   const result = report ? getResult(report) : null;
   const overlayUrl = photo.analysis?.analyzedImageUrl ?? "";
 
@@ -392,6 +442,7 @@ function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boo
             <div><dt>Tipo de anomalia</dt><dd>Corrosion</dd></div>
             <div><dt>Fecha de la foto</dt><dd><CalendarDays size={15} /> {photo.photoDate.value} <small>({photo.photoDate.source === "captura" ? "metadato de captura" : "fecha del archivo"})</small></dd></div>
             <div><dt>Area detectada</dt><dd>{report.detected_area_percent.toFixed(2)}%</dd></div>
+            <div><dt>Severidad</dt><dd>{formatSeverity(predictedSeverity)}</dd></div>
             <div><dt>Descripcion del resultado</dt><dd>{result.description}</dd></div>
           </dl>
         </div>
@@ -430,10 +481,41 @@ function getResult(report: AiCorrosionReport) {
   };
 }
 
-function parseFindings(findings: string | null | undefined): AiCorrosionReport | null {
+const REPORT_SEVERITY_LABELS: Record<BackendReport["severity"], string> = {
+  LOW: "Baja",
+  MEDIUM: "Media",
+  HIGH: "Alta",
+  CRITICAL: "Critica",
+  NOT_REPORTED: "No informada por IA"
+};
+
+const PHOTO_SEVERITY_LABELS: Record<string, string> = {
+  sin_corrosion: "Sin corrosion",
+  baja: "Baja",
+  media: "Media",
+  alta: "Alta"
+};
+
+function formatSeverity(predictedSeverity: string | null): string {
+  if (!predictedSeverity) return "No informada por IA";
+  return PHOTO_SEVERITY_LABELS[predictedSeverity] ?? predictedSeverity;
+}
+
+type ParsedFindings = {
+  corrosion: AiCorrosionReport;
+  predictedSeverity: string | null;
+};
+
+function parseFindings(findings: string | null | undefined): ParsedFindings | null {
   if (!findings) return null;
   try {
-    return JSON.parse(findings) as AiCorrosionReport;
+    const parsed = JSON.parse(findings) as
+      | AiCorrosionReport
+      | { corrosion: AiCorrosionReport; severity?: { predicted_severity?: string } };
+    if (parsed && typeof parsed === "object" && "corrosion" in parsed) {
+      return { corrosion: parsed.corrosion, predictedSeverity: parsed.severity?.predicted_severity ?? null };
+    }
+    return { corrosion: parsed as AiCorrosionReport, predictedSeverity: null };
   } catch {
     return null;
   }
