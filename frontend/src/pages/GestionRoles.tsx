@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Plus, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, Plus, Search, Trash2 } from "lucide-react";
 import type { SessionUser } from "../types";
 import { AppTopActions } from "../components/AppTopActions";
 
@@ -37,6 +37,8 @@ export function RoleManagementView({ user }: { user: SessionUser; onBack: () => 
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingUser, setDeletingUser] = useState<ManagedUser | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [openSelect, setOpenSelect] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
 
@@ -127,6 +129,7 @@ export function RoleManagementView({ user }: { user: SessionUser; onBack: () => 
 
   async function deleteUser(username: string) {
     setFeedback(null);
+    setIsDeleting(true);
     try {
       const response = await fetch(`/api/v1/users/${username}`, {
         method: "DELETE",
@@ -134,8 +137,11 @@ export function RoleManagementView({ user }: { user: SessionUser; onBack: () => 
       });
       if (!response.ok) throw new Error(await readError(response));
       setUsers((current) => current.filter((item) => item.username !== username));
+      setDeletingUser(null);
     } catch (error) {
       setFeedback({ type: "error", message: error instanceof Error ? error.message : "No se pudo eliminar el usuario." });
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -275,7 +281,7 @@ export function RoleManagementView({ user }: { user: SessionUser; onBack: () => 
                         </button>
                       </td>
                       <td>
-                        <button className="personnel-delete-button" onClick={() => deleteUser(item.username)} type="button" aria-label="Eliminar usuario">
+                        <button className="personnel-delete-button" onClick={() => setDeletingUser(item)} type="button" aria-label="Eliminar usuario">
                           <Trash2 size={14} />
                         </button>
                       </td>
@@ -289,6 +295,29 @@ export function RoleManagementView({ user }: { user: SessionUser; onBack: () => 
           </div>
         </section>
       </div>
+
+      {deletingUser && (
+        <div className="modal-backdrop profile-delete-modal-backdrop" role="presentation">
+          <section aria-modal="true" className="profile-delete-modal personnel-delete-modal" role="dialog">
+            <span className="profile-delete-modal-icon" aria-hidden="true">
+              <AlertTriangle size={31} />
+            </span>
+            <h2>Eliminar usuario</h2>
+            <p>
+              ¿Seguro que querés eliminar a {deletingUser.fullName}?<br />
+              Esta acción no se puede deshacer.
+            </p>
+            <div className="profile-delete-modal-actions">
+              <button className="profile-delete-modal-secondary" disabled={isDeleting} onClick={() => setDeletingUser(null)} type="button">
+                Cancelar
+              </button>
+              <button className="profile-delete-modal-primary" disabled={isDeleting} onClick={() => void deleteUser(deletingUser.username)} type="button">
+                {isDeleting ? "Eliminando..." : "Eliminar"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

@@ -213,6 +213,7 @@ export function Home({
           <MonitorMissionView missionId={selectedBackendMissionId} token={user.token} onBack={() => navigateTo("/mis-misiones")} />
         ) : isMissionsPath ? (
           <MisMisionesView
+            user={user}
             onCreateMission={(idFlightPlan) => {
               setSelectedFlightPlanId(idFlightPlan);
               navigateTo("/configurar-mision");

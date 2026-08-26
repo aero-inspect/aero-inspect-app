@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertCircle, Box, CalendarCheck, CheckCircle2, Clock3, Eye, Play, Plus, RefreshCw, Route, Search, Trash2, X, XCircle } from "lucide-react";
-import type { BackendFlightPlan, BackendMission, BackendMissionStatus } from "../api/types";
-import { getFlightPlans, getMission, getMissions, startMission } from "../api/client";
+import { AlertCircle, Box, CalendarCheck, CheckCircle2, ChevronDown, Clock3, Eye, Play, Plus, RefreshCw, Route, Search, Trash2, X, XCircle } from "lucide-react";
+import type { BackendFlightPlan, BackendMission, BackendMissionStatus, ManagedUser } from "../api/types";
+import type { SessionUser } from "../types";
+import { deleteMission, getFlightPlans, getManagedUsers, getMission, getMissions, startMission, updateMissionPilot } from "../api/client";
 import { MissionDetailRouteMap } from "../components/MissionDetailRouteMap";
 import { AppTopActions } from "../components/AppTopActions";
 
@@ -49,24 +50,32 @@ function formatDuration(startedAt: string | null, finishedAt: string | null) {
 }
 
 export function MisMisionesView({
+  user,
   onCreateMission,
   onGeneratePlan,
   onViewMission
 }: {
+  user: SessionUser;
   onCreateMission: (idFlightPlan: number) => void;
   onGeneratePlan: () => void;
   onViewMission: (idMission: string) => void;
 }) {
   const [missions, setMissions] = useState<BackendMission[] | null>(null);
   const [flightPlans, setFlightPlans] = useState<BackendFlightPlan[]>([]);
+  const [technicians, setTechnicians] = useState<ManagedUser[]>([]);
   const [flightPlansById, setFlightPlansById] = useState<Map<number, BackendFlightPlan>>(new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDetailClosed, setIsDetailClosed] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"Todas" | MissionDisplayStatus>("Todas");
+  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [startingId, setStartingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<BackendMission | null>(null);
+  const [openPilotMissionId, setOpenPilotMissionId] = useState<string | null>(null);
+  const [savingPilotMissionId, setSavingPilotMissionId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [planModal, setPlanModal] = useState<"choose" | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
@@ -82,10 +91,11 @@ export function MisMisionesView({
   const loadData = () => {
     setIsRefreshing(true);
     setLoadError(null);
-    Promise.all([getMissions(), getFlightPlans()])
-      .then(([missionList, flightPlans]) => {
+    Promise.all([getMissions(), getFlightPlans(), user.role === "Jefe de Planta" ? getManagedUsers() : Promise.resolve([] as ManagedUser[])])
+      .then(([missionList, flightPlans, userList]) => {
         setMissions(missionList);
         setFlightPlans(flightPlans);
+        setTechnicians(userList.filter((item) => item.role === "TECNICO_MANTENIMIENTO" && item.active));
         setFlightPlansById(new Map(flightPlans.map((plan) => [plan.idFlightPlan, plan])));
       })
       .catch((error: unknown) => setLoadError(error instanceof Error ? error.message : "No se pudieron cargar las misiones."))
@@ -143,6 +153,43 @@ export function MisMisionesView({
       setStartError(error instanceof Error ? error.message : "No se pudo iniciar la mision.");
     } finally {
       setStartingId(null);
+    }
+  };
+
+  const pilotName = (username: string | null | undefined) => {
+    if (!username) return "Sin asignar";
+    if (username === user.username) return user.name;
+    return technicians.find((technician) => technician.username === username)?.fullName ?? username;
+  };
+
+  const handleAssignPilot = async (mission: BackendMission, username: string | null) => {
+    setStartError(null);
+    setSavingPilotMissionId(mission.idMission);
+    try {
+      const updated = await updateMissionPilot(mission.idMission, username);
+      setMissions((current) => current?.map((item) => (item.idMission === updated.idMission ? updated : item)) ?? current);
+      setOpenPilotMissionId(null);
+    } catch (error) {
+      setStartError(error instanceof Error ? error.message : "No se pudo asignar el piloto.");
+    } finally {
+      setSavingPilotMissionId(null);
+    }
+  };
+
+  const handleDelete = async (mission: BackendMission) => {
+    setStartError(null);
+    setDeletingId(mission.idMission);
+    try {
+      await deleteMission(mission.idMission);
+      setMissions((current) => current?.filter((item) => item.idMission !== mission.idMission) ?? current);
+      if (selectedId === mission.idMission) {
+        setSelectedId(null);
+      }
+      setDeleteCandidate(null);
+    } catch (error) {
+      setStartError(error instanceof Error ? error.message : "No se pudo borrar la mision.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -210,6 +257,12 @@ export function MisMisionesView({
         </p>
       )}
 
+      {startError && !startingId && (
+        <p className="mission-empty">
+          <AlertCircle size={16} aria-hidden="true" /> {startError}
+        </p>
+      )}
+
       {missions === null && !loadError && <p className="mission-empty">Cargando misiones...</p>}
 
       {missions !== null && !loadError && (
@@ -220,17 +273,29 @@ export function MisMisionesView({
                 <button className={statusFilter === "Todas" ? "active" : undefined} onClick={() => setStatusFilter("Todas")} type="button">
                   Todas
                 </button>
-                <label className="missions-status-filter">
-                  <select onChange={(event) => setStatusFilter(event.target.value as "Todas" | MissionDisplayStatus)} value={statusFilter}>
-                    <option value="Todas">Filtrar por estado</option>
-                    <option value="Pendiente">Pendiente</option>
-                    <option value="Enviando al dron">Enviando al dron</option>
-                    <option value="En progreso">En progreso</option>
-                    <option value="Completada">Completada</option>
-                    <option value="Cancelada">Cancelada</option>
-                    <option value="Fallida">Fallida</option>
-                  </select>
-                </label>
+                <div className={statusFilter === "Todas" ? "missions-status-filter" : "missions-status-filter selected"}>
+                  <button onClick={() => setIsStatusMenuOpen((open) => !open)} type="button">
+                    {statusFilter === "Todas" ? "Filtrar por estado" : statusFilter}
+                  </button>
+                  <ChevronDown size={14} />
+                  {isStatusMenuOpen && (
+                    <div className="missions-status-menu">
+                      {(["Todas", "Pendiente", "Enviando al dron", "En progreso", "Completada", "Cancelada", "Fallida"] as const).map((option) => (
+                        <button
+                          className={statusFilter === option ? "selected" : undefined}
+                          key={option}
+                          onClick={() => {
+                            setStatusFilter(option);
+                            setIsStatusMenuOpen(false);
+                          }}
+                          type="button"
+                        >
+                          {option === "Todas" ? "Filtrar por estado" : option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="missions-toolbar-actions">
@@ -291,7 +356,43 @@ export function MisMisionesView({
                       <td>
                         <span className={`mission-state ${statusClass(statusLabel)}`}>{statusLabel}</span>
                       </td>
-                      <td>Emilia Andersen</td>
+                      <td onClick={(event) => event.stopPropagation()}>
+                        {user.role === "Jefe de Planta" ? (
+                          <div className={mission.assignedPilotUsername ? "mission-pilot-select selected" : "mission-pilot-select"}>
+                            <button
+                              disabled={savingPilotMissionId === mission.idMission}
+                              onClick={() => setOpenPilotMissionId((current) => current === mission.idMission ? null : mission.idMission)}
+                              type="button"
+                            >
+                              {savingPilotMissionId === mission.idMission ? "Guardando..." : pilotName(mission.assignedPilotUsername)}
+                            </button>
+                            <ChevronDown size={14} />
+                            {openPilotMissionId === mission.idMission && (
+                              <div className="missions-status-menu mission-pilot-menu">
+                                <button
+                                  className={!mission.assignedPilotUsername ? "selected" : undefined}
+                                  onClick={() => void handleAssignPilot(mission, null)}
+                                  type="button"
+                                >
+                                  Sin asignar
+                                </button>
+                                {technicians.map((technician) => (
+                                  <button
+                                    className={mission.assignedPilotUsername === technician.username ? "selected" : undefined}
+                                    key={technician.username}
+                                    onClick={() => void handleAssignPilot(mission, technician.username)}
+                                    type="button"
+                                  >
+                                    {technician.fullName}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          pilotName(mission.assignedPilotUsername)
+                        )}
+                      </td>
                       <td>
                         <div className="mission-row-actions">
                           <button
@@ -308,11 +409,12 @@ export function MisMisionesView({
                           </button>
                           <button
                             className="mission-delete-button"
-                            disabled
+                            disabled={deletingId === mission.idMission}
                             onClick={(event) => {
                               event.stopPropagation();
+                              setDeleteCandidate(mission);
                             }}
-                            title="Borrado no disponible"
+                            title="Borrar mision"
                             type="button"
                             aria-label="Borrar mision"
                           >
@@ -358,7 +460,13 @@ export function MisMisionesView({
               </div>
 
               <div className="mission-detail-map">
-                <MissionDetailRouteMap points={selectedRow.mission.missionWaypoints ?? flightPlansById.get(selectedRow.mission.idFlightPlan)?.route ?? []} />
+                <MissionDetailRouteMap
+                  points={
+                    selectedRow.mission.missionWaypoints?.length
+                      ? selectedRow.mission.missionWaypoints
+                      : flightPlansById.get(selectedRow.mission.idFlightPlan)?.route ?? []
+                  }
+                />
               </div>
 
               <div className="mission-detail-grid">
@@ -412,7 +520,7 @@ export function MisMisionesView({
                 )}
 
                 {selectedRow.mission.status === "UPLOADING" && (
-                  <p className="mission-empty">Esperando confirmacion del dron...</p>
+                  <p className="mission-waiting-text">Esperando confirmacion del dron...</p>
                 )}
 
               </div>
@@ -454,6 +562,34 @@ export function MisMisionesView({
             <div className="mission-plan-modal-footer">
               <button className="mission-plan-modal-primary" disabled={selectedPlanId == null} onClick={handleContinuePlan} type="button">
                 Continuar
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {deleteCandidate && (
+        <div className="modal-backdrop profile-delete-modal-backdrop" role="presentation">
+          <section aria-modal="true" className="profile-delete-modal mission-delete-modal" role="dialog">
+            <div className="profile-delete-modal-icon">
+              <Trash2 size={26} />
+            </div>
+            <h2>Eliminar mision</h2>
+            <p>
+              ¿Está seguro de que desea eliminar la misión "{deleteCandidate.name}"?<br />
+              Esta acción no se puede deshacer.
+            </p>
+            <div className="profile-delete-modal-actions">
+              <button className="profile-delete-modal-secondary" onClick={() => setDeleteCandidate(null)} type="button">
+                Cancelar
+              </button>
+              <button
+                className="profile-delete-modal-primary"
+                disabled={deletingId === deleteCandidate.idMission}
+                onClick={() => void handleDelete(deleteCandidate)}
+                type="button"
+              >
+                {deletingId === deleteCandidate.idMission ? "Eliminando..." : "Eliminar"}
               </button>
             </div>
           </section>

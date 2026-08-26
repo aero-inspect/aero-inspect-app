@@ -43,7 +43,7 @@ export function Compass({ headingDegree }: { headingDegree: number | null | unde
           viewBox="0 0 32 32"
           aria-hidden="true"
         >
-          <path d="M16 6.5 L20 21 L16 17.5 L12 21 Z" fill="#18d4aa" stroke="#0a1a38" strokeWidth="0.8" strokeLinejoin="round" />
+          <path d="M16 11.5 L18 19 L16 17.2 L14 19 Z" fill="#18d4aa" stroke="#0a1a38" strokeWidth="0.65" strokeLinejoin="round" />
         </svg>
 
         <div className="qgc-compass-hub" />

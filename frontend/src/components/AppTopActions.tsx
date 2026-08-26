@@ -3,6 +3,8 @@ import { Bell, UserRound } from "lucide-react";
 import { emptyWeather, fetchWeather } from "../services/weather";
 import { getWeatherIcon } from "../utils/weatherIcon";
 
+const WEATHER_CITY = "Bragado";
+
 export function AppTopActions() {
   const [isOpen, setIsOpen] = useState(false);
   const [weather, setWeather] = useState(emptyWeather);
@@ -14,7 +16,7 @@ export function AppTopActions() {
   useEffect(() => {
     const loadWeather = async () => {
       try {
-        setWeather(await fetchWeather("Buenos Aires"));
+        setWeather(await fetchWeather(WEATHER_CITY));
       } catch (error) {
         console.error("Error fetching weather:", error);
         setWeather((current) => ({ ...current, desc: "Sin conexión", loading: false }));
@@ -39,7 +41,7 @@ export function AppTopActions() {
         <WeatherIcon aria-hidden="true" className="weather-icon" size={26} />
         <div>
           <strong>{weather.loading ? "--" : weather.temp}{String.fromCharCode(176)}C</strong>
-          <span style={{ textTransform: "capitalize" }}>{weather.desc}</span>
+          <span style={{ textTransform: "capitalize" }}>({WEATHER_CITY}) {weather.desc}</span>
         </div>
       </div>
 

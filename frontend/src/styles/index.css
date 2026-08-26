@@ -27,3 +27,154 @@
 @import "./pages/drones.css";
 @import "./pages/drones-abm.css";
 
+.inspection-home-header,
+.missions-topbar,
+.reports-topbar,
+.profile-topbar,
+.drones-topbar,
+.drones-abm-header,
+.personnel-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  height: 58px;
+  margin-bottom: 8px;
+}
+
+.inspection-home-header h1,
+.missions-topbar h1,
+.reports-topbar h1,
+.profile-topbar h1,
+.drones-topbar h1,
+.drones-abm-header h1,
+.personnel-topbar h1 {
+  margin: 0;
+  color: #063b7a;
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.inspection-home-header p,
+.missions-topbar p,
+.reports-topbar p,
+.profile-topbar p,
+.drones-topbar p,
+.drones-abm-header p,
+.personnel-topbar p {
+  margin: 2px 0 0;
+  color: #063b7a;
+  font-size: 13px;
+  line-height: 17px;
+  font-weight: 400;
+}
+
+.inspection-home .app-top-actions,
+.missions-dashboard .app-top-actions,
+.reports-dashboard .app-top-actions,
+.profile-dashboard .app-top-actions,
+.drones-dashboard .app-top-actions,
+.drones-abm-dashboard .app-top-actions,
+.personnel-page .app-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  padding-top: 8px;
+}
+
+.inspection-home .app-weather,
+.missions-dashboard .app-weather,
+.reports-dashboard .app-weather,
+.profile-dashboard .app-weather,
+.drones-dashboard .app-weather,
+.drones-abm-dashboard .app-weather,
+.personnel-page .app-weather {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inspection-home .app-weather strong,
+.missions-dashboard .app-weather strong,
+.reports-dashboard .app-weather strong,
+.profile-dashboard .app-weather strong,
+.drones-dashboard .app-weather strong,
+.drones-abm-dashboard .app-weather strong,
+.personnel-page .app-weather strong {
+  display: block;
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 17px;
+  font-weight: 700;
+}
+
+.inspection-home .app-weather span,
+.missions-dashboard .app-weather span,
+.reports-dashboard .app-weather span,
+.profile-dashboard .app-weather span,
+.drones-dashboard .app-weather span,
+.drones-abm-dashboard .app-weather span,
+.personnel-page .app-weather span {
+  display: block;
+  margin-top: 0;
+  color: #5c708c;
+  font-size: 10px;
+  line-height: 13px;
+}
+
+.inspection-home .tech-notification-button,
+.inspection-home .tech-user-button,
+.missions-dashboard .tech-notification-button,
+.missions-dashboard .tech-user-button,
+.reports-dashboard .tech-notification-button,
+.reports-dashboard .tech-user-button,
+.profile-dashboard .tech-notification-button,
+.profile-dashboard .tech-user-button,
+.drones-dashboard .tech-notification-button,
+.drones-dashboard .tech-user-button,
+.drones-abm-dashboard .tech-notification-button,
+.drones-abm-dashboard .tech-user-button,
+.personnel-page .tech-notification-button,
+.personnel-page .tech-user-button {
+  width: 38px;
+  height: 38px;
+  color: #063b7a;
+}
+
+.inspection-home .tech-notification-button,
+.missions-dashboard .tech-notification-button,
+.reports-dashboard .tech-notification-button,
+.profile-dashboard .tech-notification-button,
+.drones-dashboard .tech-notification-button,
+.drones-abm-dashboard .tech-notification-button,
+.personnel-page .tech-notification-button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.inspection-home .tech-notification-button span,
+.missions-dashboard .tech-notification-button span,
+.reports-dashboard .tech-notification-button span,
+.profile-dashboard .tech-notification-button span,
+.drones-dashboard .tech-notification-button span,
+.drones-abm-dashboard .tech-notification-button span,
+.personnel-page .tech-notification-button span {
+  display: none;
+}
+
+.inspection-home .tech-user-button,
+.missions-dashboard .tech-user-button,
+.reports-dashboard .tech-user-button,
+.profile-dashboard .tech-user-button,
+.drones-dashboard .tech-user-button,
+.drones-abm-dashboard .tech-user-button,
+.personnel-page .tech-user-button {
+  border: 2px solid #063b7a;
+  border-radius: 50%;
+  background: transparent;
+}
+

@@ -323,7 +323,7 @@ export function ProfileView({
                   <ProfileField disabled={!isEditing} label="Teléfono" onChange={(value) => setFormData((current) => ({ ...current, phone: value }))} value={formData.phone} />
                   <ProfileField disabled={!isEditing} label="Email" onChange={(value) => setFormData((current) => ({ ...current, email: value }))} value={formData.email} />
                   <ProfileField disabled={!isEditing} label="Empresa" onChange={(value) => setFormData((current) => ({ ...current, company: value }))} value={formData.company} />
-                  <ProfileField disabled={!isEditing} label="Ubicación" onChange={(value) => setFormData((current) => ({ ...current, location: value }))} value={formData.location} />
+                  <ProfileField disabled={!isEditing} label="Planta" onChange={(value) => setFormData((current) => ({ ...current, location: value }))} value={formData.location} />
                 </div>
 
                 {isEditing && (

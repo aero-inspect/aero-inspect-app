@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, Save, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle2, AlertCircle, CalendarClock, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { BackendFlightPlan, BackendAsset, BackendDrone } from "../api/types";
 import { getFlightPlans, getAssets, getDrones, createMission } from "../api/client";
 import { FieldError } from "../components/FieldError";
@@ -11,6 +11,49 @@ import { photoCountForWaypoint } from "../utils/missionPhotos";
 type FieldErrors = Partial<Record<"name" | "idDrone" | "scheduledAt", string>>;
 
 type MissionDraftStatus = "Pendiente";
+
+const WEEK_DAYS = ["L", "M", "M", "J", "V", "S", "D"];
+
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function formatScheduledLabel(value: string) {
+  if (!value) return "Seleccione fecha y hora";
+  return new Date(value).toLocaleString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function monthLabel(date: Date) {
+  return date.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+}
+
+function buildCalendarDays(monthDate: Date) {
+  const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const mondayOffset = (firstDay.getDay() + 6) % 7;
+  const firstVisibleDay = new Date(firstDay);
+  firstVisibleDay.setDate(firstDay.getDate() - mondayOffset);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const day = new Date(firstVisibleDay);
+    day.setDate(firstVisibleDay.getDate() + index);
+    return day;
+  });
+}
+
+function sameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
 
 const DEFAULT_ROUTE: InspectionPoint[] = [
   { id: 1, latitude: "-35.140110", longitude: "-60.458900" },
@@ -46,7 +89,11 @@ export function ConfigurarMisionView({
   const [name, setName] = useState("");
   const [objective, setObjective] = useState("");
   const [idDrone, setIdDrone] = useState("");
+  const [isDroneMenuOpen, setIsDroneMenuOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
+  const [scheduledTimeInput, setScheduledTimeInput] = useState("09:00");
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [visibleDate, setVisibleDate] = useState(() => new Date());
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -100,6 +147,36 @@ export function ConfigurarMisionView({
         .reduce((total, point) => total + photoCountForWaypoint(point), 0)
     : 0;
 
+  const selectedDrone = drones?.find((drone) => drone.idDrone === idDrone) ?? null;
+  const selectedScheduledDate = scheduledAt ? new Date(scheduledAt) : null;
+  const calendarDays = buildCalendarDays(visibleDate);
+
+  const handleSelectDate = (date: Date) => {
+    const nextDate = new Date(date);
+    if (selectedScheduledDate) {
+      nextDate.setHours(selectedScheduledDate.getHours(), selectedScheduledDate.getMinutes(), 0, 0);
+    } else {
+      const [hours, minutes] = /^\d{2}:\d{2}$/.test(scheduledTimeInput) ? scheduledTimeInput.split(":").map(Number) : [9, 0];
+      nextDate.setHours(hours, minutes, 0, 0);
+    }
+    setScheduledAt(toDateInputValue(nextDate));
+    setScheduledTimeInput(toDateInputValue(nextDate).slice(11, 16));
+    setVisibleDate(nextDate);
+    setFieldErrors((current) => ({ ...current, scheduledAt: undefined }));
+  };
+
+  const handleSelectTime = (time: string) => {
+    setScheduledTimeInput(time);
+    if (!/^\d{2}:\d{2}$/.test(time)) return;
+    const [hours, minutes] = time.split(":").map(Number);
+    if (hours > 23 || minutes > 59) return;
+    const nextDate = selectedScheduledDate ? new Date(selectedScheduledDate) : new Date();
+    nextDate.setHours(hours, minutes, 0, 0);
+    setScheduledAt(toDateInputValue(nextDate));
+    setVisibleDate(nextDate);
+    setFieldErrors((current) => ({ ...current, scheduledAt: undefined }));
+  };
+
   const handleToggleWaypoint = (idPlanWaypoint: number) => {
     setSelectedWaypointIds((current) => {
       const next = new Set(current);
@@ -120,6 +197,7 @@ export function ConfigurarMisionView({
     setObjective("");
     setIdDrone("");
     setScheduledAt("");
+    setScheduledTimeInput("09:00");
     setFieldErrors({});
     setSubmitError(null);
   };
@@ -254,21 +332,37 @@ export function ConfigurarMisionView({
                 <span>
                   Dron <small className="required-inline">*</small>
                 </span>
-                <select
-                  aria-invalid={Boolean(fieldErrors.idDrone)}
-                  className={fieldErrors.idDrone ? "field-invalid" : undefined}
-                  onChange={(event) => setIdDrone(event.target.value)}
-                  value={idDrone}
-                >
-                  <option value="">
-                    {dronesError ? "No se pudieron cargar los drones" : "Seleccione un dron"}
-                  </option>
-                  {drones?.map((drone) => (
-                    <option key={drone.idDrone} value={drone.idDrone}>
-                      {drone.name} ({drone.droneId})
-                    </option>
-                  ))}
-                </select>
+                <div className={fieldErrors.idDrone ? "mission-drone-select field-invalid" : idDrone ? "mission-drone-select selected" : "mission-drone-select"}>
+                  <button
+                    aria-expanded={isDroneMenuOpen}
+                    aria-invalid={Boolean(fieldErrors.idDrone)}
+                    onClick={() => {
+                      if (!dronesError) setIsDroneMenuOpen((open) => !open);
+                    }}
+                    type="button"
+                  >
+                    {selectedDrone ? `${selectedDrone.name} (${selectedDrone.droneId})` : dronesError ? "No se pudieron cargar los drones" : "Seleccione un dron"}
+                  </button>
+                  <ChevronDown size={14} />
+                  {isDroneMenuOpen && (
+                    <div className="mission-drone-menu">
+                      {drones?.map((drone) => (
+                        <button
+                          className={idDrone === drone.idDrone ? "selected" : undefined}
+                          key={drone.idDrone}
+                          onClick={() => {
+                            setIdDrone(drone.idDrone);
+                            setFieldErrors((current) => ({ ...current, idDrone: undefined }));
+                            setIsDroneMenuOpen(false);
+                          }}
+                          type="button"
+                        >
+                          {drone.name} ({drone.droneId})
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {fieldErrors.idDrone && <FieldError message={fieldErrors.idDrone} />}
               </label>
 
@@ -276,13 +370,74 @@ export function ConfigurarMisionView({
                 <span>
                   Programada para <small className="required-inline">*</small>
                 </span>
-                <input
-                  aria-invalid={Boolean(fieldErrors.scheduledAt)}
-                  className={fieldErrors.scheduledAt ? "field-invalid" : undefined}
-                  onChange={(event) => setScheduledAt(event.target.value)}
-                  type="datetime-local"
-                  value={scheduledAt}
-                />
+                <div className={fieldErrors.scheduledAt ? "mission-date-input field-invalid" : scheduledAt ? "mission-date-input selected" : "mission-date-input"}>
+                  <button
+                    aria-expanded={isDatePickerOpen}
+                    aria-invalid={Boolean(fieldErrors.scheduledAt)}
+                    onClick={() => setIsDatePickerOpen((open) => !open)}
+                    type="button"
+                  >
+                    {formatScheduledLabel(scheduledAt)}
+                  </button>
+                  <CalendarClock size={15} />
+                  {isDatePickerOpen && (
+                    <div className="mission-date-popover">
+                      <div className="mission-calendar-panel">
+                        <div className="mission-calendar-header">
+                          <button
+                            onClick={() => setVisibleDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
+                            type="button"
+                            aria-label="Mes anterior"
+                          >
+                            <ChevronLeft size={14} />
+                          </button>
+                          <strong>{monthLabel(visibleDate)}</strong>
+                          <button
+                            onClick={() => setVisibleDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
+                            type="button"
+                            aria-label="Mes siguiente"
+                          >
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                        <div className="mission-calendar-weekdays">
+                          {WEEK_DAYS.map((day, index) => (
+                            <span key={`${day}-${index}`}>{day}</span>
+                          ))}
+                        </div>
+                        <div className="mission-calendar-grid">
+                          {calendarDays.map((day) => (
+                            <button
+                              className={[
+                                day.getMonth() !== visibleDate.getMonth() ? "muted" : "",
+                                selectedScheduledDate && sameDay(day, selectedScheduledDate) ? "selected" : "",
+                                sameDay(day, new Date()) ? "today" : ""
+                              ].filter(Boolean).join(" ")}
+                              key={day.toISOString()}
+                              onClick={() => handleSelectDate(day)}
+                              type="button"
+                            >
+                              {day.getDate()}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="mission-time-panel">
+                        <span>Hora</span>
+                        <input
+                          aria-label="Hora"
+                          className="mission-time-input"
+                          onChange={(event) => handleSelectTime(event.target.value)}
+                          type="time"
+                          value={scheduledTimeInput}
+                        />
+                        <button className="mission-date-done" onClick={() => setIsDatePickerOpen(false)} type="button">
+                          Listo
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {fieldErrors.scheduledAt && <FieldError message={fieldErrors.scheduledAt} />}
               </label>
 

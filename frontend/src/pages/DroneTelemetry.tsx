@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, Battery, Check, MapPin, Plane, Satellite } from "lucide-react";
+import { AlertTriangle, Battery, Check, ChevronDown, MapPin, Plane, Satellite } from "lucide-react";
 import { getDroneStatuses, getDrones } from "../api/client";
 import type { BackendDrone, BackendDroneStatus } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
@@ -46,6 +46,7 @@ export function DroneTelemetryView() {
   const [updatedAt, setUpdatedAt] = useState("");
   const [heartbeat, setHeartbeat] = useState<BackendDroneStatus | null>(null);
   const [heartbeatError, setHeartbeatError] = useState("");
+  const [isDroneSelectOpen, setIsDroneSelectOpen] = useState(false);
 
   useEffect(() => {
     getDrones()
@@ -90,6 +91,7 @@ export function DroneTelemetryView() {
     () => drones.map((drone) => ({ id: drone.droneId, label: drone.name || drone.droneId })),
     [drones]
   );
+  const selectedDroneLabel = droneOptions.find((drone) => drone.id === selectedDroneId)?.label ?? "No hay drones disponibles";
 
   const preflightChecks = useMemo(() => buildPreflightChecks(heartbeat), [heartbeat]);
   const allChecksOk = heartbeat != null && preflightChecks.every((check) => check.ok === true);
@@ -113,23 +115,30 @@ export function DroneTelemetryView() {
 
       <article className="drone-select-card">
         <div className="drone-select-field">
-          <label htmlFor="drone-select">Seleccionar dron</label>
-          <select
-            id="drone-select"
-            value={selectedDroneId}
-            onChange={(event) => setSelectedDroneId(event.target.value)}
-            disabled={droneOptions.length === 0}
-          >
-            {droneOptions.length === 0 ? (
-              <option value="">No hay drones disponibles</option>
-            ) : (
-              droneOptions.map((drone) => (
-                <option key={drone.id} value={drone.id}>
-                  {drone.label}
-                </option>
-              ))
+          <label>Seleccionar dron</label>
+          <div className={selectedDroneId ? "drone-custom-select selected" : "drone-custom-select"}>
+            <button disabled={droneOptions.length === 0} onClick={() => setIsDroneSelectOpen((current) => !current)} type="button">
+              {selectedDroneLabel}
+            </button>
+            <ChevronDown size={14} aria-hidden="true" />
+            {isDroneSelectOpen && droneOptions.length > 0 && (
+              <div className="assets-filter-menu drone-custom-menu">
+                {droneOptions.map((drone) => (
+                  <button
+                    className={selectedDroneId === drone.id ? "selected" : undefined}
+                    key={drone.id}
+                    onClick={() => {
+                      setSelectedDroneId(drone.id);
+                      setIsDroneSelectOpen(false);
+                    }}
+                    type="button"
+                  >
+                    {drone.label}
+                  </button>
+                ))}
+              </div>
             )}
-          </select>
+          </div>
         </div>
 
         <div className="drone-select-update">

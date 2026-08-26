@@ -4,13 +4,13 @@ import type {
   BackendDroneStatus,
   BackendFlightPlan,
   BackendInspectionPhoto,
+  ManagedUser,
   BackendMission,
   BackendReport,
   BackendWeather,
   CreateAssetPayload,
   CreateDronePayload,
   CreateMissionPayload,
-  SeedResult,
   UpdateDronePayload
 } from "./types";
 
@@ -94,6 +94,23 @@ export function startMission(idMission: string) {
   });
 }
 
+export function updateMissionPilot(idMission: string, assignedPilotUsername: string | null) {
+  return request<BackendMission>(`/api/v1/missions/${idMission}/pilot`, {
+    method: "PATCH",
+    body: JSON.stringify({ assignedPilotUsername })
+  });
+}
+
+export function deleteMission(idMission: string) {
+  return request<void>(`/api/v1/missions/${idMission}`, {
+    method: "DELETE"
+  });
+}
+
+export function getManagedUsers() {
+  return request<ManagedUser[]>("/api/v1/users");
+}
+
 export function getWeather(city: string) {
   return request<BackendWeather>(`/api/v1/weather?city=${encodeURIComponent(city)}`);
 }
@@ -126,12 +143,6 @@ export function deleteDrone(idDrone: string) {
 // mostrar el estado de un dron idle antes de mandarlo a volar.
 export function getDroneStatuses() {
   return request<BackendDroneStatus[]>("/api/v1/drones/status");
-}
-
-// POC: crea datos de prueba (Asset + FlightPlan) en general-monolith. Útil mientras no
-// existe todavía una pantalla real de administración de activos/planes.
-export function seedDemoData() {
-  return request<SeedResult>("/api/v1/seed/demo-data", { method: "POST" });
 }
 
 export async function uploadInspectionPhoto(file: File, idMission: string, idMissionWaypoint: string, reportCode?: string) {

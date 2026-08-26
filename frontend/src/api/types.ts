@@ -116,6 +116,7 @@ export type BackendMission = {
   status: BackendMissionStatus;
   completionPercentage: number;
   notes: string | null;
+  assignedPilotUsername: string | null;
   selectedPlanWaypointIds: number[] | null;
   missionWaypoints: BackendMissionWaypoint[] | null;
 };
@@ -127,6 +128,17 @@ export type CreateMissionPayload = {
   idDrone: string;
   scheduledAt: string;
   selectedPlanWaypointIds: number[];
+};
+
+export type ManagedUser = {
+  username: string;
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  plant: string;
+  profileImage: string | null;
+  active: boolean;
 };
 
 export type BackendDrone = {

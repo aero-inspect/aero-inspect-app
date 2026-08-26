@@ -63,16 +63,16 @@
 }
 
 .missions-summary-card {
-  gap: 18px;
-  height: 54px;
-  padding: 10px 16px;
+  gap: 14px;
+  height: 68px;
+  padding: 10px 16px 10px 24px;
 }
 
 .missions-summary-icon {
   display: grid;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
   place-items: center;
   border-radius: 50%;
 }
@@ -93,18 +93,18 @@
 }
 
 .missions-summary-card p {
-  margin: 0 0 4px;
-  color: #698096;
-  font-size: 13px;
-  line-height: 16px;
-  font-weight: 700;
+  margin: 0 0 2px;
+  color: #10253a;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 600;
 }
 
 .missions-summary-card strong {
   display: block;
   color: #446b50;
-  font-size: 24px;
-  line-height: 28px;
+  font-size: 22px;
+  line-height: 30px;
   font-weight: 700;
 }
 
@@ -200,7 +200,7 @@
 }
 
 .missions-filters button,
-.missions-status-filter select {
+.missions-status-filter {
   height: 32px;
   border: 1px solid #d7e5f2;
   border-radius: 8px;
@@ -224,11 +224,154 @@
   color: #063b7a;
 }
 
-.missions-status-filter select {
-  width: 164px;
-  padding: 0 38px 0 15px;
+.missions-status-filter {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 206px;
+  min-width: 0;
+  color: #698096;
+  box-shadow: 0 2px 8px rgba(15, 26, 43, 0.04);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.missions-status-filter:hover {
+  border-color: rgba(41, 91, 135, 0.35);
+  box-shadow: 0 5px 14px rgba(41, 91, 135, 0.08);
+}
+
+.missions-status-filter.selected {
+  border-color: rgba(41, 91, 135, 0.36);
+  background: rgba(126, 194, 255, 0.18);
+  color: #295b87;
+}
+
+.missions-status-filter > button {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0 34px 0 13px;
+  border: 0;
+  border-radius: inherit;
   outline: 0;
-  appearance: auto;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 700;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.missions-status-filter svg {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  color: currentColor;
+  pointer-events: none;
+}
+
+.missions-status-menu {
+  position: absolute;
+  z-index: 25;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #dbe7f1;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(15, 26, 43, 0.14);
+}
+
+.missions-status-menu button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #4f6578;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.missions-status-menu button:hover,
+.missions-status-menu button.selected {
+  background: rgba(126, 194, 255, 0.18);
+  color: #295b87;
+}
+
+.mission-pilot-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  height: 30px;
+  min-width: 0;
+  border: 1px solid #dbe7f1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #4f6578;
+  box-shadow: 0 2px 8px rgba(15, 26, 43, 0.04);
+}
+
+.mission-pilot-select:hover {
+  border-color: rgba(41, 91, 135, 0.35);
+  box-shadow: 0 5px 14px rgba(41, 91, 135, 0.08);
+}
+
+.mission-pilot-select.selected {
+  border-color: #dbe7f1;
+  background: #ffffff;
+  color: #4f6578;
+}
+
+.mission-pilot-select > button {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0 28px 0 10px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mission-pilot-select > button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.mission-pilot-select svg {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  transform: translateY(-50%);
+  color: currentColor;
+  pointer-events: none;
+}
+
+.mission-pilot-menu {
+  right: auto;
+  min-width: 190px;
 }
 
 .missions-search {
@@ -325,12 +468,12 @@
 
 .missions-table th:nth-child(1),
 .missions-table td:nth-child(1) {
-  width: 27%;
+  width: 25%;
 }
 
 .missions-table th:nth-child(2),
 .missions-table td:nth-child(2) {
-  width: 17%;
+  width: 15%;
 }
 
 .missions-table th:nth-child(3),
@@ -340,17 +483,17 @@
 
 .missions-table th:nth-child(4),
 .missions-table td:nth-child(4) {
-  width: 13%;
+  width: 18%;
 }
 
 .missions-table th:nth-child(5),
 .missions-table td:nth-child(5) {
-  width: 17%;
+  width: 15%;
 }
 
 .missions-table th:nth-child(6),
 .missions-table td:nth-child(6) {
-  width: 13%;
+  width: 14%;
   text-align: center;
 }
 
@@ -382,8 +525,10 @@
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  min-width: 88px;
+  min-width: 96px;
   height: 24px;
+  padding: 0 10px;
+  white-space: nowrap;
   border-radius: 999px;
   font-size: 12px;
   line-height: 15px;
@@ -397,6 +542,7 @@
 }
 
 .mission-state.uploading {
+  border: 1px solid #7c3aed;
   color: #7c3aed;
   background: #ede9fe;
 }
@@ -626,12 +772,12 @@
 
 .missions-table-footer {
   justify-content: flex-start;
-  gap: 16px;
-  padding: 0 18px;
-  color: #698096;
-  font-size: 14px;
-  line-height: 18px;
-  font-weight: 700;
+  gap: 0;
+  padding: 0 22px;
+  color: #5c708c;
+  font-size: 13px;
+  line-height: 15px;
+  font-weight: 600;
 }
 
 .missions-pagination {
@@ -771,6 +917,14 @@
   font-weight: 700;
 }
 
+.mission-waiting-text {
+  margin: 0;
+  color: #5c708c;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 600;
+}
+
 .mission-actions-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -830,6 +984,11 @@
   cursor: pointer;
 }
 
+.mission-delete-modal .profile-delete-modal-primary:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 @media (max-width: 980px) {
   .missions-summary-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -863,7 +1022,7 @@
   }
 
   .missions-search,
-  .missions-status-filter select,
+  .missions-status-filter,
   .missions-new-button,
   .missions-generate-plan-button {
     width: 100%;
