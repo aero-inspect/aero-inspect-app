@@ -6,6 +6,7 @@ import { MissionDetailRouteMap, type AssetInspectionInfo } from "../components/M
 import { photoCountForWaypoint } from "../utils/missionPhotos";
 import { AppTopActions } from "../components/AppTopActions";
 import { Compass } from "../components/Compass";
+import { MissionEvidenceModal } from "../components/MissionEvidenceModal";
 import { useMissionTelemetry } from "../hooks/useMissionTelemetry";
 import { remainingRouteDistanceMeters, totalRouteDistanceMeters } from "../utils/geo";
 
@@ -13,6 +14,7 @@ type MonitorMissionViewProps = {
   missionId: string | null;
   token: string;
   onBack: () => void;
+  onViewReports: () => void;
 };
 
 type RoutePoint = {
@@ -23,12 +25,13 @@ type RoutePoint = {
 
 const EMPTY_VALUE = "-";
 
-type MissionDisplayStatus = "Pendiente" | "Enviando al dron" | "En progreso" | "Completada" | "Cancelada" | "Fallida";
+type MissionDisplayStatus = "Pendiente" | "Enviando al dron" | "En progreso" | "Completada" | "En revision" | "Cancelada" | "Fallida";
 
 function statusLabel(status: BackendMissionStatus | undefined): MissionDisplayStatus {
   if (status === "IN_PROGRESS") return "En progreso";
   if (status === "UPLOADING") return "Enviando al dron";
   if (status === "COMPLETED") return "Completada";
+  if (status === "PENDING_REVIEW") return "En revision";
   if (status === "CANCELLED") return "Cancelada";
   if (status === "FAILED") return "Fallida";
   return "Pendiente";
@@ -38,6 +41,7 @@ function statusClass(status: MissionDisplayStatus) {
   if (status === "Enviando al dron") return "uploading";
   if (status === "En progreso") return "progress";
   if (status === "Completada") return "completed";
+  if (status === "En revision") return "review";
   if (status === "Cancelada") return "cancelled";
   if (status === "Fallida") return "failed";
   return "pending";
@@ -82,16 +86,30 @@ function pitchDescription(pitch: number): string {
   return "horizontal";
 }
 
-export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionViewProps) {
+export function MonitorMissionView({ missionId, token, onBack, onViewReports }: MonitorMissionViewProps) {
   const [mission, setMission] = useState<BackendMission | null>(null);
   const [flightPlan, setFlightPlan] = useState<BackendFlightPlan | null>(null);
   const [assets, setAssets] = useState<BackendAsset[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const statusPollRef = useRef<number | null>(null);
 
-  const { telemetry } = useMissionTelemetry(mission?.idMission, token);
+  const { telemetry, statusEvent } = useMissionTelemetry(mission?.idMission, token);
+
+  // EVIDENCE_UPLOADED: el dron ya subio todas las fotos al bucket y el backend las encolo
+  // para analisis de IA (ver StatusEventRelayService.markPendingReview). Se avisa con un popup
+  // en vivo mientras el operador esta mirando esta misma mision, y se refresca el estado
+  // persistido para que el badge pase a "En revision".
+  useEffect(() => {
+    if (!mission || statusEvent?.event !== "EVIDENCE_UPLOADED") return;
+    setShowEvidenceModal(true);
+    getMission(mission.idMission)
+      .then(setMission)
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusEvent]);
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -418,6 +436,10 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
             </article>
           </aside>
         </section>
+      )}
+
+      {showEvidenceModal && (
+        <MissionEvidenceModal onClose={() => setShowEvidenceModal(false)} onViewReports={onViewReports} />
       )}
     </section>
   );

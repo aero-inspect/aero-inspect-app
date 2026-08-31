@@ -84,7 +84,7 @@ export type BackendFlightPlan = {
   route: BackendPlanWaypoint[];
 };
 
-export type BackendMissionStatus = "PLANNED" | "UPLOADING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "FAILED";
+export type BackendMissionStatus = "PLANNED" | "UPLOADING" | "IN_PROGRESS" | "COMPLETED" | "PENDING_REVIEW" | "CANCELLED" | "FAILED";
 
 export type BackendMissionWaypoint = {
   idMissionWaypoint: string;

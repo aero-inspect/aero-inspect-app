@@ -210,7 +210,12 @@ export function Home({
         ) : isDronesAbmPath && user.role === "Jefe de Planta" ? (
           <DronesAbmView />
         ) : isMonitorPath && userCanConsultAssets ? (
-          <MonitorMissionView missionId={selectedBackendMissionId} token={user.token} onBack={() => navigateTo("/mis-misiones")} />
+          <MonitorMissionView
+            missionId={selectedBackendMissionId}
+            token={user.token}
+            onBack={() => navigateTo("/mis-misiones")}
+            onViewReports={() => navigateTo("/reportes")}
+          />
         ) : isMissionsPath ? (
           <MisMisionesView
             onCreateMission={(idFlightPlan) => {
@@ -427,6 +432,7 @@ const missionStatusLabels: Record<BackendMission["status"], string> = {
   UPLOADING: "Enviando",
   IN_PROGRESS: "En progreso",
   COMPLETED: "Completada",
+  PENDING_REVIEW: "En revision",
   CANCELLED: "Cancelada",
   FAILED: "Fallida"
 };
@@ -436,6 +442,7 @@ const missionStatusClasses: Record<BackendMission["status"], "low" | "medium" | 
   UPLOADING: "medium",
   IN_PROGRESS: "medium",
   COMPLETED: "low",
+  PENDING_REVIEW: "low",
   CANCELLED: "critical",
   FAILED: "critical"
 };
