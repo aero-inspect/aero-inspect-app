@@ -1,0 +1,304 @@
+.bragado-map {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  overflow: hidden;
+  border-radius: inherit;
+  background: #d7e0dd;
+}
+
+.bragado-map-stage,
+.bragado-map-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.bragado-map-stage canvas {
+  touch-action: none;
+}
+
+.bragado-map-tags {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.bragado-map-tag {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 7px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(24, 44, 62, 0.32);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #10253a;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: auto;
+  box-shadow: 0 8px 18px rgba(15, 26, 43, 0.12);
+}
+
+.bragado-map-tag.ok {
+  border-color: rgba(68, 107, 80, 0.48);
+}
+
+.bragado-map-tag.warning {
+  border-color: rgba(210, 154, 60, 0.62);
+}
+
+.bragado-map-tag.danger {
+  border-color: rgba(169, 68, 66, 0.62);
+}
+
+.bragado-map-toolbar {
+  position: absolute;
+  z-index: 3;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 360px);
+  padding: 8px;
+  border: 1px solid rgba(227, 235, 242, 0.78);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 34px rgba(15, 26, 43, 0.14);
+}
+
+.bragado-map-toolbar select,
+.bragado-map-toolbar label {
+  height: 32px;
+  min-width: 0;
+  border: 1px solid #dbe7f1;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #295b87;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.bragado-map-toolbar select {
+  width: 128px;
+  padding: 0 9px;
+}
+
+.bragado-map-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 170px;
+  padding: 0 10px;
+}
+
+.bragado-map-toolbar input {
+  width: 78px;
+  accent-color: #295b87;
+}
+
+.bragado-map-panel {
+  position: absolute;
+  z-index: 3;
+  top: 14px;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(315px, calc(100% - 28px));
+  padding: 14px;
+  border: 1px solid rgba(227, 235, 242, 0.82);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 44px rgba(15, 26, 43, 0.16);
+}
+
+.bragado-map-panel header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bragado-map-panel header strong {
+  color: #063b7a;
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.bragado-map-panel header span {
+  color: #5c708c;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.bragado-map-filter-block {
+  display: grid;
+  gap: 7px;
+}
+
+.bragado-map-filter-block > span {
+  color: #5c708c;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.bragado-map-filter-block div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bragado-map-filter-block button,
+.bragado-map-reset {
+  min-height: 27px;
+  border: 1px solid #dbe7f1;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #4f6578;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.bragado-map-filter-block button {
+  padding: 0 9px;
+}
+
+.bragado-map-filter-block button.active {
+  border-color: rgba(41, 91, 135, 0.36);
+  background: rgba(126, 194, 255, 0.2);
+  color: #295b87;
+}
+
+.bragado-map-reset {
+  justify-self: start;
+  padding: 0 12px;
+}
+
+.bragado-map-detail {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid #e3ebf2;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.bragado-map-detail p,
+.bragado-map-detail h3,
+.bragado-map-detail span {
+  margin: 0;
+}
+
+.bragado-map-detail p,
+.bragado-map-detail span {
+  color: #5c708c;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 650;
+}
+
+.bragado-map-detail h3 {
+  color: #063b7a;
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.bragado-map-detail .state.Activo {
+  color: #446b50;
+}
+
+.bragado-map-detail .state.Inactivo {
+  color: #a94442;
+}
+
+.bragado-map-detail .state.En {
+  color: #d29a3c;
+}
+
+.bragado-map-detail button {
+  justify-self: start;
+  height: 30px;
+  margin-top: 3px;
+  padding: 0 12px;
+  border: 1px solid #063b7a;
+  border-radius: 8px;
+  background: rgba(126, 194, 255, 0.22);
+  color: #063b7a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.bragado-map-list {
+  display: grid;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.bragado-map-list button {
+  display: grid;
+  gap: 2px;
+  min-height: 39px;
+  padding: 7px 9px;
+  border: 1px solid #e3ebf2;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #10253a;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.bragado-map-list button.selected {
+  border-color: #295b87;
+  box-shadow: inset 0 0 0 1px #295b87;
+}
+
+.bragado-map-list strong,
+.bragado-map-list span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bragado-map-list strong {
+  color: #063b7a;
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.bragado-map-list span {
+  color: #5c708c;
+  font-size: 10px;
+  line-height: 13px;
+  font-weight: 650;
+}
+
+@media (max-width: 980px) {
+  .bragado-map-toolbar {
+    max-width: calc(100% - 28px);
+  }
+
+  .bragado-map-panel {
+    top: auto;
+    left: 14px;
+    width: auto;
+    max-height: 42%;
+  }
+}
