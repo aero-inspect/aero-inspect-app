@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import catalog from "../data/bragado-assets.json";
+import { buildPlant } from "./bragado/geometry.js";
+import { Maximize2, Minimize2, SlidersHorizontal, X } from "lucide-react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { BackendAsset, BackendAssetStatus } from "../api/types";
 
-type EquipmentType = "silo" | "flotante" | "celda" | "noria" | "tubo" | "ventilador" | "secadora" | "descarga";
+type EquipmentType = "silo" | "flotante" | "celda" | "noria" | "secadora";
 type DisplayStatus = "Activo" | "Inactivo" | "En mantenimiento" | "Sin confirmar";
 type ViewMode = "top" | "perspective" | "street";
 
-type Bin = { id: string; x: number; z: number; r: number; h: number; number?: number; type: EquipmentType };
 type Equipment = {
   id: string;
   name: string;
@@ -18,7 +20,8 @@ type Equipment = {
   description: string;
   position: THREE.Vector3;
   asset?: BackendAsset;
-  hiddenInScene?: boolean;
+  radius: number;
+  height: number;
 };
 
 type ProjectedTag = {
@@ -30,19 +33,17 @@ type ProjectedTag = {
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
   silo: "Silo",
-  flotante: "Flotante",
+  flotante: "Silo flotante",
   celda: "Celda",
   noria: "Noria",
-  tubo: "Tubo",
-  ventilador: "Ventilador",
-  secadora: "Secadora",
-  descarga: "Descarga"
+  secadora: "Secadora"
 };
 
 const STATUS_FROM_BACKEND: Record<BackendAssetStatus, DisplayStatus> = {
   ACTIVE: "Activo",
   MAINTENANCE: "En mantenimiento",
-  OUT_OF_SERVICE: "Inactivo"
+  OUT_OF_SERVICE: "Inactivo",
+  UNCONFIRMED: "Sin confirmar"
 };
 
 const SIZES = {
@@ -52,34 +53,6 @@ const SIZES = {
 
 const siloNumbers: Record<string, number> = { G1: 10, G2: 11, G3: 9, M1: 5, M3: 6, M2: 3, M4: 4, M5: 2, M6: 1, M7: 8, M8: 7 };
 
-const bins: Bin[] = [
-  ["G1", 179, 64, 112, 19],
-  ["G2", 93, 168, 112, 19],
-  ["G3", 460, 465, 108, 17],
-  ["M1", 242, 145, 72, 14],
-  ["M2", 298, 195, 66, 13],
-  ["M3", 181, 218, 74, 14],
-  ["M4", 242, 254, 64, 12],
-  ["M5", 363, 266, 62, 12],
-  ["M6", 316, 326, 68, 14],
-  ["M7", 437, 331, 76, 15],
-  ["M8", 373, 395, 78, 15],
-  ["P1", 252, 390, 36, 8],
-  ["P2", 294, 374, 29, 10],
-  ["P3", 285, 431, 29, 7]
-].map(([id, u, v, d, h]) => ({
-  id: String(id),
-  x: (Number(u) - 292) * 0.16,
-  z: (Number(v) - 277) * 0.16,
-  r: Number(d) * 0.08,
-  h: Number(h),
-  number: siloNumbers[String(id)],
-  type: String(id).startsWith("P") ? "flotante" : "silo"
-}));
-
-const tubeDestinations = [10, 11, 9, 5, 3, 6, 4, 2, 1, 8, 7, "F1", "F2", "F3"];
-const tubeConnections = tubeDestinations.map((to, index) => ({ id: `tube-${index}`, from: "", to: String(to), noria: index < 7 ? 1 : 2 }));
-
 function normalize(value: string) {
   return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 }
@@ -88,7 +61,7 @@ function statusFor(id: string, name: string, assets: BackendAsset[]): { status: 
   const lookup = [id, name].map(normalize);
   const asset = assets.find((candidate) => {
     const fields = [candidate.name, candidate.code, candidate.locationDetail ?? ""].map(normalize);
-    return fields.some((field) => lookup.some((key) => key && field.includes(key)));
+    return fields.some((field) => lookup.some((key) => key && field === key));
   });
   if (asset) return { status: STATUS_FROM_BACKEND[asset.status], asset };
   if (id === "silo-10" || id === "silo-11") return { status: "Inactivo" };
@@ -97,91 +70,34 @@ function statusFor(id: string, name: string, assets: BackendAsset[]): { status: 
 }
 
 function buildEquipment(assets: BackendAsset[], heightScale: number): Equipment[] {
-  const siloEquipment = bins.map((bin) => {
-    const label = bin.number ? `Silo ${bin.number}` : `F${bin.id.slice(1)}`;
-    const id = bin.number ? `silo-${bin.number}` : label;
-    const status = statusFor(id, label, assets);
-    return {
-      id,
-      name: label,
-      short: bin.number ? String(bin.number) : label,
-      type: bin.type,
-      status: status.status,
-      capacity: bin.number ? SIZES.silos[bin.number] : undefined,
-      description: bin.number ? "Silo metalico de almacenamiento." : "Silo flotante identificado desde la distribucion satelital.",
-      position: new THREE.Vector3(bin.x, bin.h * heightScale + bin.r * 0.3 + 1, bin.z),
-      asset: status.asset
-    };
+  const types: Record<string, EquipmentType> = { SILO: "silo", SILO_FLOTANTE: "flotante", CELDA: "celda", NORIA: "noria", SECADORA: "secadora" };
+  return catalog.map(record => {
+    const matched = assets.find(asset => asset.code === record.code);
+    const linked = matched ? {asset: matched, status: STATUS_FROM_BACKEND[matched.status]} : statusFor(record.id, record.name, assets);
+    const height = record.h * (["SILO", "SILO_FLOTANTE", "NORIA"].includes(record.type) ? heightScale : 1);
+    return {id:record.id, name:record.name, short:record.name, type:types[record.type], ...linked,
+      capacity: record.type === "SILO" ? SIZES.silos[Number(record.id.slice(5))] : record.type === "CELDA" ? 10000 : undefined,
+      description: linked.asset?.locationDetail ?? "Planta Bragado",
+      position:new THREE.Vector3(record.x,height * .6,record.z),radius:record.r,height};
   });
-
-  const fanEquipment = bins.filter((bin) => bin.number).map((bin) => {
-    const angle = Math.atan2(bin.x, bin.z);
-    const distance = bin.r + 1.2;
-    const name = `V${bin.number}`;
-    const status = statusFor(name, `Ventilador ${bin.number}`, assets);
-    return {
-      id: name,
-      name,
-      short: name,
-      type: "ventilador" as const,
-      status: status.status,
-      description: `Ventilador del Silo ${bin.number}.`,
-      position: new THREE.Vector3(bin.x + Math.sin(angle) * distance, 1.5, bin.z + Math.cos(angle) * distance),
-      asset: status.asset
-    };
-  });
-
-  const fixedEquipment: Equipment[] = [
-    { id: "cell", name: "Celda 1", short: "C1", type: "celda", capacity: SIZES.cell.capacity, description: "Celda de almacenamiento de 10.000 t.", position: new THREE.Vector3(-37, 17, -60), ...statusFor("cell", "Celda 1", assets) },
-    { id: "secadora-1", name: "Secadora 1", short: "SC1", type: "secadora", description: "Secadora rectangular de tres niveles.", position: new THREE.Vector3(-9, 11, 10), ...statusFor("secadora-1", "Secadora 1", assets) },
-    { id: "noria-1", name: "Noria 1", short: "N1", type: "noria", description: "Conjunto central de elevacion.", position: new THREE.Vector3(-1, 32, 0), ...statusFor("noria-1", "Noria 1", assets) },
-    { id: "noria-2", name: "Noria 2", short: "N2", type: "noria", description: "Segundo conjunto de elevacion.", position: new THREE.Vector3(12, 27, 5), ...statusFor("noria-2", "Noria 2", assets) },
-    { id: "descarga", name: "Descarga camiones", short: "DC", type: "descarga", description: "Techo y zona de descarga bajo cubierta.", position: new THREE.Vector3(14, 13, -18), ...statusFor("descarga", "Descarga camiones", assets) }
-  ];
-
-  const tubeEquipment = tubeConnections.map((tube) => {
-    const ends = tubeEnds(tube, heightScale);
-    const name = tube.from ? `T${tube.from}${tube.to}` : `T?-${tube.to}`;
-    const status = statusFor(name, name, assets);
-    return {
-      id: tube.id,
-      name,
-      short: name,
-      type: "tubo" as const,
-      status: status.status,
-      description: "Tubo de interconexion entre equipos.",
-      position: ends.a.clone().add(ends.b).multiplyScalar(0.5),
-      asset: status.asset
-    };
-  });
-
-  return [...siloEquipment, ...fixedEquipment, ...fanEquipment, ...tubeEquipment];
-}
-
-function findBin(id: string) {
-  return bins.find((bin) => String(bin.number ?? `F${bin.id.slice(1)}`) === String(id));
-}
-
-function tubeEnds(tube: { from: string; to: string; noria: number }, heightScale: number) {
-  const roof = (bin: Bin) => new THREE.Vector3(bin.x, bin.h * heightScale + bin.r * 0.3, bin.z);
-  const towers = [new THREE.Vector3(-1, 30 * heightScale, 0), new THREE.Vector3(12, 24 * heightScale, 5)];
-  const destination = findBin(tube.to) ?? bins[0];
-  const origin = tube.from ? roof(findBin(tube.from) ?? destination) : towers[tube.noria - 1];
-  return { a: origin, b: roof(destination) };
 }
 
 function disposeObject(object: THREE.Object3D) {
   object.traverse((child) => {
-    if (!(child instanceof THREE.Mesh)) return;
-    child.geometry.dispose();
+    if (!(child instanceof THREE.Mesh) && !(child instanceof THREE.Sprite)) return;
+    if (child instanceof THREE.Mesh) child.geometry.dispose();
     const materials = Array.isArray(child.material) ? child.material : [child.material];
-    materials.forEach((material) => material.dispose());
+    materials.forEach((material) => {
+      for (const value of Object.values(material)) if (value instanceof THREE.Texture) value.dispose();
+      material.dispose();
+    });
   });
 }
 
 function createScene(root: HTMLDivElement, heightScale: number, onProject: (projected: ProjectedTag[]) => void) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   root.append(renderer.domElement);
@@ -194,7 +110,8 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   const sun = new THREE.DirectionalLight("#fff2dd", 2.4);
   sun.position.set(-65, 100, 40);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1536, 1536);
+  sun.shadow.normalBias = 0.04;
+  sun.shadow.mapSize.set(2048, 2048);
   Object.assign(sun.shadow.camera, { left: -110, right: 110, top: 110, bottom: -110, far: 260 });
   scene.add(sun);
 
@@ -202,158 +119,75 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.maxPolarAngle = Math.PI / 2 - 0.025;
+  let street = false;
+  let currentView: ViewMode = "top";
+  let pointer: { x: number; y: number } | null = null;
+  renderer.domElement.addEventListener("pointerdown", event => {
+    if (!street) return;
+    pointer = { x: event.clientX, y: event.clientY };
+    camera.rotation.order = "YXZ";
+    renderer.domElement.setPointerCapture(event.pointerId);
+  });
+  renderer.domElement.addEventListener("pointermove", event => {
+    if (!pointer) return;
+    camera.rotation.y -= (event.clientX - pointer.x) * 0.004;
+    camera.rotation.x = THREE.MathUtils.clamp(camera.rotation.x - (event.clientY - pointer.y) * 0.004, -1.3, 1.3);
+    pointer = { x: event.clientX, y: event.clientY };
+  });
+  renderer.domElement.addEventListener("pointerup", () => { pointer = null; });
+  renderer.domElement.addEventListener("pointercancel", () => { pointer = null; });
 
-  const material = (color: string, metalness = 0, roughness = 0.8) => new THREE.MeshStandardMaterial({ color, metalness, roughness });
-  const steel = material("#a6afb0", 0.6, 0.55);
-  const frame = material("#505f43", 0.4);
-  const rust = material("#8a6956", 0.35);
-  const yellow = material("#c0aa54");
-  const concrete = material("#97978f");
-  const dark = material("#343b37");
-  const grass = material("#718256");
-
-  const addMesh = (geometry: THREE.BufferGeometry, mat: THREE.Material, parent: THREE.Object3D = scene) => {
-    const mesh = new THREE.Mesh(geometry, mat);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    parent.add(mesh);
-    return mesh;
-  };
-  const box = (w: number, h: number, d: number, x: number, y: number, z: number, mat = steel, parent: THREE.Object3D = scene) => {
-    const mesh = addMesh(new THREE.BoxGeometry(w, h, d), mat, parent);
-    mesh.position.set(x, y + h / 2, z);
-    return mesh;
-  };
-  const beam = (a: [number, number, number], b: [number, number, number], r = 0.09, mat = frame, parent: THREE.Object3D = scene) => {
-    const av = new THREE.Vector3(...a);
-    const bv = new THREE.Vector3(...b);
-    const delta = bv.clone().sub(av);
-    const mesh = addMesh(new THREE.CylinderGeometry(r, r, delta.length(), 8), mat, parent);
-    mesh.position.copy(av.add(bv).multiplyScalar(0.5));
-    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize());
-    return mesh;
-  };
-
-  const ground = addMesh(new THREE.PlaneGeometry(900, 900), grass);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.06;
-  ground.castShadow = false;
-
-  const path = (points: Array<[number, number]>, width: number) => {
-    const curve = new THREE.CatmullRomCurve3(points.map(([x, z]) => new THREE.Vector3(x, 0.025, z)));
-    const vertices: number[] = [];
-    const indices: number[] = [];
-    for (let i = 0; i <= 100; i += 1) {
-      const point = curve.getPoint(i / 100);
-      const tangent = curve.getTangent(i / 100);
-      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).multiplyScalar(width / 2);
-      vertices.push(point.x + normal.x, point.y, point.z + normal.z, point.x - normal.x, point.y, point.z - normal.z);
-      if (i < 100) {
-        const a = i * 2;
-        indices.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
-      }
+  const visualTubes = [10, 11, 9, 5, 3, 6, 4, 2, 1, 8, 7, "F1", "F2", "F3"].map((to, index) => ({ id: `tube-${index}`, from: "", to: String(to), noria: index < 7 ? 1 : 2 }));
+  buildPlant(scene, heightScale, siloNumbers, visualTubes);
+  const highlightGroup = new THREE.Group();
+  scene.add(highlightGroup);
+  const highlightMaterial = new THREE.MeshBasicMaterial({ color: "#3fbd68", transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide });
+  const highlightEdgeMaterial = new THREE.LineBasicMaterial({ color: "#168244", transparent: true, opacity: 0.95 });
+  const clearHighlight = () => {
+    for (const child of [...highlightGroup.children]) {
+      if (child instanceof THREE.Mesh || child instanceof THREE.LineSegments) child.geometry.dispose();
+      highlightGroup.remove(child);
     }
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setIndex(indices);
-    geometry.computeVertexNormals();
-    const mesh = addMesh(geometry, concrete);
-    mesh.castShadow = false;
   };
-
-  path([[-98, -62], [-62, -19], [-27, 16], [12, 56], [65, 108]], 7);
-  path([[12, 56], [42, 41], [42, 10], [24, -7], [14, -18], [1, -32]], 9);
-  path([[-62, -19], [-46, -27], [-33, -33]], 6);
-
-  const gabled = (w: number, d: number, h: number, rise: number, x: number, z: number, open = false) => {
-    const group = new THREE.Group();
-    group.position.set(x, 0, z);
-    group.rotation.y = -Math.PI / 4;
-    scene.add(group);
-    if (!open) box(w, h, d, 0, 0, 0, steel, group);
-    const angle = Math.atan2(rise, w / 2);
-    const slope = Math.hypot(w / 2, rise);
-    for (const side of [-1, 1]) {
-      const panel = box(slope + 0.4, 0.16, d + 0.7, side * w / 4, h + rise / 2, 0, steel, group);
-      panel.rotation.z = -side * angle;
-      for (let zz = -d / 2; zz <= d / 2; zz += 3) {
-        beam([side * w / 2, 0, zz], [side * w / 2, h, zz], 0.13, frame, group);
-        beam([side * w / 2, h, zz], [0, h + rise, zz], 0.09, frame, group);
-      }
+  const highlight = (id: string | null) => {
+    clearHighlight();
+    if (!id) return;
+    const record = catalog.find((item) => item.id === id);
+    if (!record) return;
+    const height = record.h * (["SILO", "SILO_FLOTANTE", "NORIA"].includes(record.type) ? heightScale : 1);
+    if (record.r > 0) {
+      const glow = new THREE.Mesh(new THREE.CylinderGeometry(record.r * 1.025, record.r * 1.025, height * 0.98, 64), highlightMaterial);
+      glow.position.set(record.x, height * 0.49, record.z);
+      highlightGroup.add(glow);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(record.r * 1.02, record.r * 1.12, 64), highlightMaterial);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(record.x, 0.12, record.z);
+      highlightGroup.add(ring);
+      const topRing = ring.clone();
+      topRing.position.y = height * 0.98;
+      highlightGroup.add(topRing);
+      return;
     }
-    return group;
+    const size = record.type === "CELDA" ? [27, 14, 43] : record.type === "SECADORA" ? [4.8, 11.2, 4.4] : [5.5, 25, 5.5];
+    const glow = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), highlightMaterial);
+    glow.position.set(record.x, size[1] / 2, record.z);
+    if (record.type === "CELDA") glow.rotation.y = Math.PI / 4;
+    highlightGroup.add(glow);
+    const outline = new THREE.LineSegments(new THREE.EdgesGeometry(glow.geometry), highlightEdgeMaterial);
+    outline.position.copy(glow.position);
+    outline.rotation.copy(glow.rotation);
+    highlightGroup.add(outline);
   };
-
-  gabled(27, 43, 8, 6, -37, -60).rotation.y += Math.PI / 2;
-  const canopy = gabled(18, 13, 9, 1.5, 14, -18, true);
-  box(0.12, 4, 13, -9, 5, 0, steel, canopy);
-  box(0.12, 3, 13, 9, 6, 0, steel, canopy);
-  box(8, 0.12, 12, 0, 0.05, 0, concrete, canopy);
-  for (const z of [-6.5, 6.5]) box(18, 2.3, 0.12, 0, 6.7, z, steel, canopy);
-
-  const fence = [[-80, -34], [-82, -89], [-28, -96], [7, -48], [53, 1], [59, 44], [22, 64]];
-  for (let i = 0; i < fence.length; i += 1) {
-    const [x1, z1] = fence[i];
-    const [x2, z2] = fence[(i + 1) % fence.length];
-    beam([x1, 1.1, z1], [x2, 1.1, z2], 0.025, dark);
-    beam([x1, 1.8, z1], [x2, 1.8, z2], 0.025, dark);
-  }
-
-  for (const bin of bins) {
-    const height = bin.h * heightScale;
-    const small = bin.type === "flotante";
-    const profile: THREE.Vector2[] = [];
-    const base = small ? 3 : 0.35;
-    for (let y = 0; y <= height - base; y += 0.1) profile.push(new THREE.Vector2(bin.r + Math.sin(y * Math.PI * 2 / 0.16) * 0.027, y + base));
-    const silo = addMesh(new THREE.LatheGeometry(profile, 72), steel);
-    silo.position.set(bin.x, 0, bin.z);
-    const foundation = addMesh(new THREE.CylinderGeometry(bin.r + 0.05, bin.r + 0.06, 0.4, 56), concrete);
-    foundation.position.set(bin.x, 0.2, bin.z);
-    const roof = addMesh(new THREE.ConeGeometry(bin.r, bin.r * 0.3, 56), bin.id.startsWith("M") ? rust : steel);
-    roof.position.set(bin.x, height + bin.r * 0.15, bin.z);
-    if (!small) {
-      for (const dx of [-0.35, 0.35]) beam([bin.x + dx, 0.5, bin.z + bin.r + 0.2], [bin.x + dx, height, bin.z + bin.r + 0.2], 0.035, yellow);
-      const angle = Math.atan2(bin.x, bin.z);
-      const d = bin.r + 1.2;
-      const fx = bin.x + Math.sin(angle) * d;
-      const fz = bin.z + Math.cos(angle) * d;
-      const fan = addMesh(new THREE.CylinderGeometry(0.45, 0.45, 0.72, 28), frame);
-      fan.position.set(fx, 0.85, fz);
-      fan.rotation.z = Math.PI / 2;
-      beam([fx, 0.95, fz], [bin.x, 1.2, bin.z], 0.16, frame);
-    } else {
-      const hopper = addMesh(new THREE.CylinderGeometry(bin.r, 0.3, 2.6, 36), frame);
-      hopper.position.set(bin.x, 1.9, bin.z);
-    }
-  }
-
-  for (const [x, z, height] of [[-1, 0, 31], [12, 5, 25]]) {
-    const h = height * heightScale;
-    for (const dx of [-0.45, 0.45]) box(0.38, h, 0.35, x + dx, 0, z, frame);
-    box(3.4, 0.15, 3.4, x, h - 1.3, z, dark);
-    box(2.6, 1.6, 2.6, x, h - 1, z, frame);
-    for (const dx of [-0.8, 0.8]) for (const dz of [-0.8, 0.8]) beam([x + dx, 0, z + dz], [x + dx, h, z + dz], 0.1, frame);
-  }
-
-  for (const tube of tubeConnections) {
-    const ends = tubeEnds(tube, heightScale);
-    beam([ends.a.x, ends.a.y, ends.a.z], [ends.b.x, ends.b.y, ends.b.z], 0.16, frame);
-  }
-
-  const streetDirection = new THREE.Vector3(-0.72, 0, 0.72);
-  for (const n of [9, 10, 11]) {
-    const bin = bins.find((item) => item.number === n);
-    if (!bin) continue;
-    const start = new THREE.Vector3(bin.x, bin.h * heightScale * 0.52, bin.z).add(streetDirection.clone().multiplyScalar(bin.r * 0.65));
-    const end = start.clone().add(streetDirection.clone().multiplyScalar(6));
-    beam([start.x, start.y, start.z], [end.x, end.y, end.z], 0.2, rust);
-    beam([start.x, start.y + 0.8, start.z], [end.x, end.y + 0.8, end.z], 0.2, rust);
-  }
 
   const resize = () => {
     const rect = root.getBoundingClientRect();
     renderer.setSize(rect.width, rect.height, false);
+    const previousDistance = Math.max(175, 145 / camera.aspect);
     camera.aspect = rect.width / Math.max(rect.height, 1);
+    if (!street && camera.position.lengthSq() > 0) {
+      const ratio = Math.max(175, 145 / camera.aspect) / previousDistance;
+      camera.position.sub(controls.target).multiplyScalar(ratio).add(controls.target);
+    }
     camera.updateProjectionMatrix();
   };
   const observer = new ResizeObserver(resize);
@@ -361,6 +195,8 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   resize();
 
   const setView = (view: ViewMode) => {
+    currentView = view;
+    street = view === "street";
     controls.enabled = view !== "street";
     if (view === "street") {
       camera.fov = 68;
@@ -369,9 +205,9 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
       camera.lookAt(controls.target);
     } else {
       camera.fov = 55;
-      const distance = Math.max(150, 125 / camera.aspect);
-      controls.target.set(-8, 0, -23);
-      camera.position.set(-8, view === "top" ? distance : distance * 0.8, view === "top" ? -22.99 : -23 + distance * 0.65);
+      const distance = Math.max(175, 145 / camera.aspect);
+      controls.target.set(-16, 0, -32);
+      camera.position.set(-16, view === "top" ? distance : distance * 0.8, view === "top" ? -31.99 : -32 + distance * 0.65);
     }
     camera.updateProjectionMatrix();
     controls.update();
@@ -380,7 +216,7 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
 
   let frameId = 0;
   const animate = () => {
-    controls.update();
+    if (controls.enabled) controls.update();
     renderer.render(scene, camera);
     frameId = requestAnimationFrame(animate);
   };
@@ -388,15 +224,42 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
 
   return {
     setView,
+    highlight,
     project(items: Equipment[]) {
       const rect = root.getBoundingClientRect();
+      const placed: Array<{ x: number; y: number }> = [];
       onProject(items.map((item) => {
-        const point = item.position.clone().project(camera);
+        const anchor = item.position.clone();
+        if (currentView === "top") {
+          anchor.y = item.height + item.radius * .3;
+        } else if (item.radius > 0) {
+          // Attach the label to the camera-facing wall, not above the roof.
+          const facing = new THREE.Vector3(camera.position.x - anchor.x, 0, camera.position.z - anchor.z).normalize();
+          anchor.addScaledVector(facing, item.radius + .08);
+        }
+        const ray = anchor.clone().sub(camera.position);
+        const horizontal = ray.x * ray.x + ray.z * ray.z;
+        const occluded = currentView !== "top" && horizontal > 0 && catalog.some(other => {
+          if (other.id === item.id || !other.r) return false;
+          const ox = camera.position.x - other.x, oz = camera.position.z - other.z;
+          const linear = 2 * (ox * ray.x + oz * ray.z);
+          const discriminant = linear * linear - 4 * horizontal * (ox * ox + oz * oz - other.r * other.r);
+          if (discriminant < 0) return false;
+          const entry = Math.max(0, (-linear - Math.sqrt(discriminant)) / (2 * horizontal));
+          const exit = Math.min(.99, (-linear + Math.sqrt(discriminant)) / (2 * horizontal));
+          if (exit < entry) return false;
+          const y1 = camera.position.y + ray.y * entry, y2 = camera.position.y + ray.y * exit;
+          return Math.max(y1, y2) > 0 && Math.min(y1, y2) < other.h * heightScale;
+        });
+        const point = anchor.project(camera);
+        const x = (point.x + 1) * rect.width / 2;
+        const y = (1 - point.y) * rect.height / 2;
+        const visible = !occluded && point.z >= -1 && point.z <= 1 && x > 38 && x < rect.width - 38 && y > 70 && y < rect.height - 14 &&
+          !placed.some(tag => Math.abs(tag.x - x) < 76 && Math.abs(tag.y - y) < 26);
+        if (visible) placed.push({ x, y });
         return {
           id: item.id,
-          x: (point.x + 1) * rect.width / 2,
-          y: (1 - point.y) * rect.height / 2,
-          visible: point.z >= -1 && point.z <= 1 && Math.abs(point.x) <= 1 && Math.abs(point.y) <= 1
+          x, y, visible
         };
       }));
     },
@@ -411,23 +274,44 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   };
 }
 
-export function BragadoPlant3DMap({ assets, onViewAsset }: { assets: BackendAsset[]; onViewAsset?: (idAsset: number) => void }) {
+export type MapFilters = { type: string; status: string; search?: string };
+export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCode }: { assets: BackendAsset[]; onViewAsset?: (idAsset: number) => void; filters?: MapFilters; focusedAssetCode?: string | null }) {
+  const [expanded, setExpanded] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<ReturnType<typeof createScene> | null>(null);
   const [heightScale, setHeightScale] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>("top");
-  const [selectedId, setSelectedId] = useState("silo-1");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [projected, setProjected] = useState<ProjectedTag[]>([]);
-  const [types, setTypes] = useState<Set<EquipmentType>>(new Set(["silo", "flotante", "celda", "noria", "tubo", "ventilador", "secadora", "descarga"]));
+  const [types, setTypes] = useState<Set<EquipmentType>>(new Set(["silo", "flotante", "celda", "noria", "secadora"]));
   const [states, setStates] = useState<Set<DisplayStatus>>(new Set(["Activo", "Inactivo", "En mantenimiento", "Sin confirmar"]));
 
   const equipment = useMemo(() => buildEquipment(assets, heightScale), [assets, heightScale]);
-  const selected = equipment.find((item) => item.id === selectedId) ?? equipment[0];
   const visibleEquipment = useMemo(
-    () => equipment.filter((item) => types.has(item.type) && states.has(item.status)),
-    [equipment, states, types]
+    () => equipment.filter((item) => {
+      if (!filters) return types.has(item.type) && states.has(item.status);
+      const label = TYPE_LABELS[item.type];
+      const status = item.status === "Inactivo" ? "Fuera de servicio" : item.status;
+      return (filters.type === "Todos" || filters.type === label) &&
+        (filters.status === "Todos" || filters.status === status) &&
+        (!filters.search || normalize(`${item.name} ${label} ${status}`).includes(normalize(filters.search)));
+    }),
+    [equipment, states, types, filters]
   );
+  const focusedId = focusedAssetCode ? equipment.find((item) => item.asset?.code === focusedAssetCode)?.id ?? null : null;
+  const activeHighlightId = focusedId ?? selectedId;
+  const selected = visibleEquipment.find((item) => item.id === activeHighlightId);
   const projectedById = new Map(projected.map((tag) => [tag.id, tag]));
+
+  useEffect(() => {
+    if (!expanded) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setExpanded(false); };
+    window.addEventListener("keydown", close);
+    return () => { document.body.style.overflow = previous; window.removeEventListener("keydown", close); };
+  }, [expanded]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -446,10 +330,14 @@ export function BragadoPlant3DMap({ assets, onViewAsset }: { assets: BackendAsse
   }, [viewMode]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => sceneRef.current?.project(visibleEquipment), 120);
+    const timer = window.setInterval(() => sceneRef.current?.project(visibleEquipment), 32);
     sceneRef.current?.project(visibleEquipment);
     return () => window.clearInterval(timer);
   }, [visibleEquipment]);
+
+  useEffect(() => {
+    sceneRef.current?.highlight(activeHighlightId);
+  }, [activeHighlightId, heightScale]);
 
   const toggleType = (type: EquipmentType) => setTypes((current) => {
     const next = new Set(current);
@@ -463,46 +351,30 @@ export function BragadoPlant3DMap({ assets, onViewAsset }: { assets: BackendAsse
   });
 
   const resetFilters = () => {
-    setTypes(new Set(["silo", "flotante", "celda", "noria", "tubo", "ventilador", "secadora", "descarga"]));
+    setTypes(new Set(["silo", "flotante", "celda", "noria", "secadora"]));
     setStates(new Set(["Activo", "Inactivo", "En mantenimiento", "Sin confirmar"]));
   };
 
   return (
-    <div className="bragado-map">
+    <div className={`bragado-map${expanded ? " bragado-map-expanded" : ""}`}>
       <div className="bragado-map-stage" ref={rootRef} />
-      <div className="bragado-map-tags" aria-hidden="false">
-        {visibleEquipment.map((item) => {
-          const tag = projectedById.get(item.id);
-          if (!tag?.visible) return null;
-          return (
-            <button
-              className={`bragado-map-tag ${item.status === "Activo" ? "ok" : item.status === "En mantenimiento" ? "warning" : item.status === "Inactivo" ? "danger" : ""}`}
-              key={item.id}
-              onClick={() => setSelectedId(item.id)}
-              style={{ left: tag.x, top: tag.y }}
-              type="button"
-            >
-              {item.short}
-            </button>
-          );
-        })}
-      </div>
       <div className="bragado-map-toolbar">
+        <button type="button" title={expanded ? "Reducir mapa" : "Ampliar mapa"} aria-label={expanded ? "Reducir mapa" : "Ampliar mapa"} aria-pressed={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
+        <button type="button" title={panelOpen ? "Minimizar panel" : "Equipos y controles"} aria-label={panelOpen ? "Minimizar panel" : "Equipos y controles"} aria-expanded={panelOpen} onClick={() => setPanelOpen(!panelOpen)}><SlidersHorizontal size={18} /></button>
         <select aria-label="Vista 3D" onChange={(event) => setViewMode(event.target.value as ViewMode)} value={viewMode}>
           <option value="top">Desde arriba</option>
           <option value="perspective">Perspectiva</option>
           <option value="street">Nivel suelo</option>
         </select>
-        <label>
-          Altura
-          <input max="1.35" min="0.75" onChange={(event) => setHeightScale(Number(event.target.value))} step="0.01" type="range" value={heightScale} />
-        </label>
       </div>
-      <aside className="bragado-map-panel">
+      {panelOpen && <aside className="bragado-map-panel">
         <header>
           <span>{visibleEquipment.length} de {equipment.length}</span>
           <strong>Mapa 3D Bragado</strong>
+          <button type="button" title="Minimizar panel" aria-label="Minimizar panel" onClick={() => setPanelOpen(false)}><X size={16} /></button>
         </header>
+        <label>Altura <input aria-label="Altura estimada" max="1.35" min="0.75" onChange={(event) => setHeightScale(Number(event.target.value))} step="0.01" type="range" value={heightScale} /></label>
+        {!filters && <>
         <div className="bragado-map-filter-block">
           <span>Tipo</span>
           <div>
@@ -524,6 +396,7 @@ export function BragadoPlant3DMap({ assets, onViewAsset }: { assets: BackendAsse
           </div>
         </div>
         <button className="bragado-map-reset" onClick={resetFilters} type="button">Ver todo</button>
+        </>}
         {selected && (
           <section className="bragado-map-detail">
             <p>{TYPE_LABELS[selected.type]} · <span className={`state ${selected.status}`}>{selected.status}</span></p>
@@ -542,7 +415,7 @@ export function BragadoPlant3DMap({ assets, onViewAsset }: { assets: BackendAsse
             </button>
           ))}
         </div>
-      </aside>
+      </aside>}
     </div>
   );
 }

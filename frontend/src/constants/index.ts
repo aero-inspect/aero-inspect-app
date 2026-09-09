@@ -1,12 +1,15 @@
 ﻿import type { AssetType } from "../types";
 
-export const ASSET_TYPES: AssetType[] = ["Silo", "Noria", "Cinta transportadora", "Tuberia", "Techo"];
+export const ASSET_TYPES: AssetType[] = ["Silo", "Silo flotante", "Noria", "Celda", "Secadora"];
 export const ASSET_TYPE_COLORS: Record<AssetType, string> = {
   Silo: "#d94b4b",
   Noria: "#e7b416",
   "Cinta transportadora": "#8f5cc2",
   Tuberia: "#d8782c",
-  Techo: "#5f6672"
+  Techo: "#5f6672",
+  "Silo flotante": "#368b80",
+  Celda: "#637ca0",
+  Secadora: "#ac7755"
 };
 export const DRONE_OPERATION_ROLES = ["Tecnico de Mantenimiento"];
 export const ASSET_CONSULT_ROLES = ["Jefe de Planta", "Tecnico de Mantenimiento"];

@@ -15,6 +15,18 @@
   height: 100%;
 }
 
+.bragado-map-stage { position: absolute; inset: 0; }
+.bragado-map.bragado-map-expanded {
+  position: fixed;
+  inset: 4vh 3vw;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  z-index: 1200;
+  border-radius: 8px;
+  box-shadow: 0 0 0 100vmax rgb(15 23 30 / 55%);
+}
+
 .bragado-map-stage canvas {
   touch-action: none;
 }
@@ -26,6 +38,8 @@
   pointer-events: none;
 }
 
+.bragado-map-tags:empty { display: none; }
+
 .bragado-map-tag {
   position: absolute;
   display: grid;
@@ -35,7 +49,7 @@
   padding: 0 7px;
   transform: translate(-50%, -50%);
   border: 1px solid rgba(24, 44, 62, 0.32);
-  border-radius: 999px;
+  border-radius: 4px;
   background: rgba(255, 255, 255, 0.92);
   color: #10253a;
   cursor: pointer;
@@ -43,7 +57,7 @@
   font-weight: 800;
   line-height: 1;
   pointer-events: auto;
-  box-shadow: 0 8px 18px rgba(15, 26, 43, 0.12);
+  box-shadow: 0 1px 3px rgba(15, 26, 43, 0.22);
 }
 
 .bragado-map-tag.ok {
@@ -66,10 +80,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  max-width: calc(100% - 360px);
+  max-width: calc(100% - 28px);
   padding: 8px;
   border: 1px solid rgba(227, 235, 242, 0.78);
-  border-radius: 12px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 14px 34px rgba(15, 26, 43, 0.14);
 }
@@ -107,16 +121,18 @@
 .bragado-map-panel {
   position: absolute;
   z-index: 3;
-  top: 14px;
+  top: 76px;
   right: 14px;
   bottom: 14px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: min(315px, calc(100% - 28px));
+  width: min(260px, calc(100% - 28px));
   padding: 14px;
   border: 1px solid rgba(227, 235, 242, 0.82);
-  border-radius: 14px;
+  border-radius: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 18px 44px rgba(15, 26, 43, 0.16);
 }
@@ -246,7 +262,7 @@
   display: grid;
   gap: 6px;
   min-height: 0;
-  overflow-y: auto;
+  flex-shrink: 0;
   padding-right: 2px;
 }
 
@@ -296,9 +312,24 @@
   }
 
   .bragado-map-panel {
-    top: auto;
-    left: 14px;
-    width: auto;
-    max-height: 42%;
+    top: 76px;
+    max-height: calc(100% - 90px);
   }
 }
+
+.bragado-map-toolbar button, .bragado-map-panel header button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border: 1px solid #dbe7f1;
+  border-radius: 6px;
+  background: white;
+  color: #295b87;
+  cursor: pointer;
+}
+.bragado-map-panel > * { flex-shrink: 0; }
+.bragado-map-detail { border: 0; border-top: 1px solid #e3ebf2; border-radius: 0; padding: 12px 0; background: transparent; }
+.bragado-map-filter-block div { flex-direction: column; }
+.bragado-map-filter-block button { text-align: left; min-height: 30px; }

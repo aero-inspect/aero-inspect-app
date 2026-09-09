@@ -16,7 +16,10 @@ export const ASSET_TYPE_ICONS: Record<BackendAssetType, typeof Cylinder> = {
   NORIA: RotateCw,
   CINTA_TRANSPORTADORA: MoveHorizontal,
   TUBERIA: Waves,
-  TECHO: Building2
+  TECHO: Building2,
+  SILO_FLOTANTE: Cylinder,
+  CELDA: Building2,
+  SECADORA: Wind
 };
 
 // Marcador grande y clickeable para elegir activos en el mapa de armado de misión.

@@ -1,0 +1,182 @@
+[
+  {
+    "id": "silo-10",
+    "name": "Silo 10",
+    "code": "BRA-SIL-10",
+    "type": "SILO",
+    "x": -18.080000000000002,
+    "z": -34.08,
+    "r": 8.96,
+    "h": 19
+  },
+  {
+    "id": "silo-11",
+    "name": "Silo 11",
+    "code": "BRA-SIL-11",
+    "type": "SILO",
+    "x": -31.84,
+    "z": -17.44,
+    "r": 8.96,
+    "h": 19
+  },
+  {
+    "id": "silo-9",
+    "name": "Silo 9",
+    "code": "BRA-SIL-09",
+    "type": "SILO",
+    "x": 26.88,
+    "z": 30.080000000000002,
+    "r": 8.64,
+    "h": 17
+  },
+  {
+    "id": "silo-5",
+    "name": "Silo 5",
+    "code": "BRA-SIL-05",
+    "type": "SILO",
+    "x": -8,
+    "z": -21.12,
+    "r": 5.76,
+    "h": 14
+  },
+  {
+    "id": "silo-3",
+    "name": "Silo 3",
+    "code": "BRA-SIL-03",
+    "type": "SILO",
+    "x": 0.96,
+    "z": -13.120000000000001,
+    "r": 5.28,
+    "h": 13
+  },
+  {
+    "id": "silo-6",
+    "name": "Silo 6",
+    "code": "BRA-SIL-06",
+    "type": "SILO",
+    "x": -17.76,
+    "z": -9.44,
+    "r": 5.92,
+    "h": 14
+  },
+  {
+    "id": "silo-4",
+    "name": "Silo 4",
+    "code": "BRA-SIL-04",
+    "type": "SILO",
+    "x": -8,
+    "z": -3.68,
+    "r": 5.12,
+    "h": 12
+  },
+  {
+    "id": "silo-2",
+    "name": "Silo 2",
+    "code": "BRA-SIL-02",
+    "type": "SILO",
+    "x": 11.36,
+    "z": -1.76,
+    "r": 4.96,
+    "h": 12
+  },
+  {
+    "id": "silo-1",
+    "name": "Silo 1",
+    "code": "BRA-SIL-01",
+    "type": "SILO",
+    "x": 3.84,
+    "z": 7.84,
+    "r": 5.44,
+    "h": 14
+  },
+  {
+    "id": "silo-8",
+    "name": "Silo 8",
+    "code": "BRA-SIL-08",
+    "type": "SILO",
+    "x": 23.2,
+    "z": 8.64,
+    "r": 6.08,
+    "h": 15
+  },
+  {
+    "id": "silo-7",
+    "name": "Silo 7",
+    "code": "BRA-SIL-07",
+    "type": "SILO",
+    "x": 12.96,
+    "z": 18.88,
+    "r": 6.24,
+    "h": 15
+  },
+  {
+    "id": "F1",
+    "name": "F1",
+    "code": "BRA-FLO-01",
+    "type": "SILO_FLOTANTE",
+    "x": -6.4,
+    "z": 18.080000000000002,
+    "r": 2.88,
+    "h": 8
+  },
+  {
+    "id": "F2",
+    "name": "F2",
+    "code": "BRA-FLO-02",
+    "type": "SILO_FLOTANTE",
+    "x": 0.32,
+    "z": 15.52,
+    "r": 2.32,
+    "h": 10
+  },
+  {
+    "id": "F3",
+    "name": "F3",
+    "code": "BRA-FLO-03",
+    "type": "SILO_FLOTANTE",
+    "x": -1.12,
+    "z": 24.64,
+    "r": 2.32,
+    "h": 7
+  },
+  {
+    "id": "cell",
+    "name": "Celda 1",
+    "code": "BRA-CEL-01",
+    "type": "CELDA",
+    "x": -51,
+    "z": -77,
+    "r": 0,
+    "h": 14
+  },
+  {
+    "id": "noria-1",
+    "name": "Noria 1",
+    "code": "BRA-NOR-01",
+    "type": "NORIA",
+    "x": -1,
+    "z": 0,
+    "r": 0,
+    "h": 31
+  },
+  {
+    "id": "noria-2",
+    "name": "Noria 2",
+    "code": "BRA-NOR-02",
+    "type": "NORIA",
+    "x": 12,
+    "z": 5,
+    "r": 0,
+    "h": 25
+  },
+  {
+    "id": "secadora-1",
+    "name": "Secadora 1",
+    "code": "BRA-SEC-01",
+    "type": "SECADORA",
+    "x": -9,
+    "z": 10,
+    "r": 0,
+    "h": 10.2
+  }
+]

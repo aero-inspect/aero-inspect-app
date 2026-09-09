@@ -7,7 +7,10 @@ export const BACKEND_ASSET_TYPE_COLORS: Record<BackendAssetType, string> = {
   NORIA: "#e7b416",
   CINTA_TRANSPORTADORA: "#8f5cc2",
   TUBERIA: "#d8782c",
-  TECHO: "#5f6672"
+  TECHO: "#5f6672",
+  SILO_FLOTANTE: "#368b80",
+  CELDA: "#637ca0",
+  SECADORA: "#ac7755"
 };
 
 export const BACKEND_ASSET_TYPE_LABELS: Record<BackendAssetType, string> = {
@@ -15,6 +18,9 @@ export const BACKEND_ASSET_TYPE_LABELS: Record<BackendAssetType, string> = {
   NORIA: "Noria",
   CINTA_TRANSPORTADORA: "Cinta transportadora",
   TUBERIA: "Tuberia",
-  TECHO: "Techo"
+  TECHO: "Techo",
+  SILO_FLOTANTE: "Silo flotante",
+  CELDA: "Celda",
+  SECADORA: "Secadora"
 };
 

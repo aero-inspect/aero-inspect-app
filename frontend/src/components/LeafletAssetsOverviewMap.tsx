@@ -15,7 +15,8 @@ import type { Plant } from "../types";
 const ASSET_STATUS_INFO: Record<BackendAssetStatus, { label: string; tone: "ok" | "warning" | "danger" }> = {
   ACTIVE: { label: "Activo", tone: "ok" },
   MAINTENANCE: { label: "En mantenimiento", tone: "warning" },
-  OUT_OF_SERVICE: { label: "Fuera de servicio", tone: "danger" }
+  OUT_OF_SERVICE: { label: "Fuera de servicio", tone: "danger" },
+  UNCONFIRMED: { label: "Sin confirmar", tone: "warning" }
 };
 
 // Mismo estilo de marcador (icono por tipo, sobre un circulo de color) que
