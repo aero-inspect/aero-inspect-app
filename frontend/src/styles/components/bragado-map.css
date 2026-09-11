@@ -16,6 +16,11 @@
 }
 
 .bragado-map-stage { position: absolute; inset: 0; }
+.bragado-map-layers { position: absolute; top: 78px; left: 14px; display: flex; gap: 3px; padding: 4px; background: white; border-radius: 10px; z-index: 3; }
+.bragado-map-layers button { border: 0; border-radius: 8px; padding: 8px 10px; color: #295b87; background: white; cursor: pointer; font-size: 12px; }
+.bragado-map-layers button[aria-pressed="true"] { background: #dceeff; font-weight: 700; }
+.bragado-map-layers button:disabled { cursor: default; }
+.bragado-map-mission-point { max-width: calc(100% - 28px); flex-wrap: wrap; }
 .bragado-map.bragado-map-expanded {
   position: fixed;
   inset: 4vh 3vw;
@@ -103,9 +108,14 @@
 }
 
 .bragado-map-toolbar select {
-  width: 142px;
+  width: 122px;
   padding: 0 12px;
   cursor: pointer;
+}
+
+@media(max-width:600px) {
+  .bragado-map-toolbar { gap: 4px; padding: 5px; left: 8px; max-width: calc(100% - 16px); }
+  .bragado-map-toolbar select { width: 99px; padding: 0 5px; font-size: 10px; }
 }
 
 .bragado-map-toolbar select:hover,
@@ -391,3 +401,11 @@
 .bragado-map-detail { border: 0; border-top: 1px solid #e3ebf2; border-radius: 0; padding: 12px 0; background: transparent; }
 .bragado-map-filter-block div { flex-direction: column; }
 .bragado-map-filter-block button { text-align: left; min-height: 30px; }
+.bragado-camera-tools { position:absolute; bottom:14px; left:14px; z-index:3; display:flex; align-items:center; gap:6px; padding:4px 7px; border-radius:8px; background:rgba(255,255,255,.86); color:#587084; }
+.bragado-camera-tools button { display:grid; place-items:center; width:30px; height:30px; padding:0; border:0; border-radius:6px; background:transparent; color:inherit; cursor:pointer; }
+.bragado-camera-tools button:hover { background:#e5edf3; }
+.bragado-compass { width:30px; height:30px; border:1px solid #a5b5c1; border-radius:50%; display:grid; place-items:center; }
+.bragado-compass > span { width:28px; height:28px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.bragado-compass b { font-size:9px; line-height:10px; font-weight:600; }
+.bragado-zoom { font-size:11px; font-variant-numeric:tabular-nums; min-width:65px; white-space:nowrap; }
+@media(max-width:600px) { .bragado-camera-tools { bottom:65px; left:8px; } }

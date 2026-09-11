@@ -1,7 +1,31 @@
 // Geometry ported from the approved bragado-silos-3d prototype.
 import * as T from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-
+// One triangulated pavement surface: closed circulation loop and two access branches.
+function buildRoad(mesh,concrete){
+const roadWidth=7;
+const loop=new T.CatmullRomCurve3([[-62,-19],[-61,-32],[-46,-48],[-24,-53],[-4,-43],[1,-32],[14,-18],[24,-7],[42,10],[42,41],[28,52],[12,56],[-5,39],[-27,16],[-46,-3]].map(([x,z])=>new T.Vector3(x,0,z)),true,'centripetal');
+const outer=[],inner=[],samples=320;
+for(let i=0;i<samples;i++){
+  const p=loop.getPoint(i/samples),t=loop.getTangent(i/samples),n=new T.Vector3(-t.z,0,t.x).multiplyScalar(roadWidth/2);
+  outer.push(new T.Vector2(p.x-n.x,p.z-n.z));inner.push(new T.Vector2(p.x+n.x,p.z+n.z));
+}
+function accessBranch(anchor,points){
+  let index=0;outer.forEach((p,i)=>{if(p.distanceToSquared(new T.Vector2(...anchor))<outer[index].distanceToSquared(new T.Vector2(...anchor)))index=i;});
+  const start=outer[index],curve=new T.CatmullRomCurve3([[start.x,start.y],...points].map(([x,z])=>new T.Vector3(x,0,z))),a=[],b=[];
+  for(let i=1;i<=40;i++){const p=curve.getPoint(i/40),t=curve.getTangent(i/40),n=new T.Vector3(-t.z,0,t.x).multiplyScalar(roadWidth/2);a.push(new T.Vector2(p.x+n.x,p.z+n.z));b.push(new T.Vector2(p.x-n.x,p.z-n.z));}
+  const boundary=outer[index-2].distanceToSquared(a[0])<outer[index-2].distanceToSquared(b[0])?[...a,...b.reverse()]:[...b,...a.reverse()];
+  outer.splice(index-1,3,...boundary);
+}
+accessBranch([-46,-52],[[-72,-53],[-89,-74],[-101,-94]]);
+accessBranch([12,60],[[18,70],[29,85]]);
+const pavement=new T.Shape(outer);pavement.holes.push(new T.Path(inner.slice().reverse()));
+const roadGeometry=new T.ShapeGeometry(pavement);roadGeometry.rotateX(Math.PI/2);roadGeometry.translate(0,.025,0);
+const triangles=roadGeometry.index.array;
+for(let i=0;i<triangles.length;i+=3){const vertex=triangles[i];triangles[i]=triangles[i+2];triangles[i+2]=vertex;}
+roadGeometry.computeVertexNormals();
+concrete.side=T.DoubleSide;const road=mesh(roadGeometry,concrete);road.castShadow=false;
+}
 
 function addEquipment({mesh,box,beam,fixed,canopy,steel,frame,rust,yellow,concrete,dark}) {
   const dryer=new T.Group();dryer.position.set(-9,0,10);fixed.add(dryer);
@@ -44,14 +68,14 @@ function addEquipment({mesh,box,beam,fixed,canopy,steel,frame,rust,yellow,concre
 
 function addPerimeter({beam,frame,dark}){
   // Street edge retained; polygon encloses the rotated celda and the access road.
-  const corners=[[-80,-34],[-99,-110],[-36,-119],[7,-48],[53,1],[59,44],[22,64]];
+  const corners=[[-67,-15],[-69,-36],[-112,-94],[-105,-113],[-36,-119],[7,-48],[53,1],[59,44],[34,68],[8,64],[-10,43],[-31,20],[-50,1]];
   for(let edge=0;edge<corners.length;edge++){
     const a=new T.Vector2(...corners[edge]),b=new T.Vector2(...corners[(edge+1)%corners.length]);
     const count=Math.ceil(a.distanceTo(b)/3);
     for(let i=0;i<count;i++){
       const p=a.clone().lerp(b,i/count),q=a.clone().lerp(b,(i+1)/count);
       // Vehicle openings on the street and the entrance side.
-      if((edge===6&&i>=9&&i<=12)||(edge===5&&i>=6&&i<=9))continue;
+      if(edge===8&&p.x>12&&p.x<26)continue;
       beam([p.x,0,p.y],[p.x,2,p.y],.065,frame);
       for(const y of [.45,1,1.55,1.95])beam([p.x,y,p.y],[q.x,y,q.y],.012,dark);
       for(let t=0;t<1;t+=.25){const v=p.clone().lerp(q,t);beam([v.x,.3,v.y],[v.x,1.9,v.y],.008,dark);}
@@ -94,9 +118,7 @@ const tile=document.createElement('canvas');tile.width=tile.height=256;const ctx
 for(let i=0;i<22000;i++){const v=Math.floor(rand()*40);ctx.fillStyle=`rgb(${75+v},${91+v},${47+v})`;ctx.fillRect(rand()*256,rand()*256,1+rand()*3,1);}
 const grassMap=new T.CanvasTexture(tile);grassMap.wrapS=grassMap.wrapT=T.RepeatWrapping;grassMap.repeat.set(90,90);grassMap.colorSpace=T.SRGBColorSpace;
 const ground=mesh(new T.PlaneGeometry(900,900),new T.MeshStandardMaterial({map:grassMap,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=-.06;ground.castShadow=false;
-function path(points,width,mat=concrete){const curve=new T.CatmullRomCurve3(points.map(([x,z])=>new T.Vector3(x,.025,z))),p=[],indices=[];for(let i=0;i<=100;i++){const v=curve.getPoint(i/100),t=curve.getTangent(i/100),n=new T.Vector3(-t.z,0,t.x).multiplyScalar(width/2);p.push(v.x+n.x,v.y,v.z+n.z,v.x-n.x,v.y,v.z-n.z);if(i<100){const a=i*2;indices.push(a,a+2,a+1,a+1,a+2,a+3);}}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setIndex(indices);g.computeVertexNormals();mat.side=T.DoubleSide;const m=mesh(g,mat);m.castShadow=false;}
-path([[-98,-62],[-62,-19],[-27,16],[12,56],[65,108]],7,material('#93928a'));
-path([[12,56],[42,41],[42,10],[24,-7],[14,-18],[1,-32]],9);path([[-62,-19],[-46,-27],[-33,-33]],6);
+buildRoad(mesh,concrete);
 function gabled(w,d,h,rise,x,z,open=false){const g=new T.Group();g.position.set(x,0,z);g.rotation.y=-Math.PI/4;fixed.add(g);if(!open)box(w,h,d,0,0,0,steel,g);const angle=Math.atan2(rise,w/2),slope=Math.hypot(w/2,rise);
 for(const side of [-1,1]){const panel=box(slope+.4,.16,d+.7,side*w/4,h+rise/2,0,steel,g);panel.rotation.z=-side*angle;for(let zz=-d/2;zz<=d/2;zz+=3){beam([side*w/2,0,zz],[side*w/2,h,zz],.13,frame,g);if(!open)beam([side*(w/2+1.7),0,zz],[side*w/2,h*.65,zz],.1,frame,g);beam([side*w/2,h,zz],[0,h+rise,zz],.09,frame,g);}if(!open)for(let y=1;y<h;y+=1.6)box(.12,.12,d,side*(w/2+.08),y,0,frame,g);}
 if(!open)for(const end of [-1,1]){const shape=new T.Shape();shape.moveTo(-w/2,0);shape.lineTo(w/2,0);shape.lineTo(0,rise);shape.closePath();const wall=mesh(new T.ShapeGeometry(shape),steel,g);wall.material.side=T.DoubleSide;wall.position.set(0,h,end*d/2);for(let xx=-w/2;xx<=w/2;xx+=.5)box(.035,h,.03,xx,0,end*(d/2+.02),frame,g);}return g;}
@@ -128,8 +150,23 @@ function tubeEnds(tube,scale){
   const towers=[[-1,30*scale,0],[12,24*scale,5]];
   return {a:tube.from?roof(find(tube.from)):towers[tube.noria-1],b:roof(find(tube.to))};
 }
+const collisionBounds=[];
 function batch(group){
   group.updateMatrixWorld(true);
+  group.traverse(o=>{
+    if(!o.isMesh || o===ground)return;
+    const bounds=new T.Box3().setFromObject(o);
+    if(o.geometry.type==='LatheGeometry') {
+      // Circumscribed strips preserve the curved silo footprint without blocking its square corners.
+      const center=bounds.getCenter(new T.Vector3()),radius=(bounds.max.x-bounds.min.x)/2;
+      for(let i=0;i<16;i++) {
+        const left=-radius+i*radius/8,right=left+radius/8;
+        const closest=left<=0&&right>=0?0:Math.min(Math.abs(left),Math.abs(right));
+        const halfDepth=Math.sqrt(Math.max(0,radius*radius-closest*closest));
+        collisionBounds.push(new T.Box3(new T.Vector3(center.x+left,bounds.min.y,center.z-halfDepth),new T.Vector3(center.x+right,bounds.max.y,center.z+halfDepth)));
+      }
+    } else collisionBounds.push(bounds);
+  });
   const batches=new Map(),originals=[];
   group.traverse(o=>{if(!o.isMesh)return;const g=(o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone()).applyMatrix4(o.matrixWorld);if(!g.getAttribute('uv'))g.setAttribute('uv',new T.Float32BufferAttribute(new Float32Array(g.getAttribute('position').count*2),2));if(!batches.has(o.material))batches.set(o.material,[]);batches.get(o.material).push(g);originals.push(o);});
   for(const o of originals){o.removeFromParent();o.geometry.dispose();}
@@ -137,5 +174,6 @@ function batch(group){
 }
 function updateLabels(){labels.forEach(l=>l.visible=false);}
 batch(fixed);rebuild();batch(dynamic);
+return collisionBounds;
 
 }

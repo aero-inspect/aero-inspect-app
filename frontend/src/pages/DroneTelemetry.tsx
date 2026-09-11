@@ -3,6 +3,7 @@ import { AlertTriangle, Battery, Check, ChevronDown, MapPin, Plane, Satellite } 
 import { getDroneStatuses, getDrones } from "../api/client";
 import type { BackendDrone, BackendDroneStatus } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
+import { DroneModelViewer } from "../components/DroneModelViewer";
 
 const HEARTBEAT_POLL_INTERVAL_MS = 3000;
 const LOW_BATTERY_THRESHOLD_PCT = 20;
@@ -154,6 +155,7 @@ export function DroneTelemetryView() {
 
       {heartbeatError && <p className="drone-sse-error">{heartbeatError}</p>}
 
+
       <section className="drone-telemetry-grid">
         <DroneInfoCard icon={<Plane size={20} />} title="Estado" tone="blue">
           <InfoLine label="Estado" value={heartbeat?.status ?? EMPTY_VALUE} />
@@ -191,6 +193,7 @@ export function DroneTelemetryView() {
             <strong>{heartbeat == null ? "Sin datos del dron" : allChecksOk ? "Dron listo para operar" : "Revisar antes de operar"}</strong>
           </div>
         </article>
+        <DroneModelViewer />
       </section>
     </section>
   );

@@ -305,8 +305,18 @@
 
 .drone-bottom-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 480px);
+  grid-template-columns: minmax(260px, 480px) minmax(0, 1fr);
+  align-items: start;
   gap: 10px;
+}
+
+.drone-bottom-grid > .drone-model-viewer {
+  justify-self: end;
+  width: min(100%, 420px, max(180px, calc(var(--app-canvas-height, 720px) - 320px)));
+  height: auto;
+  aspect-ratio: 1;
+  border: 1px solid #dbe7f1;
+  border-radius: 8px;
 }
 
 .drone-preflight-card {

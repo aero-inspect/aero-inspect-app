@@ -1,7 +1,11 @@
+import { createEnvironment } from "./bragado/environment";
+import { ENVIRONMENT_MODES, setEnvironmentMode, useEnvironmentMode, type EnvironmentMode } from "./bragado/timeOfDay";
+import { addMissionDrone } from "./bragado/drone";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createWaypointLayer } from "./bragado/missionWaypoints";
 import catalog from "../data/bragado-assets.json";
 import { buildPlant } from "./bragado/geometry.js";
-import { Maximize2, Minimize2, RotateCcw, SlidersHorizontal, X } from "lucide-react";
+import { Maximize2, Minimize2, RotateCcw, SlidersHorizontal, X, Focus, ArrowUp } from "lucide-react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { BackendAsset, BackendAssetStatus } from "../api/types";
@@ -31,236 +35,6 @@ type ProjectedTag = {
   visible: boolean;
 };
 
-type MissionPoint = {
-  id: string;
-  x: number;
-  z: number;
-};
-
-const OUTER_MISSION_ROUTE: MissionPoint[] = [
-  { id: "P01", x: -72, z: -39 }, { id: "P02", x: -64, z: -28 },
-  { id: "P03", x: -52, z: -17 }, { id: "P04", x: -38, z: -5 },
-  { id: "P05", x: -28, z: 8 }, { id: "P06", x: -17, z: 16 },
-  { id: "P07", x: -7, z: 21 }, { id: "P08", x: 6, z: 24 },
-  { id: "P09", x: 20, z: 22 }, { id: "P10", x: 31, z: 15 },
-  { id: "P11", x: 39, z: 5 }, { id: "P12", x: 38, z: -7 },
-  { id: "P13", x: 30, z: -17 }, { id: "P14", x: 19, z: -25 },
-  { id: "P15", x: 7, z: -31 }, { id: "P16", x: -6, z: -35 },
-  { id: "P17", x: -20, z: -38 }, { id: "P18", x: -34, z: -44 },
-  { id: "P19", x: -48, z: -53 }, { id: "P20", x: -58, z: -66 },
-  { id: "P21", x: -58, z: -82 }, { id: "P22", x: -47, z: -94 },
-  { id: "P23", x: -31, z: -99 }, { id: "P24", x: -16, z: -93 },
-  { id: "P25", x: -9, z: -81 }, { id: "P26", x: -15, z: -67 },
-  { id: "P27", x: -30, z: -58 }, { id: "P28", x: -45, z: -45 }
-];
-
-type MissionRoute = MissionPoint[];
-
-type MissionObstacle = {
-  x: number;
-  z: number;
-  radius?: number;
-  width?: number;
-  depth?: number;
-  angle?: number;
-};
-
-function rotatePoint(x: number, z: number, angle: number) {
-  return { x: x * Math.cos(angle) - z * Math.sin(angle), z: x * Math.sin(angle) + z * Math.cos(angle) };
-}
-
-const MISSION_OBSTACLES: MissionObstacle[] = catalog.map((record) => record.r > 0
-  ? { x: record.x, z: record.z, radius: record.r }
-  : {
-      x: record.x,
-      z: record.z,
-      width: record.type === "CELDA" ? 27 : record.type === "SECADORA" ? 4.8 : 7,
-      depth: record.type === "CELDA" ? 43 : record.type === "SECADORA" ? 4.4 : 7,
-      angle: record.type === "CELDA" ? Math.PI / 4 : 0
-    });
-
-function pointBlocked(point: MissionPoint, clearance = 1.35) {
-  return MISSION_OBSTACLES.some((obstacle) => {
-    if (obstacle.radius) return Math.hypot(point.x - obstacle.x, point.z - obstacle.z) < obstacle.radius + clearance;
-    const local = rotatePoint(point.x - obstacle.x, point.z - obstacle.z, -(obstacle.angle ?? 0));
-    return Math.abs(local.x) < (obstacle.width ?? 0) / 2 + clearance && Math.abs(local.z) < (obstacle.depth ?? 0) / 2 + clearance;
-  });
-}
-
-function segmentBlocked(start: MissionPoint, end: MissionPoint) {
-  const distance = Math.hypot(end.x - start.x, end.z - start.z);
-  const steps = Math.max(2, Math.ceil(distance / 0.8));
-  for (let step = 0; step <= steps; step += 1) {
-    const t = step / steps;
-    if (pointBlocked({ id: "probe", x: start.x + (end.x - start.x) * t, z: start.z + (end.z - start.z) * t })) return true;
-  }
-  return false;
-}
-
-function safeMissionConnector(start: MissionPoint, end: MissionPoint) {
-  if (!segmentBlocked(start, end)) return [start, end];
-  const candidates: MissionPoint[] = [start, end];
-  MISSION_OBSTACLES.forEach((obstacle, obstacleIndex) => {
-    const clearance = 2.4;
-    if (obstacle.radius) {
-      for (let step = 0; step < 8; step += 1) {
-        const angle = step * Math.PI / 4;
-        candidates.push({ id: `detour-${obstacleIndex}-${step}`, x: obstacle.x + Math.cos(angle) * (obstacle.radius + clearance), z: obstacle.z + Math.sin(angle) * (obstacle.radius + clearance) });
-      }
-    } else {
-      const width = (obstacle.width ?? 0) / 2 + clearance;
-      const depth = (obstacle.depth ?? 0) / 2 + clearance;
-      [[-width, -depth], [width, -depth], [width, depth], [-width, depth]].forEach(([x, z], step) => {
-        const rotated = rotatePoint(x, z, obstacle.angle ?? 0);
-        candidates.push({ id: `detour-${obstacleIndex}-${step}`, x: obstacle.x + rotated.x, z: obstacle.z + rotated.z });
-      });
-    }
-  });
-  const distances = new Map<number, number>([[0, 0]]);
-  const previous = new Map<number, number>();
-  const open = new Set<number>([0]);
-  while (open.size) {
-    const current = [...open].reduce((best, index) => (distances.get(index)! < distances.get(best)! ? index : best));
-    open.delete(current);
-    if (current === 1) break;
-    candidates.forEach((candidate, next) => {
-      if (next === current || pointBlocked(candidate, 0.1) || segmentBlocked(candidates[current], candidate)) return;
-      const nextDistance = distances.get(current)! + Math.hypot(candidate.x - candidates[current].x, candidate.z - candidates[current].z);
-      if (nextDistance < (distances.get(next) ?? Number.POSITIVE_INFINITY)) {
-        distances.set(next, nextDistance);
-        previous.set(next, current);
-        open.add(next);
-      }
-    });
-  }
-  if (!previous.has(1)) return [start, end];
-  const path: MissionPoint[] = [];
-  let current: number | undefined = 1;
-  while (current !== undefined) {
-    path.unshift(candidates[current]);
-    if (current === 0) break;
-    current = previous.get(current);
-  }
-  return path;
-}
-
-function buildMissionRoutes(): MissionRoute[] {
-  const routes: MissionRoute[] = [OUTER_MISSION_ROUTE];
-  catalog.forEach((record, index) => {
-    const local: MissionPoint[] = [];
-    if (record.r > 0) {
-      for (let step = 0; step < 6; step += 1) {
-        const angle = (step / 6) * Math.PI * 2;
-        const radius = record.r + 2.2;
-        local.push({ id: `A${index + 1}-${step + 1}`, x: record.x + Math.cos(angle) * radius, z: record.z + Math.sin(angle) * radius });
-      }
-    } else {
-      const dimensions = record.type === "CELDA" ? [27, 43] : record.type === "SECADORA" ? [4.8, 4.4] : [7, 7];
-      const angle = record.type === "CELDA" ? Math.PI / 4 : 0;
-      const [width, depth] = dimensions;
-      const perimeter = [
-        [-width / 2 - 2, -depth / 2 - 2], [0, -depth / 2 - 2], [width / 2 + 2, -depth / 2 - 2],
-        [width / 2 + 2, 0], [width / 2 + 2, depth / 2 + 2], [0, depth / 2 + 2],
-        [-width / 2 - 2, depth / 2 + 2], [-width / 2 - 2, 0]
-      ];
-      perimeter.forEach(([x, z], pointIndex) => {
-        const rotated = rotatePoint(x, z, angle);
-        local.push({ id: `A${index + 1}-${pointIndex + 1}`, x: record.x + rotated.x, z: record.z + rotated.z });
-      });
-    }
-    routes.push(local);
-  });
-  const accepted: MissionPoint[] = [];
-  const minimumSpacing = 4.2;
-  return routes.map((route) => route.filter((point) => {
-    const isTooClose = accepted.some((other) => Math.hypot(point.x - other.x, point.z - other.z) < minimumSpacing);
-    if (isTooClose) return false;
-    accepted.push(point);
-    return true;
-  })).filter((route) => route.length > 1);
-}
-
-const MISSION_ROUTES = buildMissionRoutes();
-const MISSION_POINTS = MISSION_ROUTES.flat();
-
-function addMissionDrone(scene: THREE.Scene) {
-  const baseGroup = new THREE.Group();
-  baseGroup.position.set(34, 0, -48);
-  scene.add(baseGroup);
-  const baseMaterial = new THREE.MeshStandardMaterial({ color: "#454e50", metalness: 0.6, roughness: 0.48 });
-  const edgeMaterial = new THREE.MeshStandardMaterial({ color: "#d5a13b", metalness: 0.35, roughness: 0.5 });
-  const blackMaterial = new THREE.MeshStandardMaterial({ color: "#161c20", metalness: 0.55, roughness: 0.3 });
-  const blueMaterial = new THREE.MeshStandardMaterial({ color: "#08a8da", metalness: 0.5, roughness: 0.3 });
-  const glassMaterial = new THREE.MeshStandardMaterial({ color: "#1c6578", metalness: 0.35, roughness: 0.12, transparent: true, opacity: 0.9 });
-  const plate = new THREE.Mesh(new THREE.BoxGeometry(12, 0.4, 9), baseMaterial);
-  plate.position.y = 0.22;
-  plate.castShadow = plate.receiveShadow = true;
-  baseGroup.add(plate);
-  const border = new THREE.Mesh(new THREE.BoxGeometry(11.2, 0.08, 0.28), edgeMaterial);
-  [-3.75, 3.75].forEach((z) => { const line = border.clone(); line.position.set(0, 0.45, z); baseGroup.add(line); });
-  [-5, 5].forEach((x) => { const line = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 7.5), edgeMaterial); line.position.set(x, 0.45, 0); baseGroup.add(line); });
-  const drone = new THREE.Group();
-  drone.position.y = 2.15;
-  drone.scale.setScalar(0.52);
-  baseGroup.add(drone);
-  const body = new THREE.Mesh(new THREE.SphereGeometry(2.05, 32, 18), blackMaterial);
-  body.scale.set(1.28, 0.48, 0.95);
-  body.castShadow = true;
-  drone.add(body);
-  const top = new THREE.Mesh(new THREE.SphereGeometry(1.25, 24, 14), blackMaterial);
-  top.scale.set(1.15, 0.55, 0.9);
-  top.position.y = 0.35;
-  drone.add(top);
-  const makeBeam = (from: THREE.Vector3, to: THREE.Vector3, radius: number, material: THREE.Material) => {
-    const delta = to.clone().sub(from);
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, delta.length(), 12), material);
-    beam.position.copy(from.clone().add(to).multiplyScalar(0.5));
-    beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize());
-    beam.castShadow = true;
-    drone.add(beam);
-  };
-  for (let index = 0; index < 4; index += 1) {
-    const angle = index * Math.PI / 2 + Math.PI / 4;
-    const end = new THREE.Vector3(Math.cos(angle) * 4.1, 0, Math.sin(angle) * 4.1);
-    makeBeam(new THREE.Vector3(Math.cos(angle) * 1.1, 0, Math.sin(angle) * 1.1), end, 0.22, blueMaterial);
-    const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.42, 20), blackMaterial);
-    motor.position.copy(end);
-    motor.position.y = 0.12;
-    drone.add(motor);
-    const propeller = new THREE.Group();
-    propeller.position.copy(end);
-    propeller.position.y = 0.42;
-    const bladeA = new THREE.Mesh(new THREE.BoxGeometry(2.35, 0.055, 0.16), blackMaterial);
-    bladeA.rotation.y = angle;
-    const bladeB = bladeA.clone();
-    bladeB.rotation.y = angle + Math.PI / 2;
-    propeller.add(bladeA, bladeB);
-    drone.add(propeller);
-  }
-  for (const x of [-1.2, 1.2]) {
-    makeBeam(new THREE.Vector3(x, -0.45, -0.65), new THREE.Vector3(x * 1.35, -2.25, -0.95), 0.14, blackMaterial);
-    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.1, 12), blackMaterial);
-    foot.rotation.z = Math.PI / 2;
-    foot.position.set(x * 1.35, -2.25, -0.95);
-    drone.add(foot);
-  }
-  const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 2.25, 12), blackMaterial);
-  antenna.position.y = 2;
-  drone.add(antenna);
-  const antennaTop = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 10), blackMaterial);
-  antennaTop.position.y = 3.15;
-  drone.add(antennaTop);
-  const gimbal = new THREE.Group();
-  gimbal.position.set(0, -1.45, 1.05);
-  const cameraBody = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.82), blackMaterial);
-  gimbal.add(cameraBody);
-  const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.25, 24), glassMaterial);
-  lens.rotation.x = Math.PI / 2;
-  lens.position.set(0, -0.15, 0.48);
-  gimbal.add(lens);
-  drone.add(gimbal);
-  return baseGroup;
-}
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
   silo: "Silo",
@@ -325,7 +99,7 @@ function disposeObject(object: THREE.Object3D) {
   });
 }
 
-function createScene(root: HTMLDivElement, heightScale: number, onProject: (projected: ProjectedTag[]) => void, missionMode: boolean, onMissionPointToggle: (ids: string[]) => void) {
+function createScene(root: HTMLDivElement, heightScale: number, onProject: (projected: ProjectedTag[]) => void, missionMode: boolean, onMissionPointToggle: (ids: string[]) => void, onCamera: (value: {bearing:number;zoom:number}) => void) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -334,21 +108,14 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   root.append(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color("#c6d0d5");
-  scene.fog = new THREE.Fog("#c6d0d5", 160, 450);
-  scene.add(new THREE.HemisphereLight("#e7efff", "#687257", 2.35));
 
-  const sun = new THREE.DirectionalLight("#fff2dd", 2.4);
-  sun.position.set(-65, 100, 40);
-  sun.castShadow = true;
-  sun.shadow.normalBias = 0.04;
-  sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -110, right: 110, top: 110, bottom: -110, far: 260 });
-  scene.add(sun);
-
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.08, 600);
+  const camera = new THREE.PerspectiveCamera(55, 1, 0.08, 1600);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
+  controls.minDistance = 8;
+  controls.maxDistance = 1000;
+  let motion: {start:number;from:THREE.Vector3;to:THREE.Vector3;target:THREE.Vector3;fromTarget:THREE.Vector3} | null = null;
+  controls.addEventListener("start", () => { motion = null; });
   controls.maxPolarAngle = Math.PI / 2 - 0.025;
   let street = false;
   let currentView: ViewMode = "top";
@@ -369,62 +136,13 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   renderer.domElement.addEventListener("pointercancel", () => { pointer = null; });
 
   const visualTubes = [10, 11, 9, 5, 3, 6, 4, 2, 1, 8, 7, "F1", "F2", "F3"].map((to, index) => ({ id: `tube-${index}`, from: "", to: String(to), noria: index < 7 ? 1 : 2 }));
-  buildPlant(scene, heightScale, siloNumbers, visualTubes);
-  const missionPointGroup = new THREE.Group();
-  const missionSelectionLineGroup = new THREE.Group();
-  const missionPointMaterials = new Map<string, THREE.MeshStandardMaterial>();
-  const missionPointGeometry = new THREE.SphereGeometry(1.25, 24, 16);
-  const missionRouteMaterial = new THREE.LineBasicMaterial({ color: "#f3a33b", transparent: true, opacity: 0.72 });
-  const selectedMissionPointIds = new Set<string>();
-  const missionPointsById = new Map(MISSION_POINTS.map((point) => [point.id, point]));
-  if (missionMode) {
-    scene.add(missionSelectionLineGroup);
-    addMissionDrone(scene);
-    MISSION_POINTS.forEach((point) => {
-      const material = new THREE.MeshStandardMaterial({ color: "#f3a33b", emissive: "#8b4d0d", emissiveIntensity: 0.5, roughness: 0.42, metalness: 0.08 });
-      const marker = new THREE.Mesh(missionPointGeometry, material);
-      marker.position.set(point.x, 3.2, point.z);
-      marker.userData.missionPointId = point.id;
-      marker.castShadow = true;
-      missionPointGroup.add(marker);
-      missionPointMaterials.set(point.id, material);
-    });
-    scene.add(missionPointGroup);
-  }
-  const markerRaycaster = new THREE.Raycaster();
-  const markerPointer = new THREE.Vector2();
-  let pressedPoint: { x: number; y: number } | null = null;
-  const selectMissionPoint = (event: PointerEvent) => {
-    if (!missionMode || !pressedPoint || Math.hypot(event.clientX - pressedPoint.x, event.clientY - pressedPoint.y) > 6) return;
-    const rect = renderer.domElement.getBoundingClientRect();
-    markerPointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
-    markerRaycaster.setFromCamera(markerPointer, camera);
-    const hit = markerRaycaster.intersectObjects(missionPointGroup.children, false)[0];
-    const selectedPointId = hit?.object.userData.missionPointId ?? null;
-    if (!selectedPointId) return;
-    if (selectedMissionPointIds.has(selectedPointId)) selectedMissionPointIds.delete(selectedPointId);
-    else selectedMissionPointIds.add(selectedPointId);
-    missionPointMaterials.forEach((material, id) => {
-      const selected = selectedMissionPointIds.has(id);
-      material.color.set(selected ? "#39b96d" : "#f3a33b");
-      material.emissive.set(selected ? "#0c6834" : "#8b4d0d");
-      material.emissiveIntensity = selected ? 0.95 : 0.5;
-    });
-    for (const child of [...missionSelectionLineGroup.children]) {
-      if (child instanceof THREE.Line) child.geometry.dispose();
-      missionSelectionLineGroup.remove(child);
-    }
-    if (selectedMissionPointIds.size > 1) {
-      const selectedPath = Array.from(selectedMissionPointIds).map((id) => missionPointsById.get(id)).filter((point): point is MissionPoint => Boolean(point));
-      const lineGeometry = new THREE.BufferGeometry().setFromPoints(selectedPath.map((point) => new THREE.Vector3(point.x, 3.45, point.z)));
-      missionSelectionLineGroup.add(new THREE.Line(lineGeometry, missionRouteMaterial));
-    }
-    onMissionPointToggle(Array.from(selectedMissionPointIds));
-  };
-  const handleMarkerPointerDown = (event: PointerEvent) => { if (missionMode) pressedPoint = { x: event.clientX, y: event.clientY }; };
-  const handleMarkerPointerUp = (event: PointerEvent) => { selectMissionPoint(event); pressedPoint = null; };
-  renderer.domElement.addEventListener("pointerdown", handleMarkerPointerDown);
-  renderer.domElement.addEventListener("pointerup", handleMarkerPointerUp);
+  const collisionBounds = buildPlant(scene, heightScale, siloNumbers, visualTubes);
+  const dock = addMissionDrone(scene);
+  const facilityBounds = new THREE.Box3();
+  collisionBounds.forEach(bounds => facilityBounds.union(bounds));
+  facilityBounds.union(new THREE.Box3().setFromObject(dock));
+  const environment = createEnvironment(scene, renderer, heightScale);
+  const waypoints = missionMode ? createWaypointLayer(scene, camera, renderer.domElement, collisionBounds, onMissionPointToggle) : null;
   const highlightGroup = new THREE.Group();
   scene.add(highlightGroup);
   const highlightMaterial = new THREE.MeshBasicMaterial({ color: "#3fbd68", transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide });
@@ -481,6 +199,7 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   resize();
 
   const setView = (view: ViewMode) => {
+    if (motion) return;
     currentView = view;
     street = view === "street";
     controls.enabled = view !== "street";
@@ -499,37 +218,37 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
     controls.update();
   };
   setView("top");
+  const centerPlant = () => {
+    const sphere = facilityBounds.getBoundingSphere(new THREE.Sphere());
+    const vertical = THREE.MathUtils.degToRad(camera.fov / 2);
+    const horizontal = Math.atan(Math.tan(vertical) * camera.aspect);
+    const distance = sphere.radius / Math.sin(Math.min(vertical, horizontal)) * 1.08;
+    controls.maxDistance = Math.max(1000, distance * 1.2);
+    const direction = street ? new THREE.Vector3(0, 1, .8).normalize() : camera.position.clone().sub(controls.target).normalize();
+    motion = {start:performance.now(),from:camera.position.clone(),to:sphere.center.clone().addScaledVector(direction,distance),target:sphere.center.clone(),fromTarget:controls.target.clone()};
+    street = false; controls.enabled = true;
+  };
 
   let frameId = 0;
+  let lastCameraUpdate = 0;
   const animate = () => {
+    const now = performance.now();
+    if(motion){const t=Math.min(1,(now-motion.start)/1200),s=t*t*(3-2*t);camera.position.lerpVectors(motion.from,motion.to,s);controls.target.lerpVectors(motion.fromTarget,motion.target,s);if(t===1)motion=null;}
+    environment.update();
     if (controls.enabled) controls.update();
+    waypoints?.update();
     renderer.render(scene, camera);
+    if(now-lastCameraUpdate>100){const north=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion.clone().invert());onCamera({bearing:Math.atan2(north.x,north.y)*180/Math.PI,zoom:Math.round(100*(1-THREE.MathUtils.clamp((camera.position.distanceTo(controls.target)-controls.minDistance)/(controls.maxDistance-controls.minDistance),0,1)))});lastCameraUpdate=now;}
     frameId = requestAnimationFrame(animate);
   };
   animate();
 
   return {
+    centerPlant,
     setView,
     highlight,
-    setMissionSelection(ids: string[]) {
-      selectedMissionPointIds.clear();
-      ids.forEach((id) => selectedMissionPointIds.add(id));
-      missionPointMaterials.forEach((material, id) => {
-        const selected = selectedMissionPointIds.has(id);
-        material.color.set(selected ? "#39b96d" : "#f3a33b");
-        material.emissive.set(selected ? "#0c6834" : "#8b4d0d");
-        material.emissiveIntensity = selected ? 0.95 : 0.5;
-      });
-      for (const child of [...missionSelectionLineGroup.children]) {
-        if (child instanceof THREE.Line) child.geometry.dispose();
-        missionSelectionLineGroup.remove(child);
-      }
-      if (selectedMissionPointIds.size > 1) {
-        const selectedPath = Array.from(selectedMissionPointIds).map((id) => missionPointsById.get(id)).filter((point): point is MissionPoint => Boolean(point));
-        const lineGeometry = new THREE.BufferGeometry().setFromPoints(selectedPath.map((point) => new THREE.Vector3(point.x, 3.45, point.z)));
-        missionSelectionLineGroup.add(new THREE.Line(lineGeometry, missionRouteMaterial));
-      }
-    },
+    setMissionSelection(ids: string[]) { waypoints?.setSelection(ids); },
+    setMissionLayer(layer: number) { waypoints?.setLayer(layer); },
     project(items: Equipment[]) {
       const rect = root.getBoundingClientRect();
       const placed: Array<{ x: number; y: number }> = [];
@@ -572,35 +291,30 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
       cancelAnimationFrame(frameId);
       observer.disconnect();
       controls.dispose();
-      renderer.domElement.removeEventListener("pointerdown", handleMarkerPointerDown);
-      renderer.domElement.removeEventListener("pointerup", handleMarkerPointerUp);
-      pointGeometryCleanup();
-      missionSelectionLineGroup.traverse((child) => {
-        if (child instanceof THREE.Line) child.geometry.dispose();
-      });
-      missionRouteMaterial.dispose();
+      waypoints?.destroy();
+      environment.destroy();
       disposeObject(scene);
       renderer.dispose();
       renderer.domElement.remove();
     }
   };
 
-  function pointGeometryCleanup() {
-    missionPointGeometry.dispose();
-    missionPointMaterials.forEach((material) => material.dispose());
-  }
+
 }
 
 export type MapFilters = { type: string; status: string; search?: string };
 export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCode, missionMode = false }: { assets: BackendAsset[]; onViewAsset?: (idAsset: number) => void; filters?: MapFilters; focusedAssetCode?: string | null; missionMode?: boolean }) {
+  const [cameraInfo,setCameraInfo]=useState({bearing:0,zoom:0});
   const [expanded, setExpanded] = useState(false);
+  const environmentMode = useEnvironmentMode();
   const [panelOpen, setPanelOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<ReturnType<typeof createScene> | null>(null);
   const [heightScale, setHeightScale] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>("top");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedMissionPoints, setSelectedMissionPoints] = useState<string[]>([]);
+  const [missionLayer, setMissionLayer] = useState(0);
+  const [selectedWaypoints, setSelectedWaypoints] = useState<string[]>([]);
   const [projected, setProjected] = useState<ProjectedTag[]>([]);
   const [types, setTypes] = useState<Set<EquipmentType>>(new Set(["silo", "flotante", "celda", "noria", "secadora"]));
   const [states, setStates] = useState<Set<DisplayStatus>>(new Set(["Activo", "Inactivo", "En mantenimiento", "Sin confirmar"]));
@@ -635,7 +349,7 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
     const root = rootRef.current;
     if (!root) return undefined;
     sceneRef.current?.destroy();
-    sceneRef.current = createScene(root, heightScale, setProjected, missionMode, setSelectedMissionPoints);
+    sceneRef.current = createScene(root, heightScale, setProjected, missionMode, setSelectedWaypoints, setCameraInfo);
     sceneRef.current.setView(viewMode);
     return () => {
       sceneRef.current?.destroy();
@@ -658,8 +372,10 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
   }, [activeHighlightId, heightScale]);
 
   useEffect(() => {
-    sceneRef.current?.setMissionSelection(selectedMissionPoints);
-  }, [selectedMissionPoints]);
+    sceneRef.current?.setMissionSelection(selectedWaypoints);
+  }, [selectedWaypoints, heightScale, missionMode]);
+
+  useEffect(() => { sceneRef.current?.setMissionLayer(missionLayer); }, [missionLayer, heightScale, missionMode]);
 
   const toggleType = (type: EquipmentType) => setTypes((current) => {
     const next = new Set(current);
@@ -688,12 +404,23 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
           <option value="perspective">Perspectiva</option>
           <option value="street">Nivel suelo</option>
         </select>
+        <select aria-label="Iluminación del ambiente" title="Iluminación del ambiente" value={environmentMode} onChange={event => setEnvironmentMode(event.target.value as EnvironmentMode)}>
+          {Object.entries(ENVIRONMENT_MODES).map(([value,label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
       </div>
+      <div className="bragado-camera-tools">
+        <span className="bragado-compass" title="Norte" aria-label="Norte"><span style={{transform:`rotate(${cameraInfo.bearing}deg)`}}><b>N</b><ArrowUp size={16}/></span></span>
+        <button type="button" title="Centrar planta" aria-label="Centrar planta" onClick={()=>{sceneRef.current?.centerPlant();if(viewMode==='street')setViewMode('perspective');}}><Focus size={17}/></button>
+        <span className="bragado-zoom">Zoom {cameraInfo.zoom}%</span>
+      </div>
+      {missionMode && <div className="bragado-map-layers" role="group" aria-label="Capas de altura">
+        {[0,1,2].map(layer => <button key={layer} type="button" aria-pressed={missionLayer === layer} disabled={selectedWaypoints.length > 0} onClick={() => setMissionLayer(layer)}>Capa {layer+1}</button>)}
+      </div>}
       {missionMode && <div className="bragado-map-mission-point" role="status">
-        <span>{selectedMissionPoints.length ? `${selectedMissionPoints.length} puntos seleccionados` : "Seleccioná puntos del recorrido"}</span>
-        <button type="button" disabled={!selectedMissionPoints.length} onClick={() => setSelectedMissionPoints([])} title="Deseleccionar todos">
+        <span>{selectedWaypoints.length ? `${selectedWaypoints.length} puntos seleccionados` : "0 puntos seleccionados"}</span>
+        <button type="button" disabled={!selectedWaypoints.length} onClick={() => setSelectedWaypoints([])} title="Borrar selección">
           <RotateCcw size={13} />
-          <span>Limpiar</span>
+          <span>Borrar selección</span>
         </button>
       </div>}
       {panelOpen && !missionMode && <aside className="bragado-map-panel">

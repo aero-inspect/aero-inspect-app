@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Pencil, Plus, Trash2, X } from "lucide-react";
 import { createDrone, deleteDrone, getDrones, updateDrone } from "../api/client";
 import type { BackendDrone } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
+import { DroneModelViewer } from "../components/DroneModelViewer";
 
 type DroneFormState = {
   droneId: string;
@@ -18,6 +19,7 @@ function formatDate(iso: string) {
 }
 
 export function DronesAbmView() {
+  const [viewingDrone, setViewingDrone] = useState<BackendDrone | null>(null);
   const [drones, setDrones] = useState<BackendDrone[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -168,13 +170,13 @@ export function DronesAbmView() {
               </thead>
               <tbody>
                 {drones.map((drone) => (
-                  <tr key={drone.idDrone}>
+                  <tr className="drone-preview-row" key={drone.idDrone} onClick={() => setViewingDrone(drone)}>
                     <td>{drone.droneId}</td>
-                    <td>{drone.name}</td>
+                    <td><button className="drone-preview-name" type="button" aria-label={`Ver ${drone.name} en 3D`} onClick={(event) => { event.stopPropagation(); setViewingDrone(drone); }}>{drone.name}</button></td>
                     <td>{drone.model || "-"}</td>
                     <td>{drone.serialNumber || "-"}</td>
                     <td>{formatDate(drone.createdAt)}</td>
-                    <td className="drones-abm-row-actions">
+                    <td className="drones-abm-row-actions" onClick={(event) => event.stopPropagation()}>
                       <button aria-label={`Editar ${drone.name}`} onClick={() => openEditModal(drone)} type="button">
                         <Pencil size={16} aria-hidden="true" />
                       </button>
@@ -196,6 +198,8 @@ export function DronesAbmView() {
           )}
         </div>
       </section>
+
+      {viewingDrone && <DronePreviewDialog drone={viewingDrone} onClose={() => setViewingDrone(null)} />}
 
       {isCreateOpen && (
         <div className="modal-backdrop" role="presentation">
@@ -306,4 +310,21 @@ export function DronesAbmView() {
       )}
     </section>
   );
+}
+
+function DronePreviewDialog({ drone, onClose }: { drone: BackendDrone; onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const element = dialog.current;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    element?.showModal();
+    return () => { element?.close(); previousFocus?.focus(); };
+  }, []);
+  return <dialog ref={dialog} className="drone-preview-dialog" aria-labelledby="drone-preview-title" onCancel={onClose}>
+    <header className="drones-abm-modal-header">
+      <h2 id="drone-preview-title">{drone.name}</h2>
+      <button type="button" className="drones-abm-modal-close" aria-label="Cerrar visor del dron" title="Cerrar visor" onClick={onClose}><X size={20} /></button>
+    </header>
+    <DroneModelViewer />
+  </dialog>;
 }
