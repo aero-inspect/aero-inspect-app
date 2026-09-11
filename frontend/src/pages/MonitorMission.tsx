@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowLeft, Camera, Gauge, Pause, Play, Route, Satellite, X } from "lucide-react";
+import { ArrowLeft, Camera, Gauge, Play, Route, Satellite, X } from "lucide-react";
 import type { BackendAsset, BackendFlightPlan, BackendMission, BackendMissionStatus, BackendMissionWaypoint, BackendPlanWaypoint } from "../api/types";
-import { getAssets, getFlightPlan, getMission, getMissions, startMission } from "../api/client";
+import { getAssets, getFlightPlan, getMission, getMissions, startMission, cancelMission } from "../api/client";
 import { BragadoPlant3DMap } from "../components/BragadoPlant3DMap";
 import { photoCountForWaypoint } from "../utils/missionPhotos";
 import { AppTopActions } from "../components/AppTopActions";
@@ -93,15 +93,17 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
   const [loadError, setLoadError] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const statusPollRef = useRef<number | null>(null);
 
   const { telemetry, statusEvent } = useMissionTelemetry(mission?.idMission, token);
 
   useEffect(() => {
     if(!statusEvent || statusEvent.missionId!==mission?.idMission)return;
-    const status: BackendMissionStatus | undefined = statusEvent.event==='MISSION_STARTED'?'IN_PROGRESS':statusEvent.event==='MISSION_START_REJECTED'?'FAILED':statusEvent.event==='MISSION_COMPLETED'?'COMPLETED':undefined;
+    const status: BackendMissionStatus | undefined = statusEvent.event==='MISSION_STARTED'?'IN_PROGRESS':statusEvent.event==='MISSION_START_REJECTED'?'FAILED':statusEvent.event==='MISSION_COMPLETED'?'COMPLETED':statusEvent.event==='MISSION_CANCELLED'?'CANCELLED':undefined;
     if(status)setMission(previous=>previous?{...previous,status}:previous);
-    if(statusEvent.event==='MISSION_START_REJECTED')setStartError(statusEvent.reason || 'El controlador rechazo el inicio de la mision.');
+    if(statusEvent.event==='MISSION_START_REJECTED')setStartError(statusEvent.reason || 'El controlador rechazó el inicio de la misión.');
+    if(statusEvent.event==='COMMAND_REJECTED'){setStartError(statusEvent.reason || 'El controlador rechazó la orden.');setIsCancelling(false);}
   }, [statusEvent, mission?.idMission]);
 
   const [now, setNow] = useState(() => Date.now());
@@ -137,7 +139,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
         if (!cancelled && loadedPlan) setFlightPlan(loadedPlan);
       })
       .catch((error: unknown) => {
-        if (!cancelled) setLoadError(error instanceof Error ? error.message : "No se pudo cargar la mision.");
+        if (!cancelled) setLoadError(error instanceof Error ? error.message : "No se pudo cargar la misión.");
       });
 
     getAssets()
@@ -245,7 +247,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
       setMission(updated);
       pollMissionStatus(updated.idMission);
     } catch (error) {
-      setStartError(error instanceof Error ? error.message : "No se pudo iniciar la mision.");
+      setStartError(error instanceof Error ? error.message : "No se pudo iniciar la misión.");
     } finally {
       setIsStarting(false);
     }
@@ -260,14 +262,14 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
   }, [mission?.startedAt, mission?.finishedAt, now]);
 
   const flightRows = [
-    ["Bateria", telemetry?.battery ? `${telemetry.battery.percentage}%` : EMPTY_VALUE],
+    ["Batería", telemetry?.battery ? `${telemetry.battery.percentage}%` : EMPTY_VALUE],
     ["Altitud relativa", telemetry?.position ? `${formatNumber(telemetry.position.relativeAltitude)} m` : EMPTY_VALUE],
     ["Velocidad horizontal", telemetry?.velocity ? `${formatNumber(telemetry.velocity.groundHorizontalSpeedMs)} m/s` : EMPTY_VALUE],
     ["Velocidad vertical", telemetry?.velocity ? `${formatNumber(telemetry.velocity.groundVerticalSpeedMs)} m/s` : EMPTY_VALUE],
     ["Tiempo activo", activeDurationSeconds != null ? formatDuration(activeDurationSeconds) : EMPTY_VALUE],
     ["Distancia recorrida", formatDistance(distanceTraveledMeters)],
     ["Distancia restante", totalRouteDistanceMetersValue > 0 ? formatDistance(distanceRemainingMeters) : EMPTY_VALUE],
-    ["Ultima actualizacion", telemetry?.timestamp ? new Date(telemetry.timestamp).toLocaleTimeString("es-AR") : EMPTY_VALUE]
+    ["Última actualización", telemetry?.timestamp ? new Date(telemetry.timestamp).toLocaleTimeString("es-AR") : EMPTY_VALUE]
   ];
 
   const gpsRows = [
@@ -285,7 +287,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
             <ArrowLeft size={19} />
           </button>
           <div>
-            <h1>Monitorear mision</h1>
+            <h1>Monitorear misión</h1>
             <p>Seguimiento en vivo de las inspecciones a los activos.</p>
           </div>
         </div>
@@ -294,7 +296,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
 
       {loadError && <p className="mission-empty">{loadError}</p>}
 
-      {!loadError && !mission && <p className="mission-empty">Cargando mision...</p>}
+      {!loadError && !mission && <p className="mission-empty">Cargando misión...</p>}
 
       {!loadError && mission && (
         <section className="monitor-body-grid">
@@ -313,7 +315,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
               {isPendingMission && (
                 <div className="monitor-pending-overlay">
                   <div>
-                    <h3>La mision aun no comenzo</h3>
+                    <h3>La misión aún no comenzó</h3>
                     <p>Presione Iniciar para comenzar el vuelo.</p>
                   </div>
                 </div>
@@ -327,13 +329,13 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
                   {isStarting ? "Iniciando..." : "Iniciar"}
                 </button>
               )}
-              <button className="monitor-pause" type="button">
-                <Pause size={17} />
-                Pausar
-              </button>
-              <button className="monitor-cancel" type="button" onClick={onBack}>
+              <button className="monitor-cancel" type="button" disabled={isCancelling || mission?.status!=='IN_PROGRESS'} onClick={async()=>{
+                if(!mission)return;
+                setIsCancelling(true);setStartError(null);
+                try{await cancelMission(mission.idMission);}catch(error){setIsCancelling(false);setStartError(error instanceof Error?error.message:'No se pudo cancelar la misión.');}
+              }}>
                 <X size={17} />
-                Cancelar
+                {isCancelling?'Cancelación solicitada…':'Cancelar'}
               </button>
             </div>
             {(startError || (mission?.status==='FAILED' && mission.notes)) && <p className="monitor-start-error">{startError || mission?.notes}</p>}
@@ -341,18 +343,18 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
 
           <aside className="monitor-side-column">
             <article className="monitor-side-card monitor-progress-card">
-              <CardHeader icon={<Route size={15} />} title="Progreso de mision" />
+              <CardHeader icon={<Route size={15} />} title="Progreso de misión" />
               <strong>
                 Punto {currentWaypoint ?? EMPTY_VALUE} de {totalWaypoints || EMPTY_VALUE}
               </strong>
               <div className="monitor-progress-track"><span style={{ width: `${progressWidth}%` }} /></div>
               <p>{formatPercent(progress)} completado</p>
-              <ProgressLine label="Mision" value={mission.idMission} />
+              <ProgressLine label="Misión" value={mission.idMission} />
               <ProgressLine label="Plan de vuelo" value={flightPlan?.name ?? EMPTY_VALUE} />
             </article>
 
             <article className="monitor-side-card monitor-telemetry-card">
-              <CardHeader icon={<Gauge size={15} />} title="Telemetria" />
+              <CardHeader icon={<Gauge size={15} />} title="Telemetría" />
               <div className="monitor-telemetry-body">
                 <Compass headingDegree={telemetry?.velocity?.headingDegree} />
                 <div className="monitor-telemetry-list">
@@ -373,7 +375,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
             </article>
 
             <article className="monitor-side-card monitor-captures-card">
-              <CardHeader icon={<Camera size={15} />} title="Camara" />
+              <CardHeader icon={<Camera size={15} />} title="Cámara" />
               {currentGimbal ? (
                 <div className="monitor-camera-info">
                   <span className="monitor-camera-gimbal">
@@ -383,7 +385,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
                   <ProgressLine label="Giro (yaw)" value={`${formatNumber(currentGimbal.yaw, 0)} deg`} />
                 </div>
               ) : (
-                <p className="monitor-empty-media">Sin apuntado de camara para este tramo del vuelo.</p>
+                <p className="monitor-empty-media">Sin apuntado de cámara para este tramo del vuelo.</p>
               )}
               <ProgressLine
                 label="Fotos capturadas"

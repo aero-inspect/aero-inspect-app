@@ -24,7 +24,7 @@ function buildPreflightChecks(heartbeat: BackendDroneStatus | null): PreflightCh
 
   return [
     {
-      label: "Bateria",
+      label: "Batería",
       ok: batteryPct == null ? null : batteryPct >= LOW_BATTERY_THRESHOLD_PCT,
       detail: batteryPct == null ? EMPTY_VALUE : `${batteryPct}%`
     },
@@ -109,7 +109,7 @@ export function DroneTelemetryView() {
       <header className="drones-topbar">
         <div>
           <h1>Drones</h1>
-          <p>Monitorea el estado, la telemetria y el historial de tu dron.</p>
+          <p>Monitorea el estado, la telemetría y el historial de tu dron.</p>
         </div>
         <AppTopActions />
       </header>
@@ -143,7 +143,7 @@ export function DroneTelemetryView() {
         </div>
 
         <div className="drone-select-update">
-          <span>Ultima actualizacion:</span>
+          <span>Última actualización:</span>
           <strong>{updatedLabel}</strong>
         </div>
 
@@ -162,12 +162,12 @@ export function DroneTelemetryView() {
           <InfoLine label="Modo de vuelo" value={heartbeat?.flightMode ?? EMPTY_VALUE} />
         </DroneInfoCard>
 
-        <DroneInfoCard icon={<Battery size={20} />} title="Bateria" tone="green">
+        <DroneInfoCard icon={<Battery size={20} />} title="Batería" tone="green">
           <strong className="drone-big-value">{heartbeat?.battery ? `${heartbeat.battery.percentage}%` : EMPTY_VALUE}</strong>
           <InfoLine label="Voltaje" value={heartbeat?.battery ? `${formatNumber(heartbeat.battery.voltageV, 2)} V` : EMPTY_VALUE} />
         </DroneInfoCard>
 
-        <DroneInfoCard icon={<MapPin size={20} />} title="Posicion" tone="blue">
+        <DroneInfoCard icon={<MapPin size={20} />} title="Posición" tone="blue">
           <InfoLine label="Latitud" value={heartbeat?.position ? heartbeat.position.latitude.toFixed(6) : EMPTY_VALUE} />
           <InfoLine label="Longitud" value={heartbeat?.position ? heartbeat.position.longitude.toFixed(6) : EMPTY_VALUE} />
         </DroneInfoCard>

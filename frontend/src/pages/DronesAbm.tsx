@@ -154,7 +154,7 @@ export function DronesAbmView() {
         <div className="drones-abm-table-wrap">
           {drones === null && !loadError && <p className="drones-abm-empty">Cargando drones...</p>}
           {drones !== null && drones.length === 0 && (
-            <p className="drones-abm-empty">No hay drones registrados todavia. Empeza por crear uno desde &quot;Nuevo dron&quot;.</p>
+            <p className="drones-abm-empty">No hay drones registrados todavía. Empezá por crear uno desde &quot;Nuevo dron&quot;.</p>
           )}
           {drones !== null && drones.length > 0 && (
             <table className="drones-abm-table">
@@ -206,7 +206,7 @@ export function DronesAbmView() {
           <section aria-modal="true" className="drones-abm-modal" role="dialog">
             <header className="drones-abm-modal-header">
               <h2>Nuevo dron</h2>
-              <button aria-label="Cerrar creacion" className="drones-abm-modal-close" onClick={() => setIsCreateOpen(false)} type="button">
+              <button aria-label="Cerrar creación" className="drones-abm-modal-close" onClick={() => setIsCreateOpen(false)} type="button">
                 <X size={20} aria-hidden="true" />
               </button>
             </header>
@@ -248,7 +248,7 @@ export function DronesAbmView() {
           <section aria-modal="true" className="drones-abm-modal" role="dialog">
             <header className="drones-abm-modal-header">
               <h2>Editar dron</h2>
-              <button aria-label="Cerrar edicion" className="drones-abm-modal-close" onClick={() => setEditingDrone(null)} type="button">
+              <button aria-label="Cerrar edición" className="drones-abm-modal-close" onClick={() => setEditingDrone(null)} type="button">
                 <X size={20} aria-hidden="true" />
               </button>
             </header>
@@ -294,7 +294,7 @@ export function DronesAbmView() {
             <h2>Eliminar dron</h2>
             <p>
               ¿Esta seguro de que desea eliminar {deletingDrone.droneId}?<br />
-              Esta accion no se puede deshacer.
+              Esta acción no se puede deshacer.
             </p>
             {deleteError && <p className="drones-abm-error">{deleteError}</p>}
             <div className="drones-abm-delete-actions">

@@ -27,14 +27,14 @@ type FormErrorKey = "name" | "type" | "location" | "description";
 const STATUS_OPTIONS: AssetStatus[] = ["Activo", "En mantenimiento", "Fuera de servicio"];
 
 const MISSION_SUGGESTIONS: Record<AssetType, string[]> = {
-  Silo: ["Inspeccion visual", "Corrosion estructural", "Termografia"],
-  Noria: ["Revision mecanica", "Inspeccion de altura", "Vibraciones"],
-  "Cinta transportadora": ["Alineacion", "Desgaste de banda", "Puntos calientes"],
-  Tuberia: ["Fugas visibles", "Corrosion", "Termografia"],
-  Techo: ["Fisuras", "Deformaciones", "Acumulacion de polvo"],
-  "Silo flotante": ["Inspeccion visual", "Corrosion estructural"],
-  Celda: ["Inspeccion visual", "Corrosion estructural"],
-  Secadora: ["Revision mecanica", "Termografia"]
+  Silo: ["Inspección visual", "Corrosión estructural", "Termografía"],
+  Noria: ["Revisión mecánica", "Inspección de altura", "Vibraciones"],
+  "Cinta transportadora": ["Alineación", "Desgaste de banda", "Puntos calientes"],
+  Tuberia: ["Fugas visibles", "Corrosión", "Termografía"],
+  Techo: ["Fisuras", "Deformaciones", "Acumulación de polvo"],
+  "Silo flotante": ["Inspección visual", "Corrosión estructural"],
+  Celda: ["Inspección visual", "Corrosión estructural"],
+  Secadora: ["Revisión mecánica", "Termografía"]
 };
 
 export function RegistrarActivoView({
@@ -100,8 +100,8 @@ export function RegistrarActivoView({
     const nextErrors: Partial<Record<FormErrorKey, string>> = {};
     if (!name.trim()) nextErrors.name = "Ingrese nombre del activo.";
     if (!type) nextErrors.type = "Seleccione tipo de activo.";
-    if (!latitude.trim() || !longitude.trim()) nextErrors.location = "Seleccione la ubicacion en el mapa.";
-    if (description.length > 500) nextErrors.description = "La descripcion no puede superar los 500 caracteres.";
+    if (!latitude.trim() || !longitude.trim()) nextErrors.location = "Seleccione la ubicación en el mapa.";
+    if (description.length > 500) nextErrors.description = "La descripción no puede superar los 500 caracteres.";
     if (name.length > 100) nextErrors.name = "El nombre del activo no puede superar los 100 caracteres.";
 
     if (Object.keys(nextErrors).length > 0) {
@@ -146,7 +146,7 @@ export function RegistrarActivoView({
           </button>
           <div>
             <h1>Registrar nuevo activo</h1>
-            <p>Completa la informacion del activo y selecciona su ubicacion en el mapa.</p>
+            <p>Completa la información del activo y selecciona su ubicación en el mapa.</p>
           </div>
         </div>
         <AppTopActions />
@@ -155,8 +155,8 @@ export function RegistrarActivoView({
       <form className="register-asset-layout" onSubmit={handleSubmit}>
         <section className="register-card register-map-card">
           <div className="register-section-heading">
-            <h2>Ubicacion del activo</h2>
-            <p>Selecciona la ubicacion exacta en el mapa.</p>
+            <h2>Ubicación del activo</h2>
+            <p>Selecciona la ubicación exacta en el mapa.</p>
           </div>
 
           <div className="register-map-frame">
@@ -178,13 +178,13 @@ export function RegistrarActivoView({
             </span>
             {selectedLocation ? (
               <div>
-                <strong>Ubicacion seleccionada</strong>
+                <strong>Ubicación seleccionada</strong>
                 <p>Sector Norte</p>
                 <p>Lat: {latitude}</p>
                 <p>Lng: {longitude}</p>
               </div>
             ) : (
-              <strong>Selecciona una ubicacion en el mapa</strong>
+              <strong>Selecciona una ubicación en el mapa</strong>
             )}
           </div>
           {fieldErrors.location && <FieldError message={fieldErrors.location} />}
@@ -193,7 +193,7 @@ export function RegistrarActivoView({
         <aside className="register-side-column">
 
           <section className="register-card register-form-card">
-            <h2>Informacion del activo</h2>
+            <h2>Información del activo</h2>
 
             <label className="register-field">
               <span>Nombre del activo *</span>
@@ -253,7 +253,7 @@ export function RegistrarActivoView({
               <label className="register-dropzone" onDragOver={(event) => event.preventDefault()} onDrop={handleImageDrop}>
                 <UploadCloud size={24} aria-hidden="true" />
                 <strong>Agregar fotografias</strong>
-                <p>Arrastra imagenes o haz clic para seleccionar</p>
+                <p>Arrastra imágenes o haz clic para seleccionar</p>
                 <input type="file" accept="image/*" multiple hidden onChange={handleImageUpload} />
               </label>
               {images.length > 0 && (
@@ -276,7 +276,7 @@ export function RegistrarActivoView({
             </div>
 
             <label className="register-field">
-              <span>Descripcion</span>
+              <span>Descripción</span>
               <textarea
                 aria-invalid={Boolean(fieldErrors.description)}
                 className={fieldErrors.description ? "field-invalid" : undefined}
@@ -315,7 +315,7 @@ export function RegistrarActivoView({
 
       {isSuccessOpen && (
         <SuccessModal
-          message="Ya esta disponible para futuras inspecciones y misiones."
+          message="Ya está disponible para futuras inspecciones y misiones."
           onGoHome={onGoHome}
           onViewAssets={onViewAssets}
         />

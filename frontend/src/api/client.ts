@@ -94,6 +94,10 @@ export function startMission(idMission: string) {
   });
 }
 
+export function cancelMission(idMission: string) {
+  return request<BackendMission>(`/api/v1/missions/${idMission}/cancel`, {method: "POST"});
+}
+
 export function updateMissionPilot(idMission: string, assignedPilotUsername: string | null) {
   return request<BackendMission>(`/api/v1/missions/${idMission}/pilot`, {
     method: "PATCH",

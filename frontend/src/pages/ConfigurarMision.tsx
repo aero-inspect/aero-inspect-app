@@ -172,7 +172,7 @@ export function ConfigurarMisionView({
     setSubmitError(null);
 
     const nextFieldErrors: FieldErrors = {};
-    if (!name.trim()) nextFieldErrors.name = "Ingrese un nombre para la mision.";
+    if (!name.trim()) nextFieldErrors.name = "Ingrese un nombre para la misión.";
     if (!idDrone) nextFieldErrors.idDrone = "Seleccione un dron.";
     if (!scheduledAt) nextFieldErrors.scheduledAt = "Seleccione fecha y hora programada.";
 
@@ -194,7 +194,7 @@ export function ConfigurarMisionView({
       });
       setIsSuccessOpen(true);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "No se pudo crear la mision.");
+      setSubmitError(error instanceof Error ? error.message : "No se pudo crear la misión.");
     } finally {
       setIsSubmitting(false);
     }
@@ -208,7 +208,7 @@ export function ConfigurarMisionView({
             <ArrowLeft size={19} />
           </button>
           <div>
-            <h1>Configurar mision</h1>
+            <h1>Configurar misión</h1>
           </div>
         </div>
         <AppTopActions />
@@ -223,17 +223,17 @@ export function ConfigurarMisionView({
             </article>
 
             <article className="mission-detail-card mission-builder-fields">
-              <h3 className="mission-quick-actions-title">Datos de la mision</h3>
+              <h3 className="mission-quick-actions-title">Datos de la misión</h3>
 
               <label>
                 <span>
-                  Nombre de la mision <small className="required-inline">*</small>
+                  Nombre de la misión <small className="required-inline">*</small>
                 </span>
                 <input
                   aria-invalid={Boolean(fieldErrors.name)}
                   className={fieldErrors.name ? "field-invalid" : undefined}
                   onChange={(event) => setName(event.target.value)}
-                  placeholder="Ej: Inspeccion trimestral Q1"
+                  placeholder="Ej: Inspección trimestral Q1"
                   type="text"
                   value={name}
                 />
@@ -372,7 +372,7 @@ export function ConfigurarMisionView({
               <div className="form-actions">
                 <button className="configure-create mission-builder-submit" disabled={isSubmitting || !selectedFlightPlan} type="submit">
                   <Save size={15} aria-hidden="true" />
-                  {isSubmitting ? "Creando..." : "Crear mision"}
+                  {isSubmitting ? "Creando..." : "Crear misión"}
                 </button>
               </div>
             </article>
@@ -404,8 +404,8 @@ function MissionSuccessModal({ onGoHome, onViewMissions }: { onGoHome: () => voi
         <div className="success-icon">
           <CheckCircle2 size={48} aria-hidden="true" />
         </div>
-        <h2>Mision creada</h2>
-        <p>La mision se creo correctamente y quedo planificada.</p>
+        <h2>Misión creada</h2>
+        <p>La misión se creo correctamente y quedo planificada.</p>
         <div className="modal-actions">
           <button className="ghost-button" onClick={onGoHome} type="button">
             Volver al inicio

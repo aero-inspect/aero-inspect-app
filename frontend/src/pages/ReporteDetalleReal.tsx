@@ -62,7 +62,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
           setSelectedMissionId(withWaypoints[0].idMission);
           setSelectedWaypointId(getInspectionWaypoints(withWaypoints[0])[0]?.idMissionWaypoint ?? "");
         } else {
-          setMissionsError("No hay una mision iniciada con puntos de inspeccion disponibles.");
+          setMissionsError("No hay una misión iniciada con puntos de inspección disponibles.");
         }
       })
       .catch((error) => {
@@ -113,7 +113,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
 
     const availableSlots = MAX_IMAGES - photos.length;
     if (availableSlots <= 0) {
-      setSelectionError("Ya se seleccionaron las 5 imagenes permitidas.");
+      setSelectionError("Ya se seleccionaron las 5 imágenes permitidas.");
       return;
     }
 
@@ -130,7 +130,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
     }
 
     if (chosenFiles.length > availableSlots) {
-      errors.push(`Solo se agregaron ${availableSlots} imagenes para respetar el maximo de ${MAX_IMAGES}.`);
+      errors.push(`Solo se agregaron ${availableSlots} imágenes para respetar el máximo de ${MAX_IMAGES}.`);
     }
 
     const newPhotos = await Promise.all(acceptedFiles.map(async (file, index) => {
@@ -169,13 +169,13 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
       return;
     }
     if (!selectedMissionId || !selectedWaypointId) {
-      setSelectionError("Seleccione una mision y un punto de inspeccion antes de analizar.");
+      setSelectionError("Seleccione una misión y un punto de inspección antes de analizar.");
       return;
     }
     const selectedMission = missions.find((mission) => mission.idMission === selectedMissionId);
     const selectedWaypoint = selectedMission && getInspectionWaypoints(selectedMission).find((waypoint) => waypoint.idMissionWaypoint === selectedWaypointId);
     if (!selectedWaypoint?.idAsset) {
-      setSelectionError("El punto de inspeccion seleccionado no tiene un activo asociado.");
+      setSelectionError("El punto de inspección seleccionado no tiene un activo asociado.");
       return;
     }
 
@@ -217,11 +217,11 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
 
   const validateReport = async () => {
     if (!photos.length || photos.some((photo) => !photo.analysis)) {
-      setValidationError("Todas las imagenes deben analizarse correctamente antes de validar.");
+      setValidationError("Todas las imágenes deben analizarse correctamente antes de validar.");
       return;
     }
     if (!signature.trim()) {
-      setValidationError("Ingrese el nombre de quien firma la validacion.");
+      setValidationError("Ingrese el nombre de quien firma la validación.");
       return;
     }
 
@@ -281,7 +281,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
           {!reportCode && !persistedReport && !!missions.length && (
             <div className="real-report-selectors">
               <label>
-                Mision
+                Misión
                 <select
                   disabled={isLoadingMissions || isAnalyzingAll}
                   onChange={(event) => handleMissionChange(event.target.value)}
@@ -293,7 +293,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
                 </select>
               </label>
               <label>
-                Punto de inspeccion (activo)
+                Punto de inspección (activo)
                 <select
                   disabled={isLoadingMissions || isAnalyzingAll}
                   onChange={(event) => setSelectedWaypointId(event.target.value)}
@@ -315,7 +315,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
           {!reportCode && photos.length < MAX_IMAGES && !isClosed && (
             <div className="real-report-upload">
               <ImagePlus size={28} />
-              <strong>Seleccione hasta {MAX_IMAGES - photos.length} {MAX_IMAGES - photos.length === 1 ? "imagen" : "imagenes"}</strong>
+              <strong>Seleccione hasta {MAX_IMAGES - photos.length} {MAX_IMAGES - photos.length === 1 ? "imagen" : "imágenes"}</strong>
               <input
                 accept="image/jpeg,image/png,image/webp"
                 aria-label="Seleccionar archivos de imagen"
@@ -325,7 +325,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
                 ref={fileInputRef}
                 type="file"
               />
-              <span>JPG, PNG o WebP · Maximo 20 MB por imagen</span>
+              <span>JPG, PNG o WebP · Máximo 20 MB por imagen</span>
             </div>
           )}
 
@@ -346,7 +346,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
           )}
 
           {photos.some((photo) => photo.analysis) && (
-            <p className="real-report-warning"><AlertTriangle size={18} /> Los resultados son preliminares y siempre requieren revision humana.</p>
+            <p className="real-report-warning"><AlertTriangle size={18} /> Los resultados son preliminares y siempre requieren revisión humana.</p>
           )}
 
           {!reportCode && <button
@@ -356,7 +356,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
             type="button"
           >
             {isAnalyzingAll ? <LoaderCircle className="real-report-spinner" size={18} /> : <ImagePlus size={18} />}
-            {isAnalyzingAll ? "Analizando imagenes..." : photos.length ? `Analizar ${photos.length} ${photos.length === 1 ? "imagen" : "imagenes"}` : "Analizar imagenes"}
+            {isAnalyzingAll ? "Analizando imágenes..." : photos.length ? `Analizar ${photos.length} ${photos.length === 1 ? "imagen" : "imágenes"}` : "Analizar imágenes"}
           </button>}
         </article>
 
@@ -364,7 +364,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
           <div className="real-report-card-title">
             <PenLine size={22} />
             <div>
-              <h2>Firma y validacion</h2>
+              <h2>Firma y validación</h2>
               <p>Revise todos los resultados antes de decidir.</p>
             </div>
           </div>
@@ -439,17 +439,17 @@ function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boo
               <figcaption>Imagen original</figcaption>
             </figure>
             <figure>
-              <img alt={`Corrosion resaltada en evidencia ${index + 1}`} src={overlayUrl} />
-              <figcaption>Resultado del analisis</figcaption>
+              <img alt={`Corrosión resaltada en evidencia ${index + 1}`} src={overlayUrl} />
+              <figcaption>Resultado del análisis</figcaption>
             </figure>
           </div>
           <div className={`real-report-result-badge ${result.tone}`}>{result.label}</div>
           <dl className="real-report-result-data">
-            <div><dt>Tipo de anomalia</dt><dd>Corrosion</dd></div>
+            <div><dt>Tipo de anomalia</dt><dd>Corrosión</dd></div>
             <div><dt>Fecha de la foto</dt><dd><CalendarDays size={15} /> {photo.photoDate.value} <small>({photo.photoDate.source === "captura" ? "metadato de captura" : "fecha del archivo"})</small></dd></div>
-            <div><dt>Area detectada</dt><dd>{report.detected_area_percent.toFixed(2)}%</dd></div>
+            <div><dt>Área detectada</dt><dd>{report.detected_area_percent.toFixed(2)}%</dd></div>
             <div><dt>Severidad estimada</dt><dd><span className={`real-report-severity ${severityTone(severity)}`}>{getSeverityLabel(severity)}</span></dd></div>
-            <div><dt>Descripcion del resultado</dt><dd>{result.description}</dd></div>
+            <div><dt>Descripción del resultado</dt><dd>{result.description}</dd></div>
           </dl>
         </div>
       )}
@@ -461,20 +461,20 @@ function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boo
 function getReportStatus(state: ReportState) {
   if (state === "validated") return { label: "Validado", tone: "validated" };
   if (state === "discarded") return { label: "Descartado", tone: "discarded" };
-  return { label: "Pendiente de validacion", tone: "pending" };
+  return { label: "Pendiente de validación", tone: "pending" };
 }
 
 function getResult(report: AiCorrosionReport, severity: AiSeverityReport | null) {
   const area = report.detected_area_percent;
   const severityDescription = severity ? {
-    baja: "El modelo detecto una cantidad baja de corrosion visible en la superficie analizada.",
-    media: "El modelo detecto una cantidad moderada de corrosion visible en la superficie analizada.",
-    alta: "El modelo detecto una cantidad alta de corrosion visible en la superficie analizada.",
-    sin_corrosion: "El modelo no marco zonas compatibles con corrosion visible en esta imagen."
-  }[severity.predicted_severity] : "El modelo detecto indicios compatibles con corrosion visible en la superficie analizada.";
+    baja: "El modelo detectó una cantidad baja de corrosión visible en la superficie analizada.",
+    media: "El modelo detectó una cantidad moderada de corrosión visible en la superficie analizada.",
+    alta: "El modelo detectó una cantidad alta de corrosión visible en la superficie analizada.",
+    sin_corrosion: "El modelo no marcó zonas compatibles con corrosión visible en esta imagen."
+  }[severity.predicted_severity] : "El modelo detectó indicios compatibles con corrosión visible en la superficie analizada.";
   if (area > CORROSION_AREA_THRESHOLD) {
     return {
-      label: "CORROSION DETECTADA",
+      label: "CORROSIÓN DETECTADA",
       tone: "detected",
       description: severityDescription
     };
@@ -487,9 +487,9 @@ function getResult(report: AiCorrosionReport, severity: AiSeverityReport | null)
     };
   }
   return {
-    label: "SIN CORROSION DETECTADA",
+    label: "SIN CORROSIÓN DETECTADA",
     tone: "clear",
-    description: "El modelo no marco zonas compatibles con corrosion visible en esta imagen."
+    description: "El modelo no marcó zonas compatibles con corrosión visible en esta imagen."
   };
 }
 
@@ -534,7 +534,7 @@ async function waitForAnalysis(initial: BackendInspectionPhoto) {
     await delay(POLL_INTERVAL_MS);
     current = await getInspectionPhoto(current.idInspectionPhoto);
   }
-  throw new Error("El analisis demoro demasiado. Intente nuevamente.");
+  throw new Error("El análisis demoró demasiado. Intente nuevamente.");
 }
 
 function delay(milliseconds: number) {

@@ -109,7 +109,7 @@ export function MisMisionesView({
 
   useEffect(() => {
     (missions ?? [])
-      .filter((mission) => mission.status === "UPLOADING")
+      .filter((mission) => mission.status === "UPLOADING" || mission.status === "IN_PROGRESS")
       .forEach((mission) => pollMissionStatus(mission.idMission));
   }, [missions]);
 
@@ -151,7 +151,7 @@ export function MisMisionesView({
       setMissions((current) => current?.map((item) => (item.idMission === updated.idMission ? updated : item)) ?? current);
       pollMissionStatus(mission.idMission);
     } catch (error) {
-      setStartError(error instanceof Error ? error.message : "No se pudo iniciar la mision.");
+      setStartError(error instanceof Error ? error.message : "No se pudo iniciar la misión.");
     } finally {
       setStartingId(null);
     }
@@ -188,7 +188,7 @@ export function MisMisionesView({
       }
       setDeleteCandidate(null);
     } catch (error) {
-      setStartError(error instanceof Error ? error.message : "No se pudo borrar la mision.");
+      setStartError(error instanceof Error ? error.message : "No se pudo borrar la misión.");
     } finally {
       setDeletingId(null);
     }
@@ -208,13 +208,11 @@ export function MisMisionesView({
   const pollMissionStatus = (idMission: string) => {
     if (activePolls.current.has(idMission)) return;
 
-    let attempts = 0;
     const timerId = window.setInterval(() => {
-      attempts += 1;
       getMission(idMission)
         .then((updated) => {
           setMissions((current) => current?.map((item) => (item.idMission === updated.idMission ? updated : item)) ?? current);
-          if (updated.status !== "UPLOADING" || attempts >= 300) {
+          if (updated.status !== "UPLOADING" && updated.status !== "IN_PROGRESS") {
             window.clearInterval(timerId);
             activePolls.current.delete(idMission);
           }
@@ -232,7 +230,7 @@ export function MisMisionesView({
       <header className="missions-topbar">
         <div>
           <h1>Misiones</h1>
-          <p>Gestiona y monitorea las misiones de inspeccion.</p>
+          <p>Gestiona y monitorea las misiones de inspección.</p>
         </div>
         <AppTopActions />
       </header>
@@ -248,7 +246,7 @@ export function MisMisionesView({
         </button>
         <button className="missions-new-button" onClick={handleOpenCreateMission} type="button">
           <Plus size={18} />
-          Nueva Mision
+          Nueva Misión
         </button>
       </section>
 
@@ -302,7 +300,7 @@ export function MisMisionesView({
               <div className="missions-toolbar-actions">
                 <label className="missions-search">
                   <Search size={15} />
-                  <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar mision..." value={searchTerm} />
+                  <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar misión..." value={searchTerm} />
                 </label>
                 <button className="mission-refresh-button" disabled={isRefreshing} onClick={loadData} title="Actualizar" type="button" aria-label="Actualizar">
                   <RefreshCw size={16} className={isRefreshing ? "spin" : undefined} />
@@ -314,7 +312,7 @@ export function MisMisionesView({
               <table className="missions-table">
                 <thead>
                   <tr>
-                    <th>Mision</th>
+                    <th>Misión</th>
                     <th>Plan de vuelo</th>
                     <th>Fecha</th>
                     <th>Estado</th>
@@ -327,7 +325,7 @@ export function MisMisionesView({
                     <tr className="mission-empty-row">
                       <td colSpan={6}>
                         {missions.length === 0
-                          ? 'No hay misiones creadas todavia. Empeza por crear una desde "Nueva mision".'
+                          ? 'No hay misiones creadas todavía. Empezá por crear una desde "Nueva misión".'
                           : "No hay misiones que coincidan con el filtro seleccionado."}
                       </td>
                     </tr>
@@ -348,7 +346,7 @@ export function MisMisionesView({
                       </td>
                       <td>
                         <strong>{flightPlanName}</strong>
-                        <small>{mission.objective || "Inspeccion"}</small>
+                        <small>{mission.objective || "Inspección"}</small>
                       </td>
                       <td>
                         <span>{formatDate(mission.scheduledAt)}</span>
@@ -402,9 +400,9 @@ export function MisMisionesView({
                               event.stopPropagation();
                               onViewMission(mission.idMission);
                             }}
-                            title="Ver mision"
+                            title="Ver misión"
                             type="button"
-                            aria-label="Ver mision"
+                            aria-label="Ver misión"
                           >
                             <Eye size={15} />
                           </button>
@@ -415,9 +413,9 @@ export function MisMisionesView({
                               event.stopPropagation();
                               setDeleteCandidate(mission);
                             }}
-                            title="Borrar mision"
+                            title="Borrar misión"
                             type="button"
-                            aria-label="Borrar mision"
+                            aria-label="Borrar misión"
                           >
                             <Trash2 size={15} />
                           </button>
@@ -474,7 +472,7 @@ export function MisMisionesView({
                 <MissionInfo label="Plan de vuelo" value={selectedRow.flightPlanName} />
                 <MissionInfo label="Dron" value={selectedRow.mission.droneId ?? "--"} />
                 <MissionInfo label="Fecha y hora" value={`${formatDate(selectedRow.mission.scheduledAt)} - ${formatTime(selectedRow.mission.scheduledAt)}`} />
-                <MissionInfo label="Duracion" value={formatDuration(selectedRow.mission.startedAt, selectedRow.mission.finishedAt)} />
+                <MissionInfo label="Duración" value={formatDuration(selectedRow.mission.startedAt, selectedRow.mission.finishedAt)} />
                 <MissionInfo label="Objetivo" value={selectedRow.mission.objective || "-"} />
                 <MissionInfo label="Puntos seleccionados" value={`${selectedRow.mission.selectedPlanWaypointIds?.length ?? 0} puntos`} />
               </div>
@@ -482,7 +480,7 @@ export function MisMisionesView({
               {selectedRow.mission.status === "IN_PROGRESS" && (
                 <div className="mission-progress-box">
                   <div>
-                    <strong>Progreso de la mision</strong>
+                    <strong>Progreso de la misión</strong>
                     <span>{selectedRow.mission.completionPercentage}%</span>
                   </div>
                   <div className="mission-progress-track">
@@ -493,7 +491,7 @@ export function MisMisionesView({
 
               {selectedRow.mission.status !== "IN_PROGRESS" && (
               <div className="mission-quick-actions">
-                <h3>Acciones rapidas</h3>
+                <h3>Acciones rápidas</h3>
 
                 {startError && selectedRow.mission.idMission === startingId && (
                   <p className="mission-empty">
@@ -521,7 +519,7 @@ export function MisMisionesView({
                 )}
 
                 {selectedRow.mission.status === "UPLOADING" && (
-                  <p className="mission-waiting-text">Esperando confirmacion del dron...</p>
+                  <p className="mission-waiting-text">Esperando confirmación del dron...</p>
                 )}
 
               </div>
@@ -562,7 +560,7 @@ export function MisMisionesView({
             <div className="profile-delete-modal-icon">
               <Trash2 size={26} />
             </div>
-            <h2>Eliminar mision</h2>
+            <h2>Eliminar misión</h2>
             <p>
               ¿Está seguro de que desea eliminar la misión "{deleteCandidate.name}"?<br />
               Esta acción no se puede deshacer.

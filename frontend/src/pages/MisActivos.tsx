@@ -466,7 +466,7 @@ export function MisActivosView({
             {backendAssets !== null && visibleAssets.length === 0 && (
               <p className="assets-empty-message">
                 {plantAssets.length === 0
-                  ? 'No hay activos creados todavia. Empeza por crear uno desde "Nuevo Activo".'
+                  ? 'No hay activos creados todavía. Empezá por crear uno desde "Nuevo Activo".'
                   : "No hay activos que coincidan con el filtro seleccionado."}
               </p>
             )}
@@ -637,7 +637,7 @@ export function MisActivosView({
                 </div>
 
                 <label className="asset-edit-field full">
-                  <span>Ubicacion *</span>
+                  <span>Ubicación *</span>
                   <input aria-label="Ubicación" className={formErrors.locationDetail ? "field-invalid" : undefined} onChange={(event) => updateForm("locationDetail", event.target.value)} value={form.locationDetail} />
                 </label>
 
@@ -682,7 +682,7 @@ export function MisActivosView({
                 </div>
 
                 <label className="asset-edit-field full">
-                  <span>Ultimo mantenimiento*</span>
+                  <span>Último mantenimiento*</span>
                   <div className={form.lastMaintenanceAt ? "mission-date-input asset-maintenance-date-input selected" : "mission-date-input asset-maintenance-date-input"}>
                     <button
                       aria-expanded={isMaintenancePickerOpen}
@@ -755,7 +755,7 @@ export function MisActivosView({
                 </div>
 
                 <label className="asset-edit-field asset-edit-description">
-                  <span>Descripcion</span>
+                  <span>Descripción</span>
                   <textarea aria-label="Descripción" onChange={(event) => updateForm("description", event.target.value)} value={form.description} />
                 </label>
               </div>
@@ -763,7 +763,7 @@ export function MisActivosView({
 
             <footer className="asset-edit-modal-footer">
               <label className="asset-edit-field asset-edit-code-bottom">
-                <span>Codigo *</span>
+                <span>Código *</span>
                 <input aria-label="Código" className={formErrors.code ? "field-invalid" : undefined} onChange={(event) => updateForm("code", event.target.value)} value={form.code} />
               </label>
               <div className="asset-edit-actions">
@@ -836,7 +836,7 @@ export function MisActivosView({
               <Check size={25} />
             </span>
             <h2>Activo Registrado</h2>
-            <p>Ya esta disponible para futuras misiones e inspecciones</p>
+            <p>Ya está disponible para futuras misiones e inspecciones</p>
             <div className="asset-created-actions">
               <button className="asset-created-back" onClick={() => setAssetCreated(false)} type="button">
                 Volver
@@ -942,7 +942,7 @@ export function MisActivosView({
                 </div>
 
                 <label className="asset-edit-field full">
-                  <span>Ultimo mantenimiento*</span>
+                  <span>Último mantenimiento*</span>
                   <div className="asset-edit-date-input">
                     <input defaultValue={formatMaintenanceLabel(editAsset.lastMaintenanceAt ?? "")} />
                     <CalendarDays size={16} aria-hidden="true" />
@@ -964,7 +964,7 @@ export function MisActivosView({
                 </div>
 
                 <label className="asset-edit-field asset-edit-description">
-                  <span>Descripcion</span>
+                  <span>Descripción</span>
                   <textarea defaultValue={editAsset.description} />
                 </label>
               </div>
@@ -972,7 +972,7 @@ export function MisActivosView({
 
             <footer className="asset-edit-modal-footer">
               <label className="asset-edit-field asset-edit-code-bottom">
-                <span>Codigo *</span>
+                <span>Código *</span>
                 <input defaultValue={editAsset.code} />
               </label>
               <div className="asset-edit-actions">
