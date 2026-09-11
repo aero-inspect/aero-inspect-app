@@ -30,6 +30,7 @@ export function createMissionPlayback(scene:T.Scene,dock:T.Group,camera:T.Perspe
     if(!last&&data.status==='PLANNED')drone.position.y=plantGeoreference.groundHeight;
     const finished=['COMPLETED','CANCELLED','FAILED'].includes(data.status);
     spinning=data.status==='IN_PROGRESS'&&!finished;
+    if(terminal&&data.status==='IN_PROGRESS')terminal=false;
     if(terminal)return;
     const packet=data.telemetry;
     if(packet&&packet.missionId===id&&packet.position&&data.status!=='PLANNED'){

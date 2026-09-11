@@ -18,7 +18,7 @@ seed(code, type, route) AS (VALUES
 ${rows}
 ),
 catalog AS MATERIALIZED (
-  SELECT a.id_asset, s.*, 'Inspeccion 3D - ' || s.code AS plan_name
+  SELECT a.id_asset, s.*, 'Inspeccion 3D - ' || s.code || ' - compacta' AS plan_name
   FROM seed s JOIN asset a ON a.code = s.code AND a.type = s.type CROSS JOIN guard
 ),
 new_plans AS (
@@ -60,9 +60,11 @@ INSERT INTO plan_waypoint_camera_angle(id_plan_waypoint,pitch,yaw)
 SELECT w.id_plan_waypoint,r.pitch,0.0 FROM waypoints w JOIN route r USING(id_flight_plan,sequence)
 WHERE r."pointOfInterest" AND NOT EXISTS(SELECT 1 FROM plan_waypoint_camera_angle a WHERE a.id_plan_waypoint=w.id_plan_waypoint);
 `;
+    for(const p of result.plans){
+      if(p.route.length>50||p.route.filter(w=>w.pointOfInterest).length>10)throw Error('Mission budget exceeded');
+    }
     const target=path.resolve(__dirname,'../../general-monolith/src/main/resources/database.script/bragado-inspection-plans.sql');
     fs.writeFileSync(target,sql);
-    fs.writeFileSync(path.resolve(__dirname,'../docs/inspection-plan-validation.json'),JSON.stringify(result,null,2));
-    console.log(JSON.stringify({plans:result.plans.length,bounds:result.bounds,cruise:result.cruise,reports:result.reports},null,2));
+    console.log(JSON.stringify({plans:result.plans.map(p=>({code:p.code,points:p.route.length,photos:p.route.filter(w=>w.pointOfInterest).length})),bounds:result.bounds,cruise:result.cruise},null,2));
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

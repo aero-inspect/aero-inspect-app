@@ -13,6 +13,7 @@ export type TelemetryUpdate = {
 };
 
 export type StatusEvent = {
+  reason?: string;
   missionId: string;
   event: string;
   timestamp: string;

@@ -97,6 +97,13 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
 
   const { telemetry, statusEvent } = useMissionTelemetry(mission?.idMission, token);
 
+  useEffect(() => {
+    if(!statusEvent || statusEvent.missionId!==mission?.idMission)return;
+    const status: BackendMissionStatus | undefined = statusEvent.event==='MISSION_STARTED'?'IN_PROGRESS':statusEvent.event==='MISSION_START_REJECTED'?'FAILED':statusEvent.event==='MISSION_COMPLETED'?'COMPLETED':undefined;
+    if(status)setMission(previous=>previous?{...previous,status}:previous);
+    if(statusEvent.event==='MISSION_START_REJECTED')setStartError(statusEvent.reason || 'El controlador rechazo el inicio de la mision.');
+  }, [statusEvent, mission?.idMission]);
+
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (mission?.status !== "IN_PROGRESS") return;
@@ -329,7 +336,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
                 Cancelar
               </button>
             </div>
-            {startError && <p className="monitor-start-error">{startError}</p>}
+            {(startError || (mission?.status==='FAILED' && mission.notes)) && <p className="monitor-start-error">{startError || mission?.notes}</p>}
           </article>
 
           <aside className="monitor-side-column">
