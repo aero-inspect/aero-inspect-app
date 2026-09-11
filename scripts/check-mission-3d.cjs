@@ -23,6 +23,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       const points=[{latitude:g.latitude,longitude:g.longitude,altitude:0,sequence:0},{latitude:g.latitude+.0001,longitude:g.longitude+.0001,altitude:12,sequence:1}];
       const data={id,status:'PLANNED',points,telemetry:null};play.update(data);
       const drone=scene.getObjectByName('Reference quadcopter');
+      check(scene.children.filter(o=>o instanceof T.Line).length===1,'only planned route is displayed');
       check(drone.position.distanceTo(toPlantPosition(points[0]))<1e-8,'pending start');
       points[0].altitude=36.887;play.update(data);
       check(Math.abs(drone.position.y-g.groundHeight)<1e-8,'positive takeoff target does not lift a pending drone');

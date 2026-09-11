@@ -55,11 +55,12 @@ export function generateInspectionPlans() {
     const heights=asset.r?[asset.h*.65,asset.h+asset.r*.3+3]:[9,18];
     for(const rawHeight of heights){const y=Number(rawHeight.toFixed(2))+plantGeoreference.groundHeight;
       const candidates:T.Vector3[]=[];
-      if(asset.r){for(const [dx,dz] of [[1,1],[-1,1],[-1,-1],[1,-1]]) candidates.push(new T.Vector3(asset.x+dx*(asset.r+2.6),y,asset.z+dz*(asset.r+2.6)));}
+      if(asset.r){for(let i=0;i<12;i++){const angle=i*Math.PI/6;candidates.push(new T.Vector3(asset.x+Math.cos(angle)*(asset.r+2.6),y,asset.z+Math.sin(angle)*(asset.r+2.6)));}}
       else {
         const halfX=27/2+3,halfZ=43/2+3;
-        for(const [sx,sz] of [[1,1],[-1,1],[-1,-1],[1,-1]]){
-          const x=sx*halfX,z=sz*halfZ;
+        for(const [sx,sz,offset] of [[1,1,0],[-1,1,Math.PI/2],[-1,-1,Math.PI],[1,-1,Math.PI*1.5]])for(let i=0;i<3;i++){
+          const angle=offset+i*Math.PI/4,r=2;
+          const x=sx*(halfX-r)+r*Math.cos(angle),z=sz*(halfZ-r)+r*Math.sin(angle);
           candidates.push(new T.Vector3(asset.x+(x+z)/Math.sqrt(2),y,asset.z+(-x+z)/Math.sqrt(2)));
         }
       }
@@ -69,10 +70,12 @@ export function generateInspectionPlans() {
       const first=valid[0],highFirst=new T.Vector3(first.x,cruise,first.z);
       move(highFirst);move(first);
       const target=new T.Vector3(asset.x,Math.min(asset.h,y),asset.z);
-      for(const p of valid){
+      const photoIndices=new Set(Array.from({length:Math.min(4,valid.length)},(_,i)=>Math.floor(i*valid.length/Math.min(4,valid.length))));
+      for(const [index,p] of valid.entries()){
         move(p);
-        const last=points[points.length-1];last.photo=true;last.target.copy(target);
+        if(photoIndices.has(index)){const last=points[points.length-1];last.photo=true;last.target.copy(target);}
       }
+      move(first);
       const last=points[points.length-1].position;
       move(new T.Vector3(last.x,cruise,last.z));
     }
@@ -90,10 +93,10 @@ export function generateInspectionPlans() {
       }
     }
     move(new T.Vector3(home.x,cruise,home.z));move(home);
-    if(points.length>50||points.filter(p=>p.photo).length>10)throw Error(`${asset.code}: mission budget exceeded (${points.length})`);
+    if(points.length>85||points.filter(p=>p.photo).length>10)throw Error(`${asset.code}: mission budget exceeded (${points.length})`);
     for(let i=1;i<points.length;i++){
       const d=points[i].position.clone().sub(points[i-1].position);
-      if([d.x,d.y,d.z].filter(v=>Math.abs(v)>1e-6).length>1)throw Error('Non-orthogonal segment');
+      if(Math.abs(d.y)>1e-6&&Math.hypot(d.x,d.z)>1e-6)throw Error('Non-vertical altitude change');
     }
     for(let i=1;i<points.length;i++)if(!clear(points[i-1].position,points[i].position))throw Error(`${asset.code}: blocked segment ${i}`);
     // MAVSDK consumes TAKEOFF as a destination, not a ground marker. Its altitude
@@ -121,9 +124,7 @@ export function generateInspectionPlans() {
         if(last.x!==p.x||last.z!==p.z||!clear(last,p))throw Error('Blocked vertical ascent');
         add(p);return;
       }
-      for(const corner of [new T.Vector3(p.x,last.y,last.z),new T.Vector3(last.x,last.y,p.z)]){
-        if(clear(last,corner)&&clear(corner,p)){add(corner);add(p);return;}
-      }
+      if(clear(last,p)){add(p);return;}
       if(last.y===cruise)throw Error('Blocked cruise corridor');
       move(new T.Vector3(last.x,cruise,last.z));
       move(new T.Vector3(p.x,cruise,p.z));move(p);

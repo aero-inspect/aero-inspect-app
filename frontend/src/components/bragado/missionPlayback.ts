@@ -9,13 +9,14 @@ type Sample={position:number[];heading:number;time:number};
 const MAX_POINTS=4096;
 export function createMissionPlayback(scene:T.Scene,dock:T.Group,camera:T.PerspectiveCamera,controls:OrbitControls){
   const drone=dock.getObjectByName('Reference quadcopter')!;
+  drone.scale.multiplyScalar(1.25);
   const propellers:T.Object3D[]=[];
   drone.traverse(part=>{if(part.name==='Two-blade propeller')propellers.push(part);});
   let spinning=false;
   dock.updateMatrixWorld(true);scene.attach(drone);
   const plannedMaterial=new T.LineBasicMaterial({color:'#52cee6',transparent:true,opacity:.5,depthWrite:false,toneMapped:false});
   const actualMaterial=new T.LineBasicMaterial({color:'#258aff',toneMapped:false});
-  const planned=new T.Line(new T.BufferGeometry(),plannedMaterial),actual=new T.Line(new T.BufferGeometry(),actualMaterial);scene.add(planned,actual);
+  const planned=new T.Line(new T.BufferGeometry(),plannedMaterial),actual=new T.Line(new T.BufferGeometry(),actualMaterial);scene.add(planned);
   let id='',last:Sample|null=null,trail:number[][]=[],routeKey='',terminal=false,following=false;
   let start=0,duration=0,from=drone.position.clone(),target=from.clone(),fromRotation=drone.quaternion.clone(),targetRotation=fromRotation.clone();
   let previousFrame=performance.now();

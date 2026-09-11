@@ -22,8 +22,8 @@ let plans=[];
   });
   await page.goto(process.env.APP_URL||'http://127.0.0.1:5173');
   const seed=await page.evaluate(async()=> (await import('/src/components/bragado/inspectionPlans.ts')).generateInspectionPlans());
-  plans=seed.plans.map((p,i)=>({idFlightPlan:i+201,name:`Inspeccion 3D - ${p.code} - compacta`,assetIds:[assets.find(a=>a.code===p.code).idAsset],route:p.route.map((w,j)=>({...w,idPlanWaypoint:(i+1)*1000+j,cameraAngles:w.pointOfInterest?[{pitch:w.pitch,yaw:0}]:[]}))}));
-  for(const p of plans){assert(p.route.length<=50);assert(p.route.filter(w=>w.pointOfInterest).length<=10);}
+  plans=seed.plans.map((p,i)=>({idFlightPlan:i+201,name:`Inspeccion 3D - ${p.code} - perimetral`,assetIds:[assets.find(a=>a.code===p.code).idAsset],route:p.route.map((w,j)=>({...w,idPlanWaypoint:(i+1)*1000+j,cameraAngles:w.pointOfInterest?[{pitch:w.pitch,yaw:0}]:[]}))}));
+  for(const p of plans){assert(p.route.length<=85);assert(p.route.filter(w=>w.pointOfInterest).length<=10);}
   await page.evaluate(async()=>{
     const React=(await import('/node_modules/.vite/deps/react.js')).default;
     const {createRoot}=(await import('/node_modules/.vite/deps/react-dom_client.js')).default;
@@ -64,7 +64,7 @@ let plans=[];
   await page.locator('.mission-drone-select > button').click();await page.getByRole('button',{name:'Dron QA (QA)',exact:true}).click();
   await page.locator('.mission-date-input > button').click();await page.locator('.mission-calendar-grid button').nth(20).click();await page.getByRole('button',{name:'Listo',exact:true}).click();
   await page.getByRole('button',{name:'Crear mision',exact:true}).click();await page.getByRole('heading',{name:'Mision creada',exact:true}).waitFor();
-  assert.equal(posts.length,1);const selected=plans.find(p=>p.name==='Inspeccion 3D - BRA-SIL-10 - compacta');assert.equal(posts[0].payload.idFlightPlan,selected.idFlightPlan);assert.deepEqual(posts[0].payload.selectedPlanWaypointIds,selected.route.filter(w=>w.pointOfInterest).map(w=>w.idPlanWaypoint));assert(!posts[0].url.endsWith('/start'));
+  assert.equal(posts.length,1);const selected=plans.find(p=>p.name==='Inspeccion 3D - BRA-SIL-10 - perimetral');assert.equal(posts[0].payload.idFlightPlan,selected.idFlightPlan);assert.deepEqual(posts[0].payload.selectedPlanWaypointIds,selected.route.filter(w=>w.pointOfInterest).map(w=>w.idPlanWaypoint));assert(!posts[0].url.endsWith('/start'));
   await page.getByRole('button',{name:'Ver misiones',exact:true}).click();
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(os.tmpdir(),'inspection-mission-mobile.png'),fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);

@@ -5,7 +5,7 @@ import { BragadoPlant3DMap } from './BragadoPlant3DMap';
 
 export function resolveInspectionPlan(asset: BackendAsset, plans: BackendFlightPlan[]) {
   if(!['SILO','SILO_FLOTANTE','CELDA'].includes(asset.type))return null;
-  const matches=plans.filter(plan=>plan.name===`Inspeccion 3D - ${asset.code} - compacta`&&plan.assetIds.length===1&&plan.assetIds[0]===asset.idAsset);
+  const matches=plans.filter(plan=>plan.name===`Inspeccion 3D - ${asset.code} - perimetral`&&plan.assetIds.length===1&&plan.assetIds[0]===asset.idAsset);
   return matches.length===1&&matches[0].route.length>1?matches[0]:null;
 }
 export function MissionAssetPicker({plans, selectedPlanId, onSelect}: {plans:BackendFlightPlan[];selectedPlanId:number|null;onSelect:(plan:BackendFlightPlan|null)=>void}) {
