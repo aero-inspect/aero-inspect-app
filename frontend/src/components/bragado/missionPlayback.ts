@@ -27,6 +27,7 @@ export function createMissionPlayback(scene:T.Scene,dock:T.Group,camera:T.Perspe
     }
     const points=[...data.points].sort((a,b)=>a.sequence-b.sequence),key=JSON.stringify(points);
     if(key!==routeKey){routeKey=key;const positions=points.map(toPlantPosition).filter((p):p is T.Vector3=>p!==null);planned.geometry.dispose();planned.geometry=new T.BufferGeometry().setFromPoints(positions);if(!last&&positions.length){drone.position.copy(positions[0]);drone.rotation.y=T.MathUtils.degToRad(-(points[0].droneDegree??0)+plantGeoreference.northRotationDegrees);} }
+    if(!last&&data.status==='PLANNED')drone.position.y=plantGeoreference.groundHeight;
     const finished=['COMPLETED','CANCELLED','FAILED'].includes(data.status);
     spinning=data.status==='IN_PROGRESS'&&!finished;
     if(terminal)return;

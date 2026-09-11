@@ -17,6 +17,7 @@ const plans=seed.plans.map((p,i)=>({idFlightPlan:i+201,name:`Inspeccion 3D - ${p
     if(url.endsWith('/assets'))value=assets;
     if(url.endsWith('/flight-plans'))value=plans;
     if(url.endsWith('/drones'))value=[{idDrone:'test-drone',name:'Dron QA',droneId:'QA'}];
+    if(url.includes('/weather'))value={temp:22,description:'Despejado',icon:'01d',windKmh:5,humidity:40,visibilityKm:10};
     if(route.request().method()==='POST'){posts.push({url,payload:route.request().postDataJSON()});value={idMission:'test-only',status:'PLANNED'};}
     await route.fulfill({json:value});
   });
@@ -45,6 +46,13 @@ const plans=seed.plans.map((p,i)=>({idFlightPlan:i+201,name:`Inspeccion 3D - ${p
   await select('BRA-SIL-09');await page.getByText('Seleccioná un activo para continuar',{exact:true}).waitFor();
   await select('BRA-CEL-01');await page.getByText('Activo seleccionado: Celda 1',{exact:true}).waitFor();
   await select('BRA-SIL-10');await page.getByText('Activo seleccionado: Silo 10',{exact:true}).waitFor();
+  await select('BRA-NOR-01');assert.equal(await page.getByText('Activo seleccionado: Silo 10',{exact:true}).count(),1);
+  const gesture=await position('BRA-SIL-10');await page.mouse.move(gesture.x,gesture.y);await page.mouse.down();await page.mouse.move(gesture.x+12,gesture.y+8,{steps:5});await page.mouse.up();
+  assert.equal(await page.getByText('Activo seleccionado: Silo 10',{exact:true}).count(),1);
+  const canvasImage=await page.locator('.bragado-map-stage canvas').screenshot();
+  const distinct=await page.evaluate(async data=>{
+    const img=new Image();img.src='data:image/png;base64,'+data;await img.decode();const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const ctx=c.getContext('2d');ctx.drawImage(img,0,0);const pixels=ctx.getImageData(0,0,c.width,c.height).data,colors=new Set();for(let i=0;i<pixels.length;i+=148)colors.add(`${pixels[i]},${pixels[i+1]},${pixels[i+2]}`);return colors.size;
+  },canvasImage.toString('base64'));assert(distinct>100,'nonblank rendered plant pixels');
   await page.screenshot({path:path.join(os.tmpdir(),'inspection-mission-desktop.png'),fullPage:true});
   const types=await page.evaluate(async({assets,plans})=>{
     const {resolveInspectionPlan}=await import('/src/components/MissionAssetPicker.tsx');

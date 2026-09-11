@@ -112,6 +112,10 @@ export function generateInspectionPlans() {
     }
     add(new T.Vector3(home.x,cruise,home.z));add(home);
     for(let i=1;i<points.length;i++)if(!clear(points[i-1].position,points[i].position))throw Error(`${asset.code}: blocked segment ${i}`);
+    // MAVSDK consumes TAKEOFF as a destination, not a ground marker. Its altitude
+    // must be the climb target (see flight-controller/docs/INTERFAZ_MQTT.md).
+    // Keep sequence/photography IDs stable; the next point is the same climb target.
+    points[0].position.copy(points[1].position);
     const g=plantGeoreference,rotation=T.MathUtils.degToRad(g.northRotationDegrees);
     const route=points.map((p,sequence)=>{
       const x=(p.position.x-g.x)/g.metresToUnits,z=(p.position.z-g.z)/g.metresToUnits;
@@ -122,6 +126,7 @@ export function generateInspectionPlans() {
       const heading=(T.MathUtils.radToDeg(Math.atan2(delta.x,-delta.z))+360)%360;
       return {latitude,longitude,altitude,sequence,action:sequence===0?'TAKEOFF':sequence===points.length-1?'LAND':p.photo?'STOP':'NAVIGATE',pointOfInterest:p.photo,stopSeconds:p.photo?3:0,droneDegree:heading,pitch:T.MathUtils.clamp(T.MathUtils.radToDeg(Math.atan2(delta.y,Math.hypot(delta.x,delta.z))),-90,30)};
     });
+    if(route[0].action!=='TAKEOFF'||route[0].altitude<=0)throw Error('TAKEOFF requires a positive relative altitude');
     // Validate the actual serialized GPS round trip, not only the source model positions.
     route.forEach((p,i)=>{const converted=toPlantPosition(p)!;if(converted.distanceTo(points[i].position)>1e-6)throw Error('Georeference round-trip mismatch');if(i&&!clear(toPlantPosition(route[i-1])!,converted))throw Error('GPS segment collision');});
     report.segments=route.length-1;reports.push(report);return {code:asset.code,type:asset.type,route};
