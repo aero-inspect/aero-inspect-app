@@ -24,7 +24,7 @@ import { createAsset as createBackendAsset, deleteAsset as deleteBackendAsset, g
 import { AssetsOverviewMap } from "../components/AssetsOverviewMap";
 import { AppTopActions } from "../components/AppTopActions";
 
-type AssetStatus = "Activo" | "En mantenimiento" | "Fuera de servicio";
+type AssetStatus = "Activo" | "En mantenimiento" | "Fuera de servicio" | "Sin confirmar";
 type AssetDetailRow = Asset & { displayName: string; displayType: string; displayStatus: AssetStatus; tone: "warning" | "ok" | "danger" };
 
 type AssetFormState = {
@@ -99,15 +99,16 @@ const EMPTY_FORM: AssetFormState = {
 const ASSET_TYPE_OPTIONS: Array<{ value: BackendAssetType; label: Asset["type"] }> = [
   { value: "SILO", label: "Silo" },
   { value: "NORIA", label: "Noria" },
-  { value: "CINTA_TRANSPORTADORA", label: "Cinta transportadora" },
-  { value: "TUBERIA", label: "Tuberia" },
-  { value: "TECHO", label: "Techo" }
+  { value: "SILO_FLOTANTE", label: "Silo flotante" },
+  { value: "CELDA", label: "Celda" },
+  { value: "SECADORA", label: "Secadora" }
 ];
 
 const ASSET_STATUS_OPTIONS: Array<{ value: BackendAssetStatus; label: AssetStatus }> = [
   { value: "MAINTENANCE", label: "En mantenimiento" },
   { value: "ACTIVE", label: "Activo" },
-  { value: "OUT_OF_SERVICE", label: "Fuera de servicio" }
+  { value: "OUT_OF_SERVICE", label: "Fuera de servicio" },
+  { value: "UNCONFIRMED", label: "Sin confirmar" }
 ];
 
 function backendTypeToDisplay(type: BackendAssetType) {
@@ -169,8 +170,10 @@ export function MisActivosView({
   plant: Plant;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"Todos" | Asset["type"]>("Todos");
-  const [statusFilter, setStatusFilter] = useState<"Todos" | AssetStatus>("Todos");
+  const [typeFilter, setTypeFilter] = useState<string>("Todos");
+  const [statusFilter, setStatusFilter] = useState<string>("Todos");
+  const [mapSelectedAssetId, setMapSelectedAssetId] = useState<number | null>(null);
+  const [mapHoveredAssetId, setMapHoveredAssetId] = useState<number | null>(null);
   const [openFilter, setOpenFilter] = useState<"type" | "status" | null>(null);
   const [openAssetFormSelect, setOpenAssetFormSelect] = useState<"create-type" | "create-status" | "edit-type" | "edit-status" | null>(null);
   const [createAsset, setCreateAsset] = useState(false);
@@ -387,7 +390,7 @@ export function MisActivosView({
 
       <section className="assets-main-layout">
         <section className="assets-list-card">
-          <h2>Todas los activos</h2>
+          <h2>Todos los activos</h2>
           <div className="assets-list-filters">
             <button
               className={typeFilter === "Todos" && statusFilter === "Todos" ? "assets-filter-pill active" : "assets-filter-pill"}
@@ -468,7 +471,14 @@ export function MisActivosView({
               </p>
             )}
             {visibleAssets.map((asset) => (
-              <article className={`assets-row ${asset.tone}`} key={asset.id}>
+              <article
+                className={`assets-row ${asset.tone}${(mapHoveredAssetId ?? mapSelectedAssetId) === asset.id ? " map-focused" : ""}`}
+                key={asset.id}
+                onClick={() => setMapSelectedAssetId(asset.id)}
+                onMouseEnter={() => setMapHoveredAssetId(asset.id)}
+                onMouseLeave={() => setMapHoveredAssetId(null)}
+                tabIndex={0}
+              >
                 <strong>{asset.displayName}</strong>
                 <span>{asset.displayType}</span>
                 <em>{asset.displayStatus}</em>
@@ -494,10 +504,12 @@ export function MisActivosView({
         <section className="assets-map-card" aria-label="Mapa de activos">
           <AssetsOverviewMap
             assets={backendAssets ?? []}
+            filters={{ type: typeFilter, status: statusFilter, search: searchTerm }}
             onViewAsset={(idAsset) => {
               const found = plantAssets.find((asset) => asset.id === idAsset);
               if (found) setDetailAsset(found);
             }}
+            focusedAssetCode={plantAssets.find((asset) => asset.id === (mapHoveredAssetId ?? mapSelectedAssetId))?.code ?? null}
             plant={plant}
           />
         </section>

@@ -332,3 +332,11 @@
     display: none;
   }
 }
+.drone-preview-row { cursor: pointer; }
+.drone-preview-row:hover { background: #f1f7fc; }
+.drone-preview-name { border: 0; background: transparent; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.drone-preview-name:focus-visible { outline: 2px solid #295b87; outline-offset: 4px; }
+.drone-preview-dialog { width: min(600px, calc(100vw - 32px), calc(100dvh - 110px)); padding: 16px; border: 1px solid #dbe7f1; border-radius: 8px; background: white; max-height: calc(100dvh - 32px); overflow: auto; }
+.drone-preview-dialog::backdrop { background: rgb(15 26 43 / 45%); }
+.drone-preview-dialog .drones-abm-modal-header h2 { overflow-wrap: anywhere; }
+.drone-preview-dialog > .drone-model-viewer { height: auto; aspect-ratio: 1; }

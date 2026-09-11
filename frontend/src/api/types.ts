@@ -2,8 +2,8 @@
 // No confundir con los tipos de src/types/index.ts, que son del modelo mock/local
 // que todavía usan RegistrarActivo/MisActivos/ConfigurarMision.
 
-export type BackendAssetType = "SILO" | "NORIA" | "CINTA_TRANSPORTADORA" | "TUBERIA" | "TECHO";
-export type BackendAssetStatus = "ACTIVE" | "MAINTENANCE" | "OUT_OF_SERVICE";
+export type BackendAssetType = "SILO" | "NORIA" | "CINTA_TRANSPORTADORA" | "TUBERIA" | "TECHO" | "SILO_FLOTANTE" | "CELDA" | "SECADORA";
+export type BackendAssetStatus = "ACTIVE" | "MAINTENANCE" | "OUT_OF_SERVICE" | "UNCONFIRMED";
 
 export type BackendAsset = {
   idAsset: number;

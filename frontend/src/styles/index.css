@@ -2,6 +2,7 @@
 @import "./pages/login.css";
 @import "./layouts/legacy-shell.css";
 @import "./components/maps.css";
+@import "./components/bragado-map.css";
 @import "./pages/asset-form.css";
 @import "./pages/registrar-activo.css";
 @import "./pages/role-management.css";

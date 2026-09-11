@@ -501,12 +501,18 @@
 }
 
 .assets-list-table-wrap {
+  flex: 1 1 auto;
   min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid #e3ebf2;
   border-bottom: 0;
 }
 
 .assets-list-table-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: grid;
   grid-template-columns: minmax(90px, 1fr) minmax(86px, 0.85fr) minmax(96px, 0.9fr) 80px;
   gap: 8px;
@@ -613,6 +619,15 @@
   display: flex;
   justify-content: center;
   gap: 10px;
+}
+
+.assets-row:hover,
+.assets-row:focus-visible,
+.assets-row.map-focused {
+  z-index: 1;
+  outline: 2px solid rgba(41, 91, 135, 0.32);
+  outline-offset: -2px;
+  background: #f3f8fd;
 }
 
 .assets-row-actions button {
