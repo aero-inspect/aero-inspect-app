@@ -3,6 +3,7 @@ import { AlertCircle, Box, CalendarCheck, CheckCircle2, ChevronDown, Clock3, Eye
 import type { BackendFlightPlan, BackendMission, BackendMissionStatus, ManagedUser } from "../api/types";
 import type { SessionUser } from "../types";
 import { deleteMission, getFlightPlans, getManagedUsers, getMission, getMissions, startMission, updateMissionPilot } from "../api/client";
+import { MissionAssetPicker } from "../components/MissionAssetPicker";
 import { MissionDetailRouteMap } from "../components/MissionDetailRouteMap";
 import { AppTopActions } from "../components/AppTopActions";
 
@@ -532,7 +533,7 @@ export function MisMisionesView({
 
       {planModal && (
         <div className="mission-plan-modal-backdrop" role="presentation">
-          <section className="mission-plan-modal" role="dialog" aria-modal="true">
+          <section className="mission-plan-modal mission-asset-modal" role="dialog" aria-modal="true">
             <button className="mission-plan-modal-close" onClick={() => setPlanModal(null)} type="button" aria-label="Cerrar">
               <X size={16} />
             </button>
@@ -540,24 +541,11 @@ export function MisMisionesView({
               <span className="mission-plan-modal-icon" aria-hidden="true">
                 <Box size={20} />
               </span>
-              <h2>Elegir plan de vuelo</h2>
+              <h2>Seleccionar activo</h2>
             </div>
             <div className="mission-plan-modal-divider" />
 
-            <div className="mission-plan-list" role="radiogroup" aria-label="Planes de vuelo">
-              {flightPlans.map((plan) => (
-                <button
-                  className={selectedPlanId === plan.idFlightPlan ? "mission-plan-row selected" : "mission-plan-row"}
-                  key={plan.idFlightPlan}
-                  onClick={() => setSelectedPlanId(plan.idFlightPlan)}
-                  type="button"
-                  role="radio"
-                  aria-checked={selectedPlanId === plan.idFlightPlan}
-                >
-                  <span>{plan.name}</span>
-                </button>
-              ))}
-            </div>
+            <MissionAssetPicker plans={flightPlans} selectedPlanId={selectedPlanId} onSelect={plan=>setSelectedPlanId(plan?.idFlightPlan??null)} />
 
             <div className="mission-plan-modal-footer">
               <button className="mission-plan-modal-primary" disabled={selectedPlanId == null} onClick={handleContinuePlan} type="button">

@@ -105,7 +105,7 @@ function addOutlets({bins,numbers,mesh,box,beam,frame,rust,dark,parent,scale}){
   beam([-1,29*scale,0],b,.025,frame,parent);
 }
 
-export function buildPlant(scene,heightScale,siloNumbers,tubeConnections){
+export function buildPlant(scene,heightScale,siloNumbers,tubeConnections,inspectionVolumes){
 const material=(color,metalness=0,roughness=.8)=>new T.MeshStandardMaterial({color,metalness,roughness});
 const steel=material('#a6afb0',.6,.55),frame=material('#505f43',.4),rust=material('#8a6956',.35),yellow=material('#c0aa54'),concrete=material('#97978f'),dark=material('#343b37');
 const fixed=new T.Group(),dynamic=new T.Group();scene.add(fixed,dynamic);const labels=[];
@@ -163,9 +163,14 @@ function batch(group){
         const left=-radius+i*radius/8,right=left+radius/8;
         const closest=left<=0&&right>=0?0:Math.min(Math.abs(left),Math.abs(right));
         const halfDepth=Math.sqrt(Math.max(0,radius*radius-closest*closest));
-        collisionBounds.push(new T.Box3(new T.Vector3(center.x+left,bounds.min.y,center.z-halfDepth),new T.Vector3(center.x+right,bounds.max.y,center.z+halfDepth)));
+        const strip=new T.Box3(new T.Vector3(center.x+left,bounds.min.y,center.z-halfDepth),new T.Vector3(center.x+right,bounds.max.y,center.z+halfDepth));
+        collisionBounds.push(strip);
+        inspectionVolumes?.push({box:strip.clone(),matrix:new T.Matrix4()});
       }
-    } else collisionBounds.push(bounds);
+    } else {
+      collisionBounds.push(bounds);
+      if(inspectionVolumes){o.geometry.computeBoundingBox();inspectionVolumes.push({box:o.geometry.boundingBox.clone(),matrix:o.matrixWorld.clone()});}
+    }
   });
   const batches=new Map(),originals=[];
   group.traverse(o=>{if(!o.isMesh)return;const g=(o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone()).applyMatrix4(o.matrixWorld);if(!g.getAttribute('uv'))g.setAttribute('uv',new T.Float32BufferAttribute(new Float32Array(g.getAttribute('position').count*2),2));if(!batches.has(o.material))batches.set(o.material,[]);batches.get(o.material).push(g);originals.push(o);});

@@ -9,6 +9,9 @@ type Sample={position:number[];heading:number;time:number};
 const MAX_POINTS=4096;
 export function createMissionPlayback(scene:T.Scene,dock:T.Group,camera:T.PerspectiveCamera,controls:OrbitControls){
   const drone=dock.getObjectByName('Reference quadcopter')!;
+  const propellers:T.Object3D[]=[];
+  drone.traverse(part=>{if(part.name==='Two-blade propeller')propellers.push(part);});
+  let spinning=false;
   dock.updateMatrixWorld(true);scene.attach(drone);
   const plannedMaterial=new T.LineBasicMaterial({color:'#52cee6',transparent:true,opacity:.5,depthWrite:false,toneMapped:false});
   const actualMaterial=new T.LineBasicMaterial({color:'#258aff',toneMapped:false});
@@ -25,6 +28,7 @@ export function createMissionPlayback(scene:T.Scene,dock:T.Group,camera:T.Perspe
     const points=[...data.points].sort((a,b)=>a.sequence-b.sequence),key=JSON.stringify(points);
     if(key!==routeKey){routeKey=key;const positions=points.map(toPlantPosition).filter((p):p is T.Vector3=>p!==null);planned.geometry.dispose();planned.geometry=new T.BufferGeometry().setFromPoints(positions);if(!last&&positions.length){drone.position.copy(positions[0]);drone.rotation.y=T.MathUtils.degToRad(-(points[0].droneDegree??0)+plantGeoreference.northRotationDegrees);} }
     const finished=['COMPLETED','CANCELLED','FAILED'].includes(data.status);
+    spinning=data.status==='IN_PROGRESS'&&!finished;
     if(terminal)return;
     const packet=data.telemetry;
     if(packet&&packet.missionId===id&&packet.position&&data.status!=='PLANNED'){
@@ -42,6 +46,7 @@ from.copy(drone.position);target.copy(position);fromRotation.copy(drone.quaterni
   }
   return {update,setFollowing(value:boolean){following=value;},animate(now=performance.now()){
     const dt=Math.min(.1,(now-previousFrame)/1000);previousFrame=now;
+    if(spinning&&!terminal)propellers.forEach((propeller,i)=>{propeller.rotation.y=(propeller.rotation.y+dt*90*(i%2?1:-1))%(Math.PI*2);});
     if(duration){const t=Math.min(1,(now-start)/duration);drone.position.lerpVectors(from,target,t);drone.quaternion.slerpQuaternions(fromRotation,targetRotation,t);if(t===1)duration=0;}
     if(following){const movement=drone.position.clone().sub(controls.target).multiplyScalar(1-Math.exp(-dt*5));controls.target.add(movement);camera.position.add(movement);}
   },destroy(){save();planned.geometry.dispose();actual.geometry.dispose();plannedMaterial.dispose();actualMaterial.dispose();planned.removeFromParent();actual.removeFromParent();}};
