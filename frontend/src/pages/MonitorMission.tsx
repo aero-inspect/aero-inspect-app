@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, Camera, Gauge, Pause, Play, Route, Satellite, X } from "lucide-react";
 import type { BackendAsset, BackendFlightPlan, BackendMission, BackendMissionStatus, BackendMissionWaypoint, BackendPlanWaypoint } from "../api/types";
 import { getAssets, getFlightPlan, getMission, getMissions, startMission } from "../api/client";
-import { MissionDetailRouteMap, type AssetInspectionInfo } from "../components/MissionDetailRouteMap";
+import { BragadoPlant3DMap } from "../components/BragadoPlant3DMap";
 import { photoCountForWaypoint } from "../utils/missionPhotos";
 import { AppTopActions } from "../components/AppTopActions";
 import { Compass } from "../components/Compass";
@@ -19,6 +19,8 @@ type RoutePoint = {
   sequence: number;
   latitude: number;
   longitude: number;
+  altitude: number;
+  droneDegree: number;
 };
 
 const EMPTY_VALUE = "-";
@@ -47,7 +49,9 @@ function toRoutePoint(point: BackendMissionWaypoint | BackendPlanWaypoint): Rout
   return {
     sequence: point.sequence,
     latitude: point.latitude,
-    longitude: point.longitude
+    longitude: point.longitude,
+    altitude: point.altitude,
+    droneDegree: point.droneDegree
   };
 }
 
@@ -91,7 +95,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
   const [isStarting, setIsStarting] = useState(false);
   const statusPollRef = useRef<number | null>(null);
 
-  const { telemetry } = useMissionTelemetry(mission?.idMission, token);
+  const { telemetry, statusEvent } = useMissionTelemetry(mission?.idMission, token);
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -155,37 +159,6 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
 
   const currentWaypoint = telemetry?.currentWaypoint ?? null;
 
-  const assetInspectionInfo = useMemo(() => {
-    const info = new Map<number, AssetInspectionInfo>();
-
-    const entryFor = (idAsset: number) => {
-      let entry = info.get(idAsset);
-      if (!entry) {
-        entry = { inspected: false, totalPhotos: 0, takenPhotos: 0 };
-        info.set(idAsset, entry);
-      }
-      return entry;
-    };
-
-    if (mission?.missionWaypoints?.length) {
-      for (const waypoint of mission.missionWaypoints) {
-        if (waypoint.idAsset == null || waypoint.gimbalPitchDeg == null) continue;
-        const entry = entryFor(waypoint.idAsset);
-        entry.inspected = true;
-        entry.totalPhotos += 1;
-        if (currentWaypoint != null && waypoint.sequence < currentWaypoint) entry.takenPhotos += 1;
-      }
-    } else if (flightPlan?.route?.length) {
-      for (const waypoint of flightPlan.route) {
-        if (waypoint.idAsset == null || !waypoint.pointOfInterest) continue;
-        const entry = entryFor(waypoint.idAsset);
-        entry.inspected = true;
-        entry.totalPhotos += photoCountForWaypoint(waypoint);
-      }
-    }
-
-    return info;
-  }, [mission?.missionWaypoints, flightPlan?.route, currentWaypoint]);
 
   const totalWaypoints = routePoints.length;
   const orderedRoutePoints = useMemo(() => [...routePoints].sort((a, b) => a.sequence - b.sequence), [routePoints]);
@@ -203,9 +176,6 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
   const missionStatus = statusLabel(mission?.status);
   const isPendingMission = mission?.status === "PLANNED";
 
-  const dronePosition = telemetry?.position
-    ? { lat: telemetry.position.latitude, lng: telemetry.position.longitude, headingDegree: telemetry.velocity?.headingDegree }
-    : null;
 
   const currentGimbal = useMemo(() => {
     if (currentWaypoint == null || !mission?.missionWaypoints) return null;
@@ -326,15 +296,12 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
               <h2>{mission.name}</h2>
               <span className={`mission-state ${statusClass(missionStatus)}`}>{missionStatus}</span>
             </div>
-            <p className="monitor-map-label">MAPA SATELITAL - AREA DE PLANTA</p>
+            <p className="monitor-map-label">PLANTA 3D</p>
 
             <div className={`monitor-map-frame${isPendingMission ? " pending" : ""}`}>
-              <MissionDetailRouteMap
-                points={routePoints}
+              <BragadoPlant3DMap
                 assets={assets}
-                assetInspectionInfo={assetInspectionInfo}
-                dronePosition={dronePosition}
-                completedSequence={currentWaypoint}
+                playback={{id:mission.idMission,status:statusEvent?.missionId===mission.idMission&&statusEvent.event==='MISSION_COMPLETED'?'COMPLETED':mission.status,points:routePoints,telemetry}}
               />
               {isPendingMission && (
                 <div className="monitor-pending-overlay">

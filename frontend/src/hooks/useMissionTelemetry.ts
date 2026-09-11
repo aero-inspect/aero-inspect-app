@@ -23,9 +23,11 @@ export function useMissionTelemetry(missionId: string | null | undefined, token:
 
     eventSource.addEventListener("telemetry", (event) => {
       try {
-        setTelemetry(JSON.parse((event as MessageEvent).data));
+        const next=JSON.parse((event as MessageEvent).data) as TelemetryUpdate;
+        if(next.missionId!==missionId||!Number.isFinite(Date.parse(next.timestamp)))return;
+        setTelemetry(previous=>previous&&Date.parse(previous.timestamp)>=Date.parse(next.timestamp)?previous:next);
       } catch {
-        setTelemetry(null);
+        // Preserve the last valid sample when a malformed event is received.
       }
     });
 
@@ -37,10 +39,8 @@ export function useMissionTelemetry(missionId: string | null | undefined, token:
       }
     });
 
-    eventSource.onerror = () => {
-      eventSource.close();
-      eventSourceRef.current = null;
-    };
+    // EventSource retries transient failures itself; closing here disables reconnection.
+    eventSource.onerror = () => {};
 
     return () => {
       eventSource.close();

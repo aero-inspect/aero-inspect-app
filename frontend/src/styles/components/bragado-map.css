@@ -409,3 +409,5 @@
 .bragado-compass b { font-size:9px; line-height:10px; font-weight:600; }
 .bragado-zoom { font-size:11px; font-variant-numeric:tabular-nums; min-width:65px; white-space:nowrap; }
 @media(max-width:600px) { .bragado-camera-tools { bottom:65px; left:8px; } }
+.bragado-camera-tools .bragado-follow { width:auto; padding:0 7px; font-size:11px; white-space:nowrap; }
+.bragado-camera-tools .bragado-follow[aria-pressed="true"] { background:#dcecf8; color:#215479; }

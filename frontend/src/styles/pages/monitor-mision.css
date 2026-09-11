@@ -530,3 +530,4 @@
 .monitor-mission-dashboard .tech-user-button {
   border: 2px solid #063b7a;
 }
+.monitor-map-frame .bragado-map:not(.bragado-map-expanded) { height:100%; min-height:300px; }

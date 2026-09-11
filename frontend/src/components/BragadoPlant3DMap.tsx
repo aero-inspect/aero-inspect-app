@@ -1,4 +1,5 @@
 import { createEnvironment } from "./bragado/environment";
+import { createMissionPlayback, type MissionPlaybackData } from "./bragado/missionPlayback";
 import { ENVIRONMENT_MODES, setEnvironmentMode, useEnvironmentMode, type EnvironmentMode } from "./bragado/timeOfDay";
 import { addMissionDrone } from "./bragado/drone";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -99,7 +100,7 @@ function disposeObject(object: THREE.Object3D) {
   });
 }
 
-function createScene(root: HTMLDivElement, heightScale: number, onProject: (projected: ProjectedTag[]) => void, missionMode: boolean, onMissionPointToggle: (ids: string[]) => void, onCamera: (value: {bearing:number;zoom:number}) => void) {
+function createScene(root: HTMLDivElement, heightScale: number, onProject: (projected: ProjectedTag[]) => void, missionMode: boolean, onMissionPointToggle: (ids: string[]) => void, onCamera: (value: {bearing:number;zoom:number}) => void, playbackMode=false) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -142,6 +143,7 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   collisionBounds.forEach(bounds => facilityBounds.union(bounds));
   facilityBounds.union(new THREE.Box3().setFromObject(dock));
   const environment = createEnvironment(scene, renderer, heightScale);
+  const playback = playbackMode ? createMissionPlayback(scene,dock,camera,controls) : null;
   const waypoints = missionMode ? createWaypointLayer(scene, camera, renderer.domElement, collisionBounds, onMissionPointToggle) : null;
   const highlightGroup = new THREE.Group();
   scene.add(highlightGroup);
@@ -235,6 +237,7 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
     const now = performance.now();
     if(motion){const t=Math.min(1,(now-motion.start)/1200),s=t*t*(3-2*t);camera.position.lerpVectors(motion.from,motion.to,s);controls.target.lerpVectors(motion.fromTarget,motion.target,s);if(t===1)motion=null;}
     environment.update();
+    playback?.animate();
     if (controls.enabled) controls.update();
     waypoints?.update();
     renderer.render(scene, camera);
@@ -244,6 +247,8 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   animate();
 
   return {
+    updatePlayback: (data:MissionPlaybackData) => playback?.update(data),
+    followDrone: (value:boolean) => {if(value&&street)setView('perspective');playback?.setFollowing(value);},
     centerPlant,
     setView,
     highlight,
@@ -292,6 +297,7 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
       observer.disconnect();
       controls.dispose();
       waypoints?.destroy();
+      playback?.destroy();
       environment.destroy();
       disposeObject(scene);
       renderer.dispose();
@@ -303,7 +309,9 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
 }
 
 export type MapFilters = { type: string; status: string; search?: string };
-export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCode, missionMode = false }: { assets: BackendAsset[]; onViewAsset?: (idAsset: number) => void; filters?: MapFilters; focusedAssetCode?: string | null; missionMode?: boolean }) {
+export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCode, missionMode = false, playback }: { assets: BackendAsset[]; onViewAsset?: (idAsset: number) => void; filters?: MapFilters; focusedAssetCode?: string | null; missionMode?: boolean; playback?:MissionPlaybackData }) {
+  const playbackMode=Boolean(playback);
+  const [following,setFollowing]=useState(false);
   const [cameraInfo,setCameraInfo]=useState({bearing:0,zoom:0});
   const [expanded, setExpanded] = useState(false);
   const environmentMode = useEnvironmentMode();
@@ -349,13 +357,16 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
     const root = rootRef.current;
     if (!root) return undefined;
     sceneRef.current?.destroy();
-    sceneRef.current = createScene(root, heightScale, setProjected, missionMode, setSelectedWaypoints, setCameraInfo);
+    sceneRef.current = createScene(root, heightScale, setProjected, missionMode && !playbackMode, setSelectedWaypoints, setCameraInfo, playbackMode);
     sceneRef.current.setView(viewMode);
     return () => {
       sceneRef.current?.destroy();
       sceneRef.current = null;
     };
-  }, [heightScale, missionMode]);
+  }, [heightScale, missionMode, playbackMode]);
+  useEffect(()=>{if(playback)sceneRef.current?.updatePlayback(playback);},[playback,heightScale]);
+  useEffect(()=>{setFollowing(false);},[playback?.id]);
+  useEffect(()=>{sceneRef.current?.followDrone(following);},[following,playback?.id]);
 
   useEffect(() => {
     sceneRef.current?.setView(viewMode);
@@ -398,7 +409,7 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
       <div className="bragado-map-stage" ref={rootRef} />
       <div className="bragado-map-toolbar">
         <button type="button" title={expanded ? "Reducir mapa" : "Ampliar mapa"} aria-label={expanded ? "Reducir mapa" : "Ampliar mapa"} aria-pressed={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
-        {!missionMode && <button type="button" title={panelOpen ? "Minimizar panel" : "Equipos y controles"} aria-label={panelOpen ? "Minimizar panel" : "Equipos y controles"} aria-expanded={panelOpen} onClick={() => setPanelOpen(!panelOpen)}><SlidersHorizontal size={18} /></button>}
+        {!missionMode && !playbackMode && <button type="button" title={panelOpen ? "Minimizar panel" : "Equipos y controles"} aria-label={panelOpen ? "Minimizar panel" : "Equipos y controles"} aria-expanded={panelOpen} onClick={() => setPanelOpen(!panelOpen)}><SlidersHorizontal size={18} /></button>}
         <select aria-label="Vista 3D" onChange={(event) => setViewMode(event.target.value as ViewMode)} value={viewMode}>
           <option value="top">Desde arriba</option>
           <option value="perspective">Perspectiva</option>
@@ -410,20 +421,21 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
       </div>
       <div className="bragado-camera-tools">
         <span className="bragado-compass" title="Norte" aria-label="Norte"><span style={{transform:`rotate(${cameraInfo.bearing}deg)`}}><b>N</b><ArrowUp size={16}/></span></span>
-        <button type="button" title="Centrar planta" aria-label="Centrar planta" onClick={()=>{sceneRef.current?.centerPlant();if(viewMode==='street')setViewMode('perspective');}}><Focus size={17}/></button>
+        <button type="button" title="Centrar planta" aria-label="Centrar planta" onClick={()=>{setFollowing(false);sceneRef.current?.followDrone(false);sceneRef.current?.centerPlant();if(viewMode==='street')setViewMode('perspective');}}><Focus size={17}/></button>
+        {playbackMode && <button className="bragado-follow" type="button" title="Seguir dron" aria-pressed={following} onClick={()=>setFollowing(!following)}>Seguir dron</button>}
         <span className="bragado-zoom">Zoom {cameraInfo.zoom}%</span>
       </div>
-      {missionMode && <div className="bragado-map-layers" role="group" aria-label="Capas de altura">
+      {missionMode && !playbackMode && <div className="bragado-map-layers" role="group" aria-label="Capas de altura">
         {[0,1,2].map(layer => <button key={layer} type="button" aria-pressed={missionLayer === layer} disabled={selectedWaypoints.length > 0} onClick={() => setMissionLayer(layer)}>Capa {layer+1}</button>)}
       </div>}
-      {missionMode && <div className="bragado-map-mission-point" role="status">
+      {missionMode && !playbackMode && <div className="bragado-map-mission-point" role="status">
         <span>{selectedWaypoints.length ? `${selectedWaypoints.length} puntos seleccionados` : "0 puntos seleccionados"}</span>
         <button type="button" disabled={!selectedWaypoints.length} onClick={() => setSelectedWaypoints([])} title="Borrar selección">
           <RotateCcw size={13} />
           <span>Borrar selección</span>
         </button>
       </div>}
-      {panelOpen && !missionMode && <aside className="bragado-map-panel">
+      {panelOpen && !missionMode && !playbackMode && <aside className="bragado-map-panel">
         <header>
           <span>{visibleEquipment.length} de {equipment.length}</span>
           <strong>Mapa 3D Bragado</strong>
