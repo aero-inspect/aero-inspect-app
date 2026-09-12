@@ -830,7 +830,7 @@
 }
 
 .mission-detail-map {
-  height: 134px;
+  height: 260px;
   overflow: hidden;
   border-radius: 6px;
   background: #0f172a;
@@ -915,6 +915,10 @@
   font-size: 13px;
   line-height: 16px;
   font-weight: 700;
+}
+
+.mission-detail-map .bragado-map:not(.bragado-map-expanded) {
+  min-height: 0;
 }
 
 .mission-waiting-text {

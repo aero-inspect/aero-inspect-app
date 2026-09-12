@@ -543,7 +543,7 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
         <section className="inspection-map-card">
           <h2>Mapa de la planta</h2>
           <div className="inspection-map-shell">
-            <AssetsOverviewMap assets={assets} onViewAsset={onViewAsset} plant={plant} missionMode />
+            <AssetsOverviewMap assets={assets} onViewAsset={onViewAsset} plant={plant} />
           </div>
         </section>
 

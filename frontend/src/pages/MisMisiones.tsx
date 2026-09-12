@@ -4,7 +4,7 @@ import type { BackendFlightPlan, BackendMission, BackendMissionStatus, ManagedUs
 import type { SessionUser } from "../types";
 import { deleteMission, getFlightPlans, getManagedUsers, getMission, getMissions, startMission, updateMissionPilot } from "../api/client";
 import { MissionAssetPicker } from "../components/MissionAssetPicker";
-import { MissionDetailRouteMap } from "../components/MissionDetailRouteMap";
+import { BragadoPlant3DMap } from "../components/BragadoPlant3DMap";
 import { AppTopActions } from "../components/AppTopActions";
 
 type MissionDisplayStatus = "Pendiente" | "Enviando al dron" | "En progreso" | "Completada" | "Cancelada" | "Fallida";
@@ -182,11 +182,16 @@ export function MisMisionesView({
     setDeletingId(mission.idMission);
     try {
       await deleteMission(mission.idMission);
+      const timer = activePolls.current.get(mission.idMission);
+      if(timer)window.clearInterval(timer);
+      activePolls.current.delete(mission.idMission);
       setMissions((current) => current?.filter((item) => item.idMission !== mission.idMission) ?? current);
       if (selectedId === mission.idMission) {
         setSelectedId(null);
       }
       setDeleteCandidate(null);
+      setIsDetailClosed(true);
+      getMissions().then(setMissions).catch(()=>{});
     } catch (error) {
       setStartError(error instanceof Error ? error.message : "No se pudo borrar la misión.");
     } finally {
@@ -459,12 +464,12 @@ export function MisMisionesView({
               </div>
 
               <div className="mission-detail-map">
-                <MissionDetailRouteMap
-                  points={
+                <BragadoPlant3DMap assets={[]} playback={{id:selectedRow.mission.idMission,status:selectedRow.mission.status,telemetry:null,
+                  points:
                     selectedRow.mission.missionWaypoints?.length
                       ? selectedRow.mission.missionWaypoints
                       : flightPlansById.get(selectedRow.mission.idFlightPlan)?.route ?? []
-                  }
+                  }}
                 />
               </div>
 

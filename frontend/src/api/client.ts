@@ -41,7 +41,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     return undefined as T;
   }
 
-  return response.json() as Promise<T>;
+  const body = await response.text();
+  return body.trim() ? JSON.parse(body) as T : undefined as T;
 }
 
 export function getAssets() {

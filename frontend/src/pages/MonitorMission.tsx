@@ -94,6 +94,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
   const [startError, setStartError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const frozenProgress = useRef<typeof telemetry | undefined>(undefined);
   const statusPollRef = useRef<number | null>(null);
 
   const { telemetry, statusEvent } = useMissionTelemetry(mission?.idMission, token);
@@ -117,6 +118,12 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
     let cancelled = false;
     setLoadError(null);
     setMission(null);
+    frozenProgress.current=undefined;
+    try {
+      const saved=sessionStorage.getItem(`mission-cancel-progress:${missionId}`);
+      if(saved)frozenProgress.current=JSON.parse(saved);
+    } catch { /* The counters can still freeze without browser storage. */ }
+    setIsCancelling(false);
     setFlightPlan(null);
     setAssets([]);
     setStartError(null);
@@ -166,15 +173,16 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
     [mission?.missionWaypoints, flightPlan?.route]
   );
 
-  const currentWaypoint = telemetry?.currentWaypoint ?? null;
+  const inspectionTelemetry = frozenProgress.current === undefined ? telemetry : frozenProgress.current;
+  const currentWaypoint = inspectionTelemetry?.currentWaypoint ?? null;
 
 
   const totalWaypoints = routePoints.length;
   const orderedRoutePoints = useMemo(() => [...routePoints].sort((a, b) => a.sequence - b.sequence), [routePoints]);
   const totalRouteDistanceMetersValue = useMemo(() => totalRouteDistanceMeters(orderedRoutePoints), [orderedRoutePoints]);
   const distanceRemainingMeters = useMemo(
-    () => remainingRouteDistanceMeters(orderedRoutePoints, telemetry?.position, currentWaypoint),
-    [orderedRoutePoints, telemetry?.position, currentWaypoint]
+    () => remainingRouteDistanceMeters(orderedRoutePoints, inspectionTelemetry?.position, currentWaypoint),
+    [orderedRoutePoints, inspectionTelemetry?.position, currentWaypoint]
   );
   const distanceTraveledMeters = Math.max(0, totalRouteDistanceMetersValue - distanceRemainingMeters);
   const progress =
@@ -331,6 +339,8 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
               )}
               <button className="monitor-cancel" type="button" disabled={isCancelling || mission?.status!=='IN_PROGRESS'} onClick={async()=>{
                 if(!mission)return;
+                frozenProgress.current=telemetry;
+                try{sessionStorage.setItem(`mission-cancel-progress:${mission.idMission}`,JSON.stringify(telemetry));}catch{}
                 setIsCancelling(true);setStartError(null);
                 try{await cancelMission(mission.idMission);}catch(error){setIsCancelling(false);setStartError(error instanceof Error?error.message:'No se pudo cancelar la misión.');}
               }}>
