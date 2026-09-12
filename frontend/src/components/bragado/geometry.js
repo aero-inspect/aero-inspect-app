@@ -1,5 +1,6 @@
 // Geometry ported from the approved bragado-silos-3d prototype.
 import * as T from 'three';
+import assetCatalog from '../../data/bragado-assets.json';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 // One triangulated pavement surface: closed circulation loop and two access branches.
 function buildRoad(mesh,concrete){
@@ -123,15 +124,16 @@ function gabled(w,d,h,rise,x,z,open=false){const g=new T.Group();g.position.set(
 for(const side of [-1,1]){const panel=box(slope+.4,.16,d+.7,side*w/4,h+rise/2,0,steel,g);panel.rotation.z=-side*angle;for(let zz=-d/2;zz<=d/2;zz+=3){beam([side*w/2,0,zz],[side*w/2,h,zz],.13,frame,g);if(!open)beam([side*(w/2+1.7),0,zz],[side*w/2,h*.65,zz],.1,frame,g);beam([side*w/2,h,zz],[0,h+rise,zz],.09,frame,g);}if(!open)for(let y=1;y<h;y+=1.6)box(.12,.12,d,side*(w/2+.08),y,0,frame,g);}
 if(!open)for(const end of [-1,1]){const shape=new T.Shape();shape.moveTo(-w/2,0);shape.lineTo(w/2,0);shape.lineTo(0,rise);shape.closePath();const wall=mesh(new T.ShapeGeometry(shape),steel,g);wall.material.side=T.DoubleSide;wall.position.set(0,h,end*d/2);for(let xx=-w/2;xx<=w/2;xx+=.5)box(.035,h,.03,xx,0,end*(d/2+.02),frame,g);}return g;}
 gabled(27,43,8,6,-51,-77).rotation.y+=Math.PI/2;
-const canopy=gabled(18,13,9,1.5,14,-18,true);
+const canopy=gabled(18,13,9,1.5,17,-21,true);
 box(.12,4,13,-9,5,0,steel,canopy);box(.12,3,13,9,6,0,steel,canopy);
 for(const z of [-6.5,6.5])box(18,2.3,.12,0,6.7,z,steel,canopy);
 box(8,.12,12,0,.05,0,concrete,canopy);for(let z=-2;z<2;z+=.2)box(5,.05,.08,0,.19,z,dark,canopy);
-const lamp=new T.PointLight('#ffc36c',45,15,2);lamp.position.set(0,7,0);canopy.add(lamp);label('Descarga',14,12,-18);
+const lamp=new T.PointLight('#ffc36c',45,15,2);lamp.position.set(0,7,0);canopy.add(lamp);label('Descarga',17,12,-21);
 addPerimeter({beam,frame,dark});
-// Preserve the approved satellite centers and footprints. Heights remain estimates.
+// Shared centers keep rendered assets and inspection coordinates aligned.
 const addFan=addEquipment({mesh,box,beam,fixed,canopy,steel,frame,rust,yellow,concrete,dark});
-const bins=[['G1',179,64,112,19],['G2',93,168,112,19],['G3',460,465,108,17],['M1',242,145,72,14],['M2',298,195,66,13],['M3',181,218,74,14],['M4',242,254,64,12],['M5',363,266,62,12],['M6',316,326,68,14],['M7',437,331,76,15],['M8',373,395,78,15],['P1',252,390,36,8],['P2',294,374,29,10],['P3',285,431,29,7]].map(([id,u,v,d,h])=>({id,x:(u-292)*.16,z:(v-277)*.16,r:d*.08,h}));
+const binIds={G1:'silo-10',G2:'silo-11',G3:'silo-9',M1:'silo-5',M2:'silo-3',M3:'silo-6',M4:'silo-4',M5:'silo-2',M6:'silo-1',M7:'silo-8',M8:'silo-7',P1:'F1',P2:'F2',P3:'F3'};
+const bins=Object.entries(binIds).map(([id,assetId])=>({...assetCatalog.find(a=>a.id===assetId),id}));
 function rebuild(){for(const child of [...dynamic.children]){dynamic.remove(child);child.traverse(o=>{o.geometry?.dispose();if(o.isSprite){o.material.map.dispose();o.material.dispose();}});}labels.splice(2);const scale=heightScale;
 for(const b of bins){const h=b.h*scale,small=b.id[0]==='P',base=small?3:.35,profile=[];
 for(let y=0;y<=h-base;y+=.055)profile.push(new T.Vector2(b.r+Math.sin(y*Math.PI*2/.16)*.027,y+base));const silo=mesh(new T.LatheGeometry(profile,80),steel,dynamic);silo.position.set(b.x,0,b.z);
@@ -165,7 +167,14 @@ function batch(group){
         const halfDepth=Math.sqrt(Math.max(0,radius*radius-closest*closest));
         const strip=new T.Box3(new T.Vector3(center.x+left,bounds.min.y,center.z-halfDepth),new T.Vector3(center.x+right,bounds.max.y,center.z+halfDepth));
         collisionBounds.push(strip);
-        inspectionVolumes?.push({box:strip.clone(),matrix:new T.Matrix4()});
+      }
+      inspectionVolumes?.push({box:o.geometry.boundingBox.clone(),matrix:o.matrixWorld.clone(),radius});
+    } else if(o.geometry.type==='ConeGeometry'&&inspectionVolumes){
+      collisionBounds.push(bounds);
+      const {radius,height}=o.geometry.parameters;
+      for(let i=0;i<16;i++){
+        const r=radius*(1-i/16),bottom=-height/2+i*height/16;
+        inspectionVolumes.push({box:new T.Box3(new T.Vector3(-r,bottom,-r),new T.Vector3(r,bottom+height/16,r)),matrix:o.matrixWorld.clone(),radius:r});
       }
     } else {
       collisionBounds.push(bounds);

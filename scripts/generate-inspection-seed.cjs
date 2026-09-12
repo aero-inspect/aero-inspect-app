@@ -18,7 +18,7 @@ seed(code, type, route) AS (VALUES
 ${rows}
 ),
 catalog AS MATERIALIZED (
-  SELECT a.id_asset, s.*, 'Inspeccion 3D - ' || s.code || ' - perimetral' AS plan_name
+  SELECT a.id_asset, s.*, 'Inspeccion 3D - ' || s.code || ' - perimetral-v2' AS plan_name
   FROM seed s JOIN asset a ON a.code = s.code AND a.type = s.type CROSS JOIN guard
 ),
 new_plans AS (

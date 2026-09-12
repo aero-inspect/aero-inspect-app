@@ -103,6 +103,10 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
     if(!statusEvent || statusEvent.missionId!==mission?.idMission)return;
     const status: BackendMissionStatus | undefined = statusEvent.event==='MISSION_STARTED'?'IN_PROGRESS':statusEvent.event==='MISSION_START_REJECTED'?'FAILED':statusEvent.event==='MISSION_COMPLETED'?'COMPLETED':statusEvent.event==='MISSION_CANCELLED'?'CANCELLED':undefined;
     if(status)setMission(previous=>previous?{...previous,status}:previous);
+    if(status==='CANCELLED'||status==='COMPLETED'){
+      setIsCancelling(false);
+      getMission(statusEvent.missionId).then(updated=>setMission(previous=>previous?.idMission===updated.idMission?{...updated,status}:previous)).catch(()=>{});
+    }
     if(statusEvent.event==='MISSION_START_REJECTED')setStartError(statusEvent.reason || 'El controlador rechazó el inicio de la misión.');
     if(statusEvent.event==='COMMAND_REJECTED'){setStartError(statusEvent.reason || 'El controlador rechazó la orden.');setIsCancelling(false);}
   }, [statusEvent, mission?.idMission]);

@@ -1,4 +1,5 @@
 import * as T from 'three';
+import assetCatalog from '../../data/bragado-assets.json';
 import {blendEnvironment,getEnvironmentMode,resolveEnvironment,subscribeEnvironment} from './timeOfDay';
 
 export function createEnvironment(scene:T.Scene,renderer:T.WebGLRenderer,heightScale=1) {
@@ -67,11 +68,11 @@ scene.traverse(o=>{if(o instanceof T.PointLight){lamps.push({light:o,power:o.int
     fixture(x,7.8,z,x+side*3,z-side*3,along===15?240:0);
   }
   // Shell-mounted lamps sit above the silo rim, with a short physical bracket.
-  for(const [x,z,r,h] of [[-18.08,-34.08,8.96,19],[-31.84,-17.44,8.96,19],[26.88,30.08,8.64,17],[-8, -21.12,5.76,14],[.96,-13.12,5.28,13],[-17.76,-9.44,5.92,14],[-8,-3.68,5.12,12],[11.36,-1.76,4.96,12],[3.84,7.84,5.44,14],[23.2,8.64,6.08,15],[12.96,18.88,6.24,15]]){
+  for(const {x,z,r,h} of assetCatalog.filter(a=>a.type==='SILO')){
     const support=new T.Mesh(new T.CylinderGeometry(.045,.045,.9,6),metal);support.position.set(x,h+.3,z+r);rig.add(support);fixture(x,h+.75,z+r,x,z+r+3,0);
   }
   fixture(12,24,6.6,16,12,300);
-  for(const side of [-1,1]){const x=14+(side*7-6.6)*Math.SQRT1_2,z=-18+(side*7+6.6)*Math.SQRT1_2;fixture(x,8.8,z,x,z+2,0);}
+  for(const side of [-1,1]){const x=17+(side*7-6.6)*Math.SQRT1_2,z=-21+(side*7+6.6)*Math.SQRT1_2;fixture(x,8.8,z,x,z+2,0);}
   let current=resolveEnvironment(getEnvironmentMode()),from=current,target=current,started=performance.now();
   function retarget(){from=current;target=resolveEnvironment(getEnvironmentMode());started=performance.now();}
   const unsubscribe=subscribeEnvironment(retarget),timer=window.setInterval(retarget,30000);

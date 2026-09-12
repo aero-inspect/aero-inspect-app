@@ -8,10 +8,10 @@ import { plantGeoreference, toPlantPosition } from './georeference';
 
 const CLEARANCE=0.9;
 const numbers={G1:10,G2:11,G3:9,M1:5,M3:6,M2:3,M4:4,M5:2,M6:1,M7:8,M8:7};
-export function generateInspectionPlans() {
+export function generateInspectionPlans(assetCodes?:string[]) {
   const scene=new T.Scene();
   const tubes=[10,11,9,5,3,6,4,2,1,8,7,'F1','F2','F3'].map((to,index)=>({id:`tube-${index}`,from:'',to:String(to),noria:index<7?1:2}));
-  const captured:{box:T.Box3;matrix:T.Matrix4}[]=[];
+  const captured:{box:T.Box3;matrix:T.Matrix4;radius?:number}[]=[];
   buildPlant(scene,1,numbers,tubes,captured);
   const renderer=new T.WebGLRenderer(),environment=createEnvironment(scene,renderer,1);
   scene.updateMatrixWorld(true);
@@ -24,7 +24,7 @@ export function generateInspectionPlans() {
   const volumes=captured.filter(v=>v.box.clone().applyMatrix4(v.matrix).max.y>0.3).map(v=>{
     const scale=new T.Vector3().setFromMatrixScale(v.matrix);
     const box=v.box.clone().expandByScalar(CLEARANCE/Math.min(scale.x,scale.y,scale.z));
-    return {box,broad:box.clone().applyMatrix4(v.matrix),inverse:v.matrix.clone().invert()};
+    return {box,broad:box.clone().applyMatrix4(v.matrix),inverse:v.matrix.clone().invert(),radius:v.radius===undefined?undefined:v.radius+CLEARANCE/Math.min(scale.x,scale.y,scale.z)};
   });
   const bounds=volumes.map(v=>v.broad);
   const buckets=new Map<string,Set<number>>(),bucketSize=6;
@@ -34,28 +34,44 @@ export function generateInspectionPlans() {
   const home=dock.getObjectByName('Reference quadcopter')!.getWorldPosition(new T.Vector3());
   const cruise=Math.ceil(Math.max(...bounds.map(b=>b.max.y))+4);
   const ray=new T.Ray(),direction=new T.Vector3(),hit=new T.Vector3();
-  const free=(p:T.Vector3)=>!nearby(p).some(v=>v.broad.containsPoint(p)&&v.box.containsPoint(p.clone().applyMatrix4(v.inverse)));
+  const free=(p:T.Vector3)=>!nearby(p).some(v=>{
+    const local=p.clone().applyMatrix4(v.inverse);
+    return v.broad.containsPoint(p)&&v.box.containsPoint(local)&&(v.radius===undefined||Math.hypot(local.x,local.z)<=v.radius);
+  });
   const clear=(a:T.Vector3,b:T.Vector3)=>{
     const distance=a.distanceTo(b);ray.set(a,direction.copy(b).sub(a).normalize());
     return !nearby(a,b).some(v=>{
       ray.set(a,direction.copy(b).sub(a).normalize());
       if(!v.broad.containsPoint(a)&&!v.broad.containsPoint(b)&&!(ray.intersectBox(v.broad,hit)!==null&&hit.distanceTo(a)<=distance))return false;
       const localA=a.clone().applyMatrix4(v.inverse),localB=b.clone().applyMatrix4(v.inverse);
+      if(v.radius!==undefined){
+        const delta=localB.clone().sub(localA);
+        let lo=0,hi=1;
+        if(Math.abs(delta.y)<1e-9){if(localA.y<v.box.min.y||localA.y>v.box.max.y)return false;}
+        else {const t1=(v.box.min.y-localA.y)/delta.y,t2=(v.box.max.y-localA.y)/delta.y;lo=Math.max(0,Math.min(t1,t2));hi=Math.min(1,Math.max(t1,t2));if(lo>hi)return false;}
+        const norm=delta.x*delta.x+delta.z*delta.z;
+        const t=norm?T.MathUtils.clamp(-(localA.x*delta.x+localA.z*delta.z)/norm,lo,hi):lo;
+        return Math.hypot(localA.x+delta.x*t,localA.z+delta.z*t)<=v.radius;
+      }
       ray.set(localA,direction.copy(localB).sub(localA).normalize());
       return v.box.containsPoint(localA)||v.box.containsPoint(localB)||(ray.intersectBox(v.box,hit)!==null&&hit.distanceTo(localA)<=localA.distanceTo(localB));
     });
   };
   type Point={position:T.Vector3;photo:boolean;target:T.Vector3};
   const reports:{code:string;levels:{height:number;accepted:number;omitted:number}[];segments:number}[]=[];
-  const plans=catalog.filter(a=>['SILO','SILO_FLOTANTE','CELDA'].includes(a.type)).map(asset=>{
+  const plans=catalog.filter(a=>['SILO','SILO_FLOTANTE','CELDA'].includes(a.type)&&(!assetCodes||assetCodes.includes(a.code))).map(asset=>{
     const points:Point[]=[{position:home.clone(),photo:false,target:home.clone()}];
     const add=(p:T.Vector3,photo=false,target=p)=>{if(points[points.length-1].position.distanceTo(p)<.001&&!photo)return;points.push({position:p.clone(),photo,target:target.clone()});};
-    add(new T.Vector3(home.x,cruise,home.z));
     const report={code:asset.code,levels:[] as {height:number;accepted:number;omitted:number}[],segments:0};
-    const heights=asset.r?[asset.h*.65,asset.h+asset.r*.3+3]:[9,18];
-    for(const rawHeight of heights){const y=Number(rawHeight.toFixed(2))+plantGeoreference.groundHeight;
+    const heights=asset.r?[asset.h*.8,Math.max(asset.type==='SILO_FLOTANTE'?4.5:3,asset.h*.4)]:[17,9];
+    const transitFloor=(asset.r?asset.h+asset.r*.3:17)+2+plantGeoreference.groundHeight;
+    for(const rawHeight of heights){
+      let y=0,valid:T.Vector3[]|undefined;
+      for(let attempt=0;attempt<(asset.r?7:1);attempt++){
+      y=Number((rawHeight+attempt*asset.h*.05).toFixed(2))+plantGeoreference.groundHeight;
+      if((asset.r&&y>asset.h*.95+plantGeoreference.groundHeight)||(report.levels.length&&y>=report.levels[0].height-.5))break;
       const candidates:T.Vector3[]=[];
-      if(asset.r){for(let i=0;i<12;i++){const angle=i*Math.PI/6;candidates.push(new T.Vector3(asset.x+Math.cos(angle)*(asset.r+2.6),y,asset.z+Math.sin(angle)*(asset.r+2.6)));}}
+      if(asset.r){for(let i=0;i<36;i++){const angle=(i+.5)*Math.PI/18;candidates.push(new T.Vector3(asset.x+Math.cos(angle)*(asset.r+1.05),y,asset.z+Math.sin(angle)*(asset.r+1.05)));}}
       else {
         const halfX=27/2+3,halfZ=43/2+3;
         for(const [sx,sz,offset] of [[1,1,0],[-1,1,Math.PI/2],[-1,-1,Math.PI],[1,-1,Math.PI*1.5]])for(let i=0;i<3;i++){
@@ -64,11 +80,66 @@ export function generateInspectionPlans() {
           candidates.push(new T.Vector3(asset.x+(x+z)/Math.sqrt(2),y,asset.z+(-x+z)/Math.sqrt(2)));
         }
       }
-      const valid=candidates.filter(p=>free(p)&&clear(p,new T.Vector3(p.x,cruise,p.z)));
-      report.levels.push({height:y,accepted:valid.length,omitted:candidates.length-valid.length});
-      if(!valid.length)continue;
-      const first=valid[0],highFirst=new T.Vector3(first.x,cruise,first.z);
-      move(highFirst);move(first);
+      // Choose a closed collision-free contour, never omit blocked sides or hop over them.
+      const choices=candidates.map(p=>{
+        const outward=new T.Vector3(p.x-asset.x,0,p.z-asset.z).normalize();
+        return Array.from({length:51},(_,i)=>p.clone().addScaledVector(outward,i<36?i*.1:3.5+(i-35)*.5)).filter(free);
+      });
+      let bestCost=Infinity;
+      const edgeCache=new Map<string,boolean>();
+      const ids=new Map(choices.flat().map((p,i)=>[p,i]));
+      const edgeClear=(a:T.Vector3,b:T.Vector3)=>{
+        const key=`${ids.get(a)},${ids.get(b)}`;
+        if(!edgeCache.has(key))edgeCache.set(key,clear(a,b));
+        return edgeCache.get(key)!;
+      };
+      for(const start of choices[0]){
+        let paths=[{path:[start],cost:0}];
+        for(let i=1;i<choices.length&&paths.length;i++){
+          const next:typeof paths=[];
+          for(const p of choices[i]){
+            let best:typeof paths[number]|undefined;
+            for(const previous of paths){
+              const last=previous.path[previous.path.length-1];
+              const cost=previous.cost+last.distanceTo(p)+p.distanceTo(candidates[i])*.1;
+              if((!best||cost<best.cost)&&edgeClear(last,p))best={path:[...previous.path,p],cost};
+            }
+            if(best)next.push(best);
+          }
+          paths=next;
+        }
+        for(const p of paths){const last=p.path[p.path.length-1],cost=p.cost+last.distanceTo(start);
+          if(p.path.length===candidates.length&&cost<bestCost&&edgeClear(last,start)){bestCost=cost;valid=p.path;}
+        }
+      }
+      if(valid)break;
+      }
+      if(!valid)throw Error(`${asset.code}: no complete perimeter in inspection band`);
+      const winding=valid.reduce((sum,p,i)=>{
+        const next=valid![(i+1)%valid!.length],ax=p.x-asset.x,az=p.z-asset.z,bx=next.x-asset.x,bz=next.z-asset.z;
+        return sum+Math.atan2(ax*bz-az*bx,ax*bx+az*bz);
+      },0);
+      if(Math.abs(Math.abs(winding)-Math.PI*2)>1e-6)throw Error(`${asset.code}: incomplete perimeter winding`);
+      report.levels.push({height:y,accepted:valid.length,omitted:0});
+      const last=points[points.length-1].position;
+      // Enter from above; between inspection levels only descend, at one clear column.
+      let entry=-1,entryHeight=last.y,entryDistance=Infinity;
+      for(let i=0;i<valid.length;i++){
+        const p=valid[i];
+        for(let height=points.length===1?Math.ceil(transitFloor):last.y;height<=cruise;height+=1){
+          if(points.length>1&&height>last.y+.001)break;
+          const above=new T.Vector3(p.x,height,p.z),origin=new T.Vector3(last.x,height,last.z);
+          if(clear(last,origin)&&clear(origin,above)&&clear(above,p)&&clear(p,new T.Vector3(p.x,cruise,p.z))){
+            const distance=last.distanceTo(origin)+origin.distanceTo(above)+above.distanceTo(p);
+            if(distance<entryDistance){entry=i;entryHeight=height;entryDistance=distance;}break;
+          }
+        }
+      }
+      if(entry<0)throw Error(`${asset.code}: no vertical entry at ${y}m`);
+      valid=[...valid.slice(entry),...valid.slice(0,entry)];
+      const first=valid[0];
+      move(new T.Vector3(last.x,entryHeight,last.z));
+      move(new T.Vector3(first.x,entryHeight,first.z));move(first);
       const target=new T.Vector3(asset.x,Math.min(asset.h,y),asset.z);
       const photoIndices=new Set(Array.from({length:Math.min(4,valid.length)},(_,i)=>Math.floor(i*valid.length/Math.min(4,valid.length))));
       for(const [index,p] of valid.entries()){
@@ -76,23 +147,16 @@ export function generateInspectionPlans() {
         if(photoIndices.has(index)){const last=points[points.length-1];last.photo=true;last.target.copy(target);}
       }
       move(first);
-      const last=points[points.length-1].position;
-      move(new T.Vector3(last.x,cruise,last.z));
     }
-    // Two roof observations complete the bounded photo set.
-    if(asset.r){
-      for(const dx of [-1,1]){
-        move(new T.Vector3(asset.x+dx*asset.r*.5,cruise,asset.z));
-        const last=points[points.length-1];last.photo=true;last.target.set(asset.x,asset.h+asset.r*.3,asset.z);
-      }
-    } else {
-      for(const along of [-12,12]){
-        const x=asset.x+along/Math.sqrt(2),z=asset.z+along/Math.sqrt(2);
-        move(new T.Vector3(x,cruise,z));
-        const last=points[points.length-1];last.photo=true;last.target.set(x,14,z);
-      }
+    const last=points[points.length-1].position;
+    let returnHeight=NaN;
+    for(let height=Math.ceil(transitFloor);height<=cruise;height++){
+      const above=new T.Vector3(last.x,height,last.z),base=new T.Vector3(home.x,height,home.z);
+      if(clear(last,above)&&clear(above,base)&&clear(base,home)){returnHeight=height;break;}
     }
-    move(new T.Vector3(home.x,cruise,home.z));move(home);
+    if(!Number.isFinite(returnHeight))throw Error(`${asset.code}: no clear return column`);
+    move(new T.Vector3(last.x,returnHeight,last.z));
+    move(new T.Vector3(home.x,returnHeight,home.z));move(home);
     if(points.length>85||points.filter(p=>p.photo).length>10)throw Error(`${asset.code}: mission budget exceeded (${points.length})`);
     for(let i=1;i<points.length;i++){
       const d=points[i].position.clone().sub(points[i-1].position);
@@ -125,9 +189,7 @@ export function generateInspectionPlans() {
         add(p);return;
       }
       if(clear(last,p)){add(p);return;}
-      if(last.y===cruise)throw Error('Blocked cruise corridor');
-      move(new T.Vector3(last.x,cruise,last.z));
-      move(new T.Vector3(p.x,cruise,p.z));move(p);
+      throw Error(`${asset.code}: blocked perimeter segment`);
     }
   });
   return {plans,reports,clearance:CLEARANCE,cruise,home:home.toArray(),bounds:bounds.length};
