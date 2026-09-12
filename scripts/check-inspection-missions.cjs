@@ -7,7 +7,7 @@ const catalog=require('../frontend/src/data/bragado-assets.json');
 const assets=catalog.map((a,i)=>({...a,idAsset:i+101,status:'ACTIVE',locationDetail:'Bragado'}));
 const bins=catalog.filter(a=>a.r>0);
 for(let i=0;i<bins.length;i++)for(let j=i+1;j<bins.length;j++){
- const a=bins[i],b=bins[j];assert(Math.hypot(a.x-b.x,a.z-b.z)-a.r-b.r>=2.5,`${a.code}/${b.code}: insufficient gap`);
+ const a=bins[i],b=bins[j];assert(Math.hypot(a.x-b.x,a.z-b.z)-a.r-b.r>=3.4,`${a.code}/${b.code}: insufficient gap`);
 }
 let plans=[];
 (async()=>{
@@ -30,7 +30,7 @@ let plans=[];
    assert.equal(report.levels.length,2);assert(report.levels[0].height>report.levels[1].height);
    for(const level of report.levels){assert.equal(level.omitted,0);assert(level.accepted>=12);}
   }
-  plans=seed.plans.map((p,i)=>({idFlightPlan:i+201,name:`Inspeccion 3D - ${p.code} - perimetral-v2`,assetIds:[assets.find(a=>a.code===p.code).idAsset],route:p.route.map((w,j)=>({...w,idPlanWaypoint:(i+1)*1000+j,cameraAngles:w.pointOfInterest?[{pitch:w.pitch,yaw:0}]:[]}))}));
+  plans=seed.plans.map((p,i)=>({idFlightPlan:i+201,name:`Inspeccion 3D - ${p.code} - perimetral-v3`,assetIds:[assets.find(a=>a.code===p.code).idAsset],route:p.route.map((w,j)=>({...w,idPlanWaypoint:(i+1)*1000+j,cameraAngles:w.pointOfInterest?[{pitch:w.pitch,yaw:0}]:[]}))}));
   for(const p of plans){assert(p.route.length<=85);assert(p.route.filter(w=>w.pointOfInterest).length<=10);}
   await page.evaluate(async()=>{
     const React=(await import('/node_modules/.vite/deps/react.js')).default;
@@ -72,7 +72,7 @@ let plans=[];
   await page.locator('.mission-drone-select > button').click();await page.getByRole('button',{name:'Dron QA (QA)',exact:true}).click();
   await page.locator('.mission-date-input > button').click();await page.locator('.mission-calendar-grid button').nth(20).click();await page.getByRole('button',{name:'Listo',exact:true}).click();
   await page.getByRole('button',{name:'Crear misión',exact:true}).click();await page.getByRole('heading',{name:'Misión creada',exact:true}).waitFor();
-  assert.equal(posts.length,1);const selected=plans.find(p=>p.name==='Inspeccion 3D - BRA-SIL-10 - perimetral-v2');assert.equal(posts[0].payload.idFlightPlan,selected.idFlightPlan);assert.deepEqual(posts[0].payload.selectedPlanWaypointIds,selected.route.filter(w=>w.pointOfInterest).map(w=>w.idPlanWaypoint));assert(!posts[0].url.endsWith('/start'));
+  assert.equal(posts.length,1);const selected=plans.find(p=>p.name==='Inspeccion 3D - BRA-SIL-10 - perimetral-v3');assert.equal(posts[0].payload.idFlightPlan,selected.idFlightPlan);assert.deepEqual(posts[0].payload.selectedPlanWaypointIds,selected.route.filter(w=>w.pointOfInterest).map(w=>w.idPlanWaypoint));assert(!posts[0].url.endsWith('/start'));
   await page.getByRole('button',{name:'Ver misiones',exact:true}).click();
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(os.tmpdir(),'inspection-mission-mobile.png'),fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
@@ -84,6 +84,27 @@ let plans=[];
     data.status='IN_PROGRESS';play.update(data);play.animate(performance.now()+200);const spinning=before!==prop.rotation.y,body=drone.rotation.y===0;
     data.status='COMPLETED';play.update(data);const after=prop.rotation.y;play.animate(performance.now()+300);const finished=after===prop.rotation.y;play.destroy();return {stopped,spinning,body,finished};
   });assert(Object.values(spin).every(Boolean));assert.deepEqual(errors,[]);
-  console.log('PASS: real-ID/type mapping, unique selection/toggle, preview, unchanged POST/photos, no auto-start, rotor states, desktop/mobile. Requests mocked; no flight started.');
+  await page.setViewportSize({width:1280,height:950});
+  await page.evaluate(async id=>{
+    const React=(await import('/node_modules/.vite/deps/react.js')).default;
+    const {ConfigurarMisionView}=await import('/src/pages/ConfigurarMision.tsx');
+    window.qaRoot.render(React.createElement(ConfigurarMisionView,{key:'locked',initialFlightPlanId:id,onBack(){},onViewMissions(){}}));
+  },selected.idFlightPlan);
+  await page.getByText('Activo seleccionado: Silo 10',{exact:true}).waitFor();
+  await select('BRA-SIL-09');
+  assert.equal(await page.getByText('Activo seleccionado: Silo 10',{exact:true}).count(),1);
+  await page.evaluate(async()=>{
+    const React=(await import('/node_modules/.vite/deps/react.js')).default;
+    const {ConfigurarMisionView}=await import('/src/pages/ConfigurarMision.tsx');
+    window.qaRoot.render(React.createElement(ConfigurarMisionView,{key:'zoom',onBack(){},onViewMissions(){}}));
+  });
+  await page.getByText('Seleccioná un activo para continuar',{exact:true}).waitFor();
+  await select('BRA-SIL-10');
+  await page.getByText('Activo seleccionado: Silo 10',{exact:true}).waitFor();
+  const anchor=await position('BRA-SIL-10');await page.mouse.move(anchor.x,anchor.y);await page.mouse.wheel(0,-450);
+  await page.waitForTimeout(600);await page.mouse.click(anchor.x,anchor.y);
+  await page.getByText('Seleccioná un activo para continuar',{exact:true}).waitFor();
+  assert.deepEqual(errors,[]);
+  console.log('PASS: real-ID mapping, selection, locked initial asset, cursor zoom, preview, POST/photos, rotors, desktop/mobile. Requests mocked; no flight started.');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

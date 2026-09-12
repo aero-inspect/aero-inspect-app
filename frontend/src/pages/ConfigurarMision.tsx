@@ -218,7 +218,7 @@ export function ConfigurarMisionView({
         <form onSubmit={handleSubmit}>
           <div className="mission-builder-grid">
             <article className="mission-detail-card mission-builder-map mission-builder-map-3d">
-              <MissionAssetPicker plans={flightPlans ?? []} selectedPlanId={selectedFlightPlan?.idFlightPlan ?? null} onSelect={handleSelectFlightPlan} />
+              <MissionAssetPicker plans={flightPlans ?? []} selectedPlanId={selectedFlightPlan?.idFlightPlan ?? null} onSelect={handleSelectFlightPlan} locked={initialFlightPlanId!=null} />
               {selectedFlightPlan && <p className="map-field-label">{totalPhotoCount} fotos previstas</p>}
             </article>
 

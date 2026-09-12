@@ -5,10 +5,10 @@ import { BragadoPlant3DMap } from './BragadoPlant3DMap';
 
 export function resolveInspectionPlan(asset: BackendAsset, plans: BackendFlightPlan[]) {
   if(!['SILO','SILO_FLOTANTE','CELDA'].includes(asset.type))return null;
-  const matches=plans.filter(plan=>plan.name===`Inspeccion 3D - ${asset.code} - perimetral-v2`&&plan.assetIds.length===1&&plan.assetIds[0]===asset.idAsset);
+  const matches=plans.filter(plan=>plan.name===`Inspeccion 3D - ${asset.code} - perimetral-v3`&&plan.assetIds.length===1&&plan.assetIds[0]===asset.idAsset);
   return matches.length===1&&matches[0].route.length>1?matches[0]:null;
 }
-export function MissionAssetPicker({plans, selectedPlanId, onSelect}: {plans:BackendFlightPlan[];selectedPlanId:number|null;onSelect:(plan:BackendFlightPlan|null)=>void}) {
+export function MissionAssetPicker({plans, selectedPlanId, onSelect, locked=false}: {plans:BackendFlightPlan[];selectedPlanId:number|null;onSelect:(plan:BackendFlightPlan|null)=>void;locked?:boolean}) {
   const [assets,setAssets]=useState<BackendAsset[]>([]);
   const [error,setError]=useState('');
   const [loading,setLoading]=useState(true);
@@ -20,6 +20,7 @@ export function MissionAssetPicker({plans, selectedPlanId, onSelect}: {plans:Bac
   const selected=missing??linked;
   return <div className="mission-asset-picker">
     <BragadoPlant3DMap assets={assets} focusedAssetCode={selected?.code??null} assetSelection={{assets,selectedId:selected?.idAsset??null,route:linked?plan!.route:[],onSelect:id=>{
+      if(locked)return;
       const asset=assets.find(a=>a.idAsset===id)??null;
       const resolved=asset?resolveInspectionPlan(asset,plans):null;
       setMissing(asset&&!resolved?asset:null);onSelect(resolved);

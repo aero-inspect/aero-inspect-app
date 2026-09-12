@@ -113,6 +113,7 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   const camera = new THREE.PerspectiveCamera(55, 1, 0.08, 1600);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
+  controls.zoomToCursor = true;
   controls.minDistance = 8;
   controls.maxDistance = 1000;
   let motion: {start:number;from:THREE.Vector3;to:THREE.Vector3;target:THREE.Vector3;fromTarget:THREE.Vector3} | null = null;

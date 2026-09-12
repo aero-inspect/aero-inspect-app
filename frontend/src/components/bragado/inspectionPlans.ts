@@ -6,7 +6,7 @@ import { addMissionDrone } from './drone';
 import { createEnvironment } from './environment';
 import { plantGeoreference, toPlantPosition } from './georeference';
 
-const CLEARANCE=0.9;
+const CLEARANCE=1.1;
 const numbers={G1:10,G2:11,G3:9,M1:5,M3:6,M2:3,M4:4,M5:2,M6:1,M7:8,M8:7};
 export function generateInspectionPlans(assetCodes?:string[]) {
   const scene=new T.Scene();
@@ -71,7 +71,7 @@ export function generateInspectionPlans(assetCodes?:string[]) {
       y=Number((rawHeight+attempt*asset.h*.05).toFixed(2))+plantGeoreference.groundHeight;
       if((asset.r&&y>asset.h*.95+plantGeoreference.groundHeight)||(report.levels.length&&y>=report.levels[0].height-.5))break;
       const candidates:T.Vector3[]=[];
-      if(asset.r){for(let i=0;i<36;i++){const angle=(i+.5)*Math.PI/18;candidates.push(new T.Vector3(asset.x+Math.cos(angle)*(asset.r+1.05),y,asset.z+Math.sin(angle)*(asset.r+1.05)));}}
+      if(asset.r){for(let i=0;i<36;i++){const angle=(i+.5)*Math.PI/18;candidates.push(new T.Vector3(asset.x+Math.cos(angle)*(asset.r+1.55),y,asset.z+Math.sin(angle)*(asset.r+1.55)));}}
       else {
         const halfX=27/2+3,halfZ=43/2+3;
         for(const [sx,sz,offset] of [[1,1,0],[-1,1,Math.PI/2],[-1,-1,Math.PI],[1,-1,Math.PI*1.5]])for(let i=0;i<3;i++){
@@ -165,8 +165,8 @@ export function generateInspectionPlans(assetCodes?:string[]) {
     for(let i=1;i<points.length;i++)if(!clear(points[i-1].position,points[i].position))throw Error(`${asset.code}: blocked segment ${i}`);
     // MAVSDK consumes TAKEOFF as a destination, not a ground marker. Its altitude
     // must be the climb target (see flight-controller/docs/INTERFAZ_MQTT.md).
-    // Keep sequence/photography IDs stable; the next point is the same climb target.
-    points[0].position.copy(points[1].position);
+    // Remove the ground marker instead of duplicating the first aerial waypoint.
+    points.shift();
     const g=plantGeoreference,rotation=T.MathUtils.degToRad(g.northRotationDegrees);
     const route=points.map((p,sequence)=>{
       const x=(p.position.x-g.x)/g.metresToUnits,z=(p.position.z-g.z)/g.metresToUnits;
