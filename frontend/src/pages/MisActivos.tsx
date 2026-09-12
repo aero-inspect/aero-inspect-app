@@ -363,7 +363,7 @@ export function MisActivosView({
       <header className="assets-dashboard-header">
         <div>
           <h1>Mis Activos</h1>
-          <p>Consultá y gestiona los activos gestionados en la planta</p>
+          <p>Consulta y gestiona los activos gestionados en la planta</p>
         </div>
         <AppTopActions />
       </header>
