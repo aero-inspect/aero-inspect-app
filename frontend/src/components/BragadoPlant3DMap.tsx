@@ -5,7 +5,7 @@ import { ENVIRONMENT_MODES, setEnvironmentMode, useEnvironmentMode, type Environ
 import { addMissionDrone } from "./bragado/drone";
 import { useEffect, useMemo, useRef, useState } from "react";
 import catalog from "../data/bragado-assets.json";
-import { buildPlant } from "./bragado/geometry.js";
+import { buildPlant, GROUND_Y } from "./bragado/geometry.js";
 import { Maximize2, Minimize2, SlidersHorizontal, X, Focus, ArrowUp } from "lucide-react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -119,6 +119,14 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   let motion: {start:number;from:THREE.Vector3;to:THREE.Vector3;target:THREE.Vector3;fromTarget:THREE.Vector3} | null = null;
   controls.addEventListener("start", () => { motion = null; });
   controls.maxPolarAngle = Math.PI / 2 - 0.025;
+  const constrainCameraToGround = () => {
+    const targetFloor = GROUND_Y + 0.02;
+    if (controls.target.y < targetFloor) {
+      camera.position.y += targetFloor - controls.target.y;
+      controls.target.y = targetFloor;
+    }
+    camera.position.y = Math.max(camera.position.y, GROUND_Y + Math.max(0.18, camera.near * 1.5));
+  };
   let street = false;
   let currentView: ViewMode = "top";
   let pointer: { x: number; y: number } | null = null;
@@ -245,6 +253,7 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
     environment.update();
     playback?.animate();
     if (controls.enabled) controls.update();
+    constrainCameraToGround();
     renderer.render(scene, camera);
     if(now-lastCameraUpdate>100){const north=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion.clone().invert());onCamera({bearing:Math.atan2(north.x,north.y)*180/Math.PI,zoom:Math.round(100*(1-THREE.MathUtils.clamp((camera.position.distanceTo(controls.target)-controls.minDistance)/(controls.maxDistance-controls.minDistance),0,1)))});lastCameraUpdate=now;}
     frameId = requestAnimationFrame(animate);

@@ -2,6 +2,7 @@
 import * as T from 'three';
 import assetCatalog from '../../data/bragado-assets.json';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+export const GROUND_Y = -0.06;
 // One triangulated pavement surface: closed circulation loop and two access branches.
 function buildRoad(mesh,concrete){
 const roadWidth=7;
@@ -118,7 +119,7 @@ function label(text,x,y,z,parent=fixed){const c=document.createElement('canvas')
 const tile=document.createElement('canvas');tile.width=tile.height=256;const ctx=tile.getContext('2d');let seed=17;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};ctx.fillStyle='#6d8052';ctx.fillRect(0,0,256,256);
 for(let i=0;i<22000;i++){const v=Math.floor(rand()*40);ctx.fillStyle=`rgb(${75+v},${91+v},${47+v})`;ctx.fillRect(rand()*256,rand()*256,1+rand()*3,1);}
 const grassMap=new T.CanvasTexture(tile);grassMap.wrapS=grassMap.wrapT=T.RepeatWrapping;grassMap.repeat.set(90,90);grassMap.colorSpace=T.SRGBColorSpace;
-const ground=mesh(new T.PlaneGeometry(900,900),new T.MeshStandardMaterial({map:grassMap,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=-.06;ground.castShadow=false;
+const ground=mesh(new T.PlaneGeometry(900,900),new T.MeshStandardMaterial({map:grassMap,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=GROUND_Y;ground.castShadow=false;
 buildRoad(mesh,concrete);
 function gabled(w,d,h,rise,x,z,open=false){const g=new T.Group();g.position.set(x,0,z);g.rotation.y=-Math.PI/4;fixed.add(g);if(!open)box(w,h,d,0,0,0,steel,g);const angle=Math.atan2(rise,w/2),slope=Math.hypot(w/2,rise);
 for(const side of [-1,1]){const panel=box(slope+.4,.16,d+.7,side*w/4,h+rise/2,0,steel,g);panel.rotation.z=-side*angle;for(let zz=-d/2;zz<=d/2;zz+=3){beam([side*w/2,0,zz],[side*w/2,h,zz],.13,frame,g);if(!open)beam([side*(w/2+1.7),0,zz],[side*w/2,h*.65,zz],.1,frame,g);beam([side*w/2,h,zz],[0,h+rise,zz],.09,frame,g);}if(!open)for(let y=1;y<h;y+=1.6)box(.12,.12,d,side*(w/2+.08),y,0,frame,g);}
