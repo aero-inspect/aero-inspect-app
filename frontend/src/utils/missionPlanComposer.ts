@@ -1,13 +1,38 @@
 import type { BackendFlightPlan, BackendPlanWaypoint, CreateFlightPlanPayload } from "../api/types";
+import catalog from "../data/bragado-assets.json";
+import { plantGeoreference, toPlantPosition } from "../components/bragado/georeference";
+
+// One level spine follows the long axis of the plant, above its structures.
+const spineStart = catalog.find(asset => asset.type === "CELDA")!;
+const spineEnd = catalog.find(asset => asset.id === "silo-9")!;
+const dx = spineEnd.x - spineStart.x, dz = spineEnd.z - spineStart.z;
+const minimumCruiseAltitude = Math.ceil(Math.max(...catalog.map(asset => asset.h + asset.r * .3)) + 6);
+
+function onSpine(point: BackendPlanWaypoint, altitude: number) {
+  const position = toPlantPosition(point);
+  if (!position) throw new Error("Coordenadas de inspección inválidas");
+  const t = ((position.x - spineStart.x) * dx + (position.z - spineStart.z) * dz) / (dx * dx + dz * dz);
+  const g = plantGeoreference, angle = g.northRotationDegrees * Math.PI / 180;
+  const x = (spineStart.x + t * dx - g.x) / g.metresToUnits;
+  const z = (spineStart.z + t * dz - g.z) / g.metresToUnits;
+  return asNavigate(point, {
+    latitude: g.latitude - (-x * Math.sin(angle) + z * Math.cos(angle)) / (111320 * g.southSign),
+    longitude: g.longitude + (x * Math.cos(angle) + z * Math.sin(angle)) / (111320 * Math.cos(g.latitude * Math.PI / 180) * g.eastSign),
+    altitude
+  });
+}
 
 function orderedRoute(plan: BackendFlightPlan) {
   return [...plan.route].sort((a, b) => a.sequence - b.sequence);
 }
 
-function asNavigate(point: BackendPlanWaypoint, altitude = point.altitude): BackendPlanWaypoint {
+function asNavigate(
+  point: BackendPlanWaypoint,
+  overrides: Partial<Pick<BackendPlanWaypoint, "latitude" | "longitude" | "altitude">> = {}
+): BackendPlanWaypoint {
   return {
     ...point,
-    altitude,
+    ...overrides,
     action: "NAVIGATE",
     pointOfInterest: false,
     stopSeconds: 0,
@@ -18,33 +43,65 @@ function asNavigate(point: BackendPlanWaypoint, altitude = point.altitude): Back
   };
 }
 
+function appendDistinct(route: BackendPlanWaypoint[], point: BackendPlanWaypoint) {
+  const previous = route[route.length - 1];
+  if (
+    previous &&
+    Math.abs(previous.latitude - point.latitude) < 1e-10 &&
+    Math.abs(previous.longitude - point.longitude) < 1e-10 &&
+    Math.abs(previous.altitude - point.altitude) < 0.05
+  ) return;
+  route.push(point);
+}
+
 export function composeInspectionRoute(plans: BackendFlightPlan[]): BackendPlanWaypoint[] {
   if (plans.length === 0) return [];
+  if (plans.length === 1) return orderedRoute(plans[0]);
 
   const combined: BackendPlanWaypoint[] = [];
-  plans.forEach((plan, planIndex) => {
-    const route = orderedRoute(plan);
-    if (route.length < 3) return;
+  const routes = plans.map(orderedRoute);
+  if (routes.some(route => route.length < 5 || route[0].action !== "TAKEOFF" || route[route.length - 1].action !== "LAND")) {
+    throw new Error("El plan no tiene una entrada y una salida de inspección válidas");
+  }
+  if (routes.length === 0) return [];
+  const cruiseAltitude = Math.max(minimumCruiseAltitude, ...routes.flatMap(route => route.map(point => point.altitude)));
+  const takeoff = { ...routes[0][0], altitude: cruiseAltitude };
+  combined.push(takeoff);
+  appendDistinct(combined, onSpine(takeoff, cruiseAltitude));
 
-    if (planIndex === 0) {
-      combined.push(...route.slice(0, -1));
-      return;
+  routes.forEach((route) => {
+    const entry = route[1];
+    const corridorPoint = onSpine(entry, cruiseAltitude);
+    const targetAtCruise = asNavigate(entry, { altitude: cruiseAltitude });
+
+    appendDistinct(combined, corridorPoint);
+    appendDistinct(combined, targetAtCruise);
+    if (Math.abs(entry.altitude - cruiseAltitude) > 0.05) {
+      appendDistinct(combined, asNavigate(entry));
     }
 
-    const takeoff = route[0];
-    const previous = combined[combined.length - 1];
-    if (previous && Math.abs(previous.altitude - takeoff.altitude) > 0.05) {
-      combined.push(asNavigate(takeoff, takeoff.altitude));
-    }
+    // Omite el despegue, el regreso particular a la base y el aterrizaje. El
+    // tramo central conserva las vueltas y el descenso propios de cada activo.
+    combined.push(...route.slice(2, -2));
 
-    // Cada plan vuelve al mismo nodo principal sobre la base. Desde allí se toma
-    // el ramal del siguiente activo sin aterrizar ni repetir el despegue.
-    combined.push(...route.slice(1, -1));
+    const inspectionExit = combined[combined.length - 1];
+    if (Math.abs(inspectionExit.altitude - cruiseAltitude) > 0.05) {
+      appendDistinct(combined, asNavigate(inspectionExit, { altitude: cruiseAltitude }));
+    }
+    appendDistinct(combined, onSpine(inspectionExit, cruiseAltitude));
   });
 
-  const finalRoute = orderedRoute(plans[plans.length - 1]);
-  combined.push(finalRoute[finalRoute.length - 1]);
-  return combined.map((point, sequence) => ({ ...point, sequence }));
+  const finalRoute = routes[routes.length - 1];
+  const landing = finalRoute[finalRoute.length - 1];
+  appendDistinct(combined, asNavigate(landing, { altitude: cruiseAltitude }));
+  combined.push(landing);
+  return combined.map((point, sequence) => {
+    const next = combined[sequence + 1];
+    if (point.action !== "NAVIGATE" || !next) return { ...point, sequence };
+    const east = (next.longitude - point.longitude) * Math.cos(point.latitude * Math.PI / 180);
+    const north = next.latitude - point.latitude;
+    return { ...point, sequence, droneDegree: Math.hypot(east, north) > 1e-10 ? (Math.atan2(east, north) * 180 / Math.PI + 360) % 360 : point.droneDegree };
+  });
 }
 
 export function buildCombinedFlightPlan(

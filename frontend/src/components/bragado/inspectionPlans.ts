@@ -5,6 +5,7 @@ import { buildPlant } from './geometry.js';
 import { addMissionDrone } from './drone';
 import { createEnvironment } from './environment';
 import { plantGeoreference, toPlantPosition } from './georeference';
+import { composeInspectionRoute } from '../../utils/missionPlanComposer';
 
 const CLEARANCE=1.1;
 const numbers={G1:10,G2:11,G3:9,M1:5,M3:6,M2:3,M4:4,M5:2,M6:1,M7:8,M8:7};
@@ -59,19 +60,21 @@ export function generateInspectionPlans(assetCodes?:string[]) {
   };
   type Point={position:T.Vector3;photo:boolean;target:T.Vector3};
   const reports:{code:string;levels:{height:number;accepted:number;omitted:number}[];segments:number}[]=[];
-  const plans=catalog.filter(a=>['SILO','SILO_FLOTANTE','CELDA'].includes(a.type)&&(!assetCodes||assetCodes.includes(a.code))).map(asset=>{
+  const plans=catalog.filter(a=>['SILO','SILO_FLOTANTE','CELDA','NORIA','SECADORA'].includes(a.type)&&(!assetCodes||assetCodes.includes(a.code))).map(asset=>{
+    const round = asset.type !== 'CELDA';
+    const radius = asset.r || (asset.type === 'NORIA' ? 4.45 : 3.95);
     const points:Point[]=[{position:home.clone(),photo:false,target:home.clone()}];
     const add=(p:T.Vector3,photo=false,target=p)=>{if(points[points.length-1].position.distanceTo(p)<.001&&!photo)return;points.push({position:p.clone(),photo,target:target.clone()});};
     const report={code:asset.code,levels:[] as {height:number;accepted:number;omitted:number}[],segments:0};
-    const heights=asset.r?[asset.h*.8,Math.max(asset.type==='SILO_FLOTANTE'?4.5:3,asset.h*.4)]:[17,9];
-    const transitFloor=(asset.r?asset.h+asset.r*.3:17)+2+plantGeoreference.groundHeight;
+    const heights=round?[asset.h*.8,Math.max(asset.type==='SILO_FLOTANTE'?4.5:3,asset.h*.4)]:[17,9];
+    const transitFloor=(round?asset.h+asset.r*.3:17)+2+plantGeoreference.groundHeight;
     for(const rawHeight of heights){
       let y=0,valid:T.Vector3[]|undefined;
-      for(let attempt=0;attempt<(asset.r?7:1);attempt++){
+      for(let attempt=0;attempt<(round?7:1);attempt++){
       y=Number((rawHeight+attempt*asset.h*.05).toFixed(2))+plantGeoreference.groundHeight;
-      if((asset.r&&y>asset.h*.95+plantGeoreference.groundHeight)||(report.levels.length&&y>=report.levels[0].height-.5))break;
+      if((round&&y>asset.h*.95+plantGeoreference.groundHeight)||(report.levels.length&&y>=report.levels[0].height-.5))break;
       const candidates:T.Vector3[]=[];
-      if(asset.r){for(let i=0;i<36;i++){const angle=(i+.5)*Math.PI/18;candidates.push(new T.Vector3(asset.x+Math.cos(angle)*(asset.r+1.55),y,asset.z+Math.sin(angle)*(asset.r+1.55)));}}
+      if(round){for(let i=0;i<32;i++){const angle=(i+.5)*Math.PI/16;candidates.push(new T.Vector3(asset.x+Math.cos(angle)*(radius+1.55),y,asset.z+Math.sin(angle)*(radius+1.55)));}}
       else {
         const halfX=27/2+3,halfZ=43/2+3;
         for(const [sx,sz,offset] of [[1,1,0],[-1,1,Math.PI/2],[-1,-1,Math.PI],[1,-1,Math.PI*1.5]])for(let i=0;i<3;i++){
@@ -85,6 +88,19 @@ export function generateInspectionPlans(assetCodes?:string[]) {
         const outward=new T.Vector3(p.x-asset.x,0,p.z-asset.z).normalize();
         return Array.from({length:51},(_,i)=>p.clone().addScaledVector(outward,i<36?i*.1:3.5+(i-35)*.5)).filter(free);
       });
+      // Keep the same clear descent column between levels, even when the
+      // obstacle-aware contours require different radii around nearby tubes.
+      if (round && report.levels.length) {
+        const last = points[points.length - 1].position;
+        const below = new T.Vector3(last.x, y, last.z);
+        const bearing = new T.Vector3(last.x - asset.x, 0, last.z - asset.z).normalize();
+        let index = 0, best = -Infinity;
+        candidates.forEach((p, i) => {
+          const score = bearing.dot(new T.Vector3(p.x - asset.x, 0, p.z - asset.z).normalize());
+          if (score > best) { best = score; index = i; }
+        });
+        choices[index] = free(below) && clear(last, below) ? [below] : [];
+      }
       let bestCost=Infinity;
       const edgeCache=new Map<string,boolean>();
       const ids=new Map(choices.flat().map((p,i)=>[p,i]));
@@ -126,6 +142,7 @@ export function generateInspectionPlans(assetCodes?:string[]) {
       let entry=-1,entryHeight=last.y,entryDistance=Infinity;
       for(let i=0;i<valid.length;i++){
         const p=valid[i];
+        if (points.length === 1 && !clear(p, new T.Vector3(p.x, heights[1] + plantGeoreference.groundHeight, p.z))) continue;
         for(let height=points.length===1?Math.ceil(transitFloor):last.y;height<=cruise;height+=1){
           if(points.length>1&&height>last.y+.001)break;
           const above=new T.Vector3(p.x,height,p.z),origin=new T.Vector3(last.x,height,last.z);
@@ -192,5 +209,17 @@ export function generateInspectionPlans(assetCodes?:string[]) {
       throw Error(`${asset.code}: blocked perimeter segment`);
     }
   });
-  return {plans,reports,clearance:CLEARANCE,cruise,home:home.toArray(),bounds:bounds.length};
+  const combined = composeInspectionRoute(plans.map(p => ({route:p.route})) as unknown as Parameters<typeof composeInspectionRoute>[0]);
+  for (let i=1; i<combined.length; i++) {
+    const a=toPlantPosition(combined[i-1])!, b=toPlantPosition(combined[i])!;
+    if (!clear(a,b)) throw Error(`Shared corridor: blocked segment ${i}`);
+    if (Math.abs(a.y-b.y)>1e-6 && Math.hypot(a.x-b.x,a.z-b.z)>1e-6) throw Error(`Shared corridor: diagonal altitude change ${i}`);
+  }
+  if (combined.filter(p=>p.action==='TAKEOFF').length!==1 || combined.filter(p=>p.action==='LAND').length!==1) throw Error('Shared corridor: repeated base visit');
+  const g=plantGeoreference, angle=g.northRotationDegrees*Math.PI/180;
+  const assetLocations=catalog.map(a=>{
+    const x=(a.x-g.x)/g.metresToUnits,z=(a.z-g.z)/g.metresToUnits;
+    return {code:a.code,type:a.type,latitude:g.latitude-(-x*Math.sin(angle)+z*Math.cos(angle))/(111320*g.southSign),longitude:g.longitude+(x*Math.cos(angle)+z*Math.sin(angle))/(111320*Math.cos(g.latitude*Math.PI/180)*g.eastSign)};
+  });
+  return {plans,reports,assetLocations,clearance:CLEARANCE,cruise,home:home.toArray(),bounds:bounds.length};
 }

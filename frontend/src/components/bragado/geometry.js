@@ -125,11 +125,11 @@ function gabled(w,d,h,rise,x,z,open=false){const g=new T.Group();g.position.set(
 for(const side of [-1,1]){const panel=box(slope+.4,.16,d+.7,side*w/4,h+rise/2,0,steel,g);panel.rotation.z=-side*angle;for(let zz=-d/2;zz<=d/2;zz+=3){beam([side*w/2,0,zz],[side*w/2,h,zz],.13,frame,g);if(!open)beam([side*(w/2+1.7),0,zz],[side*w/2,h*.65,zz],.1,frame,g);beam([side*w/2,h,zz],[0,h+rise,zz],.09,frame,g);}if(!open)for(let y=1;y<h;y+=1.6)box(.12,.12,d,side*(w/2+.08),y,0,frame,g);}
 if(!open)for(const end of [-1,1]){const shape=new T.Shape();shape.moveTo(-w/2,0);shape.lineTo(w/2,0);shape.lineTo(0,rise);shape.closePath();const wall=mesh(new T.ShapeGeometry(shape),steel,g);wall.material.side=T.DoubleSide;wall.position.set(0,h,end*d/2);for(let xx=-w/2;xx<=w/2;xx+=.5)box(.035,h,.03,xx,0,end*(d/2+.02),frame,g);}return g;}
 gabled(27,43,8,6,-51,-77).rotation.y+=Math.PI/2;
-const canopy=gabled(18,13,9,1.5,17,-21,true);
+const canopy=gabled(18,13,9,1.5,10,-32,true);
 box(.12,4,13,-9,5,0,steel,canopy);box(.12,3,13,9,6,0,steel,canopy);
 for(const z of [-6.5,6.5])box(18,2.3,.12,0,6.7,z,steel,canopy);
 box(8,.12,12,0,.05,0,concrete,canopy);for(let z=-2;z<2;z+=.2)box(5,.05,.08,0,.19,z,dark,canopy);
-const lamp=new T.PointLight('#ffc36c',45,15,2);lamp.position.set(0,7,0);canopy.add(lamp);label('Descarga',17,12,-21);
+const lamp=new T.PointLight('#ffc36c',45,15,2);lamp.position.set(0,7,0);canopy.add(lamp);label('Descarga',10,12,-32);
 addPerimeter({beam,frame,dark});
 // Shared centers keep rendered assets and inspection coordinates aligned.
 const addFan=addEquipment({mesh,box,beam,fixed,canopy,steel,frame,rust,yellow,concrete,dark});

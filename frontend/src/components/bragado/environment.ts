@@ -72,7 +72,7 @@ scene.traverse(o=>{if(o instanceof T.PointLight){lamps.push({light:o,power:o.int
     const support=new T.Mesh(new T.CylinderGeometry(.045,.045,.9,6),metal);support.position.set(x,h+.3,z+r);rig.add(support);fixture(x,h+.75,z+r,x,z+r+3,0);
   }
   fixture(12,24,6.6,16,12,300);
-  for(const side of [-1,1]){const x=17+(side*7-6.6)*Math.SQRT1_2,z=-21+(side*7+6.6)*Math.SQRT1_2;fixture(x,8.8,z,x,z+2,0);}
+  for(const side of [-1,1]){const x=10+(side*7-6.6)*Math.SQRT1_2,z=-32+(side*7+6.6)*Math.SQRT1_2;fixture(x,8.8,z,x,z+2,0);}
   let current=resolveEnvironment(getEnvironmentMode()),from=current,target=current,started=performance.now();
   function retarget(){from=current;target=resolveEnvironment(getEnvironmentMode());started=performance.now();}
   const unsubscribe=subscribeEnvironment(retarget),timer=window.setInterval(retarget,30000);
