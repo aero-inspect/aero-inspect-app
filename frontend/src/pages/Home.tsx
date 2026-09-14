@@ -99,7 +99,7 @@ export function Home({
   const currentProfileImage = user.profileImage ?? "";
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedBackendMissionId, setSelectedBackendMissionId] = useState<string | null>(null);
-  const [selectedFlightPlanId, setSelectedFlightPlanId] = useState<number | null>(null);
+  const [selectedFlightPlanIds, setSelectedFlightPlanIds] = useState<number[]>([]);
   const [selectedReportCode, setSelectedReportCode] = useState<string | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const sidebarRoleLabel = user.role === "Tecnico de Mantenimiento" ? "Técnico de Mantenimiento" : user.role;
@@ -214,8 +214,8 @@ export function Home({
         ) : isMissionsPath ? (
           <MisMisionesView
             user={user}
-            onCreateMission={(idFlightPlan) => {
-              setSelectedFlightPlanId(idFlightPlan);
+            onCreateMission={(idFlightPlans) => {
+              setSelectedFlightPlanIds(idFlightPlans);
               navigateTo("/configurar-mision");
             }}
             onGeneratePlan={() => navigateTo("/generar-plan")}
@@ -228,12 +228,12 @@ export function Home({
           <GenerarPlanVueloView
             onBack={() => navigateTo("/mis-misiones")}
             onPlanConfirmed={(idFlightPlan) => {
-              setSelectedFlightPlanId(idFlightPlan);
+              setSelectedFlightPlanIds([idFlightPlan]);
               navigateTo("/configurar-mision");
             }}
           />
         ) : isMissionPath && userCanConsultAssets ? (
-          <ConfigurarMisionView initialFlightPlanId={selectedFlightPlanId} onBack={() => navigateTo("/mis-misiones")} onViewMissions={() => navigateTo("/mis-misiones")} />
+          <ConfigurarMisionView initialFlightPlanIds={selectedFlightPlanIds} onBack={() => navigateTo("/mis-misiones")} onViewMissions={() => navigateTo("/mis-misiones")} />
         ) : isLaunchPath && DRONE_OPERATION_ROLES.includes(user.role) ? (
           <LaunchMissionView
             missions={missions}

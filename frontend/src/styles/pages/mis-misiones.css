@@ -403,8 +403,16 @@
 
 .missions-table-wrap {
   min-height: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   border-top: 1px solid #edf2f7;
+}
+
+.missions-table thead {
+  position: sticky;
+  z-index: 2;
+  top: 0;
 }
 
 .missions-table {
@@ -786,10 +794,13 @@
 
 .mission-detail-card {
   display: grid;
-  grid-template-rows: auto 134px auto auto auto;
+  grid-template-rows: auto 260px auto auto auto;
   height: 514px;
   padding: 16px 18px 14px;
   gap: 9px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .mission-detail-header {

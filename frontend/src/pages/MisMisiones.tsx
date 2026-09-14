@@ -57,7 +57,7 @@ export function MisMisionesView({
   onViewMission
 }: {
   user: SessionUser;
-  onCreateMission: (idFlightPlan: number) => void;
+  onCreateMission: (idFlightPlans: number[]) => void;
   onGeneratePlan: () => void;
   onViewMission: (idMission: string) => void;
 }) {
@@ -79,7 +79,7 @@ export function MisMisionesView({
   const [savingPilotMissionId, setSavingPilotMissionId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [planModal, setPlanModal] = useState<"choose" | null>(null);
-  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const [selectedPlanIds, setSelectedPlanIds] = useState<number[]>([]);
   const activePolls = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
@@ -200,14 +200,14 @@ export function MisMisionesView({
   };
 
   const handleOpenCreateMission = () => {
-    setSelectedPlanId(null);
+    setSelectedPlanIds([]);
     setPlanModal("choose");
   };
 
   const handleContinuePlan = () => {
-    if (selectedPlanId == null) return;
+    if (selectedPlanIds.length === 0) return;
     setPlanModal(null);
-    onCreateMission(selectedPlanId);
+    onCreateMission(selectedPlanIds);
   };
 
   const pollMissionStatus = (idMission: string) => {
@@ -544,14 +544,18 @@ export function MisMisionesView({
               <span className="mission-plan-modal-icon" aria-hidden="true">
                 <Box size={20} />
               </span>
-              <h2>Seleccionar activo</h2>
+              <h2>Seleccionar activos</h2>
             </div>
             <div className="mission-plan-modal-divider" />
 
-            <MissionAssetPicker plans={flightPlans} selectedPlanId={selectedPlanId} onSelect={plan=>setSelectedPlanId(plan?.idFlightPlan??null)} />
+            <MissionAssetPicker
+              plans={flightPlans}
+              selectedPlanIds={selectedPlanIds}
+              onSelect={(selectedPlans) => setSelectedPlanIds(selectedPlans.map((plan) => plan.idFlightPlan))}
+            />
 
             <div className="mission-plan-modal-footer">
-              <button className="mission-plan-modal-primary" disabled={selectedPlanId == null} onClick={handleContinuePlan} type="button">
+              <button className="mission-plan-modal-primary" disabled={selectedPlanIds.length === 0} onClick={handleContinuePlan} type="button">
                 Continuar
               </button>
             </div>

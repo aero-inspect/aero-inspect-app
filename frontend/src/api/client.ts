@@ -10,6 +10,7 @@ import type {
   BackendWeather,
   CreateAssetPayload,
   CreateDronePayload,
+  CreateFlightPlanPayload,
   CreateMissionPayload,
   UpdateDronePayload
 } from "./types";
@@ -72,6 +73,13 @@ export function getFlightPlans() {
 
 export function getFlightPlan(idFlightPlan: number) {
   return request<BackendFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}`);
+}
+
+export function createFlightPlan(payload: CreateFlightPlanPayload) {
+  return request<BackendFlightPlan>("/api/v1/flight-plans", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
 }
 
 export function getMissions() {

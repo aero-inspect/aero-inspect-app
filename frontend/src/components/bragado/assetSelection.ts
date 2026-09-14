@@ -4,17 +4,24 @@ import type { BackendAsset } from '../../api/types';
 import type { MissionRoutePoint } from './missionPlayback';
 import { toPlantPosition } from './georeference';
 
-export type AssetSelectionData = { assets: BackendAsset[]; selectedId: number | null; route: MissionRoutePoint[]; onSelect: (id: number | null) => void };
+export type AssetSelectionData = { assets: BackendAsset[]; selectedIds: number[]; route: MissionRoutePoint[]; onSelect: (id: number) => void };
 export function createAssetSelection(scene: T.Scene, camera: T.Camera, canvas: HTMLCanvasElement) {
   const proxies = new T.Group();
-  const material = new T.MeshBasicMaterial({ side: T.DoubleSide });
+  const selectedMeshes = new T.Group();
+  const material = new T.MeshBasicMaterial({ side: T.DoubleSide, transparent: true, opacity: 0 });
+  const selectedMaterial = new T.MeshBasicMaterial({ color: '#3fbd68', transparent: true, opacity: .24, depthWrite: false, side: T.DoubleSide });
   const line = new T.Line(new T.BufferGeometry(), new T.LineBasicMaterial({color: '#38c6e0', toneMapped: false}));
-  scene.add(line);
+  scene.add(line, selectedMeshes);
   let data: AssetSelectionData | null = null;
   let down: {x:number;y:number;id:number} | null = null;
   let dragged = false;
   const ray = new T.Raycaster();
-  const clear = () => { proxies.children.forEach(o => (o as T.Mesh).geometry.dispose()); proxies.clear(); };
+  const clear = () => {
+    proxies.children.forEach(o => (o as T.Mesh).geometry.dispose());
+    selectedMeshes.children.forEach(o => (o as T.Mesh).geometry.dispose());
+    proxies.clear();
+    selectedMeshes.clear();
+  };
   const pointerDown = (e: PointerEvent) => {if(e.button!==0)return;down={x:e.clientX,y:e.clientY,id:e.pointerId};dragged=false;};
   const pointerMove = (e: PointerEvent) => { if(down && Math.hypot(e.clientX-down.x,e.clientY-down.y)>5)dragged=true; };
   const pointerUp = (e: PointerEvent) => {
@@ -28,7 +35,7 @@ export function createAssetSelection(scene: T.Scene, camera: T.Camera, canvas: H
     const surface=ray.intersectObjects(scene.children,true).find(h=>h.object instanceof T.Mesh && !(Array.isArray(h.object.material)?h.object.material:[h.object.material]).every(m=>m.transparent));
     if(surface&&surface.distance<hit.distance-.2)return;
     const id=hit.object.userData.idAsset as number;
-    data.onSelect(data.selectedId===id?null:id);
+    data.onSelect(id);
   };
   const cancel = () => { down=null; };
   canvas.addEventListener('pointerdown',pointerDown);
@@ -39,18 +46,25 @@ export function createAssetSelection(scene: T.Scene, camera: T.Camera, canvas: H
     update(next: AssetSelectionData) {
       data=next;clear();
       for(const asset of next.assets) {
-        if(!['SILO','SILO_FLOTANTE','CELDA'].includes(asset.type))continue;
+        if(!['SILO','SILO_FLOTANTE','CELDA','NORIA','SECADORA'].includes(asset.type))continue;
         const record=catalog.find(r=>r.code===asset.code&&r.type===asset.type);
         if(!record)continue;
         const height=record.h+record.r*.3;
-        const mesh=new T.Mesh(record.r?new T.CylinderGeometry(record.r,record.r,height,48):new T.BoxGeometry(27,14,43),material);
+        const size = asset.type === 'CELDA' ? [27,14,43] : asset.type === 'SECADORA' ? [4.8,11.2,4.4] : [5.5,record.h,5.5];
+        const geometry=record.r?new T.CylinderGeometry(record.r,record.r,height,48):new T.BoxGeometry(size[0],size[1],size[2]);
+        const mesh=new T.Mesh(geometry,material);
         mesh.position.set(record.x,height/2,record.z);
         if(asset.type==='CELDA')mesh.rotation.y=Math.PI/4;
         mesh.userData.idAsset=asset.idAsset;proxies.add(mesh);
+        if(next.selectedIds.includes(asset.idAsset)){
+          const selected=new T.Mesh(geometry.clone(),selectedMaterial);
+          selected.position.copy(mesh.position);selected.rotation.copy(mesh.rotation);selected.scale.setScalar(1.06);
+          selectedMeshes.add(selected);
+        }
       }
       line.geometry.dispose();
       line.geometry=new T.BufferGeometry().setFromPoints([...next.route].sort((a,b)=>a.sequence-b.sequence).map(toPlantPosition).filter((p):p is T.Vector3=>p!==null));
     },
-    destroy(){clear();material.dispose();line.geometry.dispose();line.material.dispose();line.removeFromParent();canvas.removeEventListener('pointerdown',pointerDown);canvas.removeEventListener('pointermove',pointerMove);canvas.removeEventListener('pointerup',pointerUp);canvas.removeEventListener('pointercancel',cancel);}
+    destroy(){clear();material.dispose();selectedMaterial.dispose();line.geometry.dispose();line.material.dispose();line.removeFromParent();selectedMeshes.removeFromParent();canvas.removeEventListener('pointerdown',pointerDown);canvas.removeEventListener('pointermove',pointerMove);canvas.removeEventListener('pointerup',pointerUp);canvas.removeEventListener('pointercancel',cancel);}
   };
 }

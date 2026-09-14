@@ -1,12 +1,13 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Save, CheckCircle2, AlertCircle, CalendarClock, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { BackendFlightPlan, BackendDrone } from "../api/types";
-import { getFlightPlans, getDrones, createMission } from "../api/client";
+import { getFlightPlans, getDrones, createFlightPlan, createMission } from "../api/client";
 import { FieldError } from "../components/FieldError";
 import { MissionAssetPicker } from "../components/MissionAssetPicker";
 import { AppTopActions } from "../components/AppTopActions";
 
 import { photoCountForWaypoint } from "../utils/missionPhotos";
+import { buildCombinedFlightPlan } from "../utils/missionPlanComposer";
 
 type FieldErrors = Partial<Record<"name" | "idDrone" | "scheduledAt", string>>;
 
@@ -55,11 +56,11 @@ function sameDay(a: Date, b: Date) {
 
 
 export function ConfigurarMisionView({
-  initialFlightPlanId,
+  initialFlightPlanIds,
   onBack,
   onViewMissions
 }: {
-  initialFlightPlanId?: number | null;
+  initialFlightPlanIds?: number[];
   onBack: () => void;
   onViewMissions: () => void;
 }) {
@@ -70,7 +71,7 @@ export function ConfigurarMisionView({
   const [drones, setDrones] = useState<BackendDrone[] | null>(null);
   const [dronesError, setDronesError] = useState<string | null>(null);
 
-  const [selectedFlightPlan, setSelectedFlightPlan] = useState<BackendFlightPlan | null>(null);
+  const [selectedFlightPlans, setSelectedFlightPlans] = useState<BackendFlightPlan[]>([]);
 
   const [name, setName] = useState("");
   const [objective, setObjective] = useState("");
@@ -100,27 +101,25 @@ export function ConfigurarMisionView({
       .catch((error: unknown) => setDronesError(error instanceof Error ? error.message : "No se pudieron cargar los drones."));
   }, []);
 
-  const handleSelectFlightPlan = (plan: BackendFlightPlan | null) => { setSelectedFlightPlan(plan); };
-  const selectedWaypointIds = new Set(selectedFlightPlan?.route.filter(p=>p.pointOfInterest).map(p=>p.idPlanWaypoint) ?? []);
-
   useEffect(() => {
     setHasAppliedInitialPlan(false);
-  }, [initialFlightPlanId]);
+  }, [initialFlightPlanIds]);
 
   useEffect(() => {
-    if (hasAppliedInitialPlan || !initialFlightPlanId || selectedFlightPlan || !flightPlans?.length) return;
-    const initialPlan = flightPlans.find((plan) => plan.idFlightPlan === initialFlightPlanId);
-    if (initialPlan) {
-      handleSelectFlightPlan(initialPlan);
+    if (hasAppliedInitialPlan || !initialFlightPlanIds?.length || selectedFlightPlans.length > 0 || !flightPlans?.length) return;
+    const initialPlans = initialFlightPlanIds
+      .map((id) => flightPlans.find((plan) => plan.idFlightPlan === id))
+      .filter((plan): plan is BackendFlightPlan => Boolean(plan));
+    if (initialPlans.length) {
+      setSelectedFlightPlans(initialPlans);
       setHasAppliedInitialPlan(true);
     }
-  }, [hasAppliedInitialPlan, initialFlightPlanId, flightPlans, selectedFlightPlan]);
+  }, [hasAppliedInitialPlan, initialFlightPlanIds, flightPlans, selectedFlightPlans.length]);
 
-  const totalPhotoCount = selectedFlightPlan
-    ? selectedFlightPlan.route
-        .filter((point) => selectedWaypointIds.has(point.idPlanWaypoint))
-        .reduce((total, point) => total + photoCountForWaypoint(point), 0)
-    : 0;
+  const totalPhotoCount = selectedFlightPlans
+    .flatMap((plan) => plan.route)
+    .filter((point) => point.pointOfInterest)
+    .reduce((total, point) => total + photoCountForWaypoint(point), 0);
 
   const selectedDrone = drones?.find((drone) => drone.idDrone === idDrone) ?? null;
   const selectedScheduledDate = scheduledAt ? new Date(scheduledAt) : null;
@@ -153,7 +152,7 @@ export function ConfigurarMisionView({
   };
 
   const resetForm = () => {
-    setSelectedFlightPlan(null);
+    setSelectedFlightPlans([]);
 
 
     setName("");
@@ -167,7 +166,7 @@ export function ConfigurarMisionView({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedFlightPlan) { setSubmitError("Seleccioná un activo para continuar"); return; }
+    if (selectedFlightPlans.length === 0) { setSubmitError("Seleccioná al menos un activo para continuar"); return; }
 
     setSubmitError(null);
 
@@ -184,13 +183,19 @@ export function ConfigurarMisionView({
 
     setIsSubmitting(true);
     try {
+      const missionPlan = selectedFlightPlans.length === 1
+        ? selectedFlightPlans[0]
+        : await createFlightPlan(buildCombinedFlightPlan(selectedFlightPlans, name.trim()));
+      const missionWaypointIds = missionPlan.route
+        .filter((point) => point.pointOfInterest)
+        .map((point) => point.idPlanWaypoint);
       await createMission({
-        idFlightPlan: selectedFlightPlan.idFlightPlan,
+        idFlightPlan: missionPlan.idFlightPlan,
         name: name.trim(),
         objective: objective.trim(),
         idDrone,
         scheduledAt: new Date(scheduledAt).toISOString(),
-        selectedPlanWaypointIds: Array.from(selectedWaypointIds)
+        selectedPlanWaypointIds: missionWaypointIds
       });
       setIsSuccessOpen(true);
     } catch (error) {
@@ -218,8 +223,17 @@ export function ConfigurarMisionView({
         <form onSubmit={handleSubmit}>
           <div className="mission-builder-grid">
             <article className="mission-detail-card mission-builder-map mission-builder-map-3d">
-              <MissionAssetPicker plans={flightPlans ?? []} selectedPlanId={selectedFlightPlan?.idFlightPlan ?? null} onSelect={handleSelectFlightPlan} locked={initialFlightPlanId!=null} />
-              {selectedFlightPlan && <p className="map-field-label">{totalPhotoCount} fotos previstas</p>}
+              <MissionAssetPicker
+                plans={flightPlans ?? []}
+                selectedPlanIds={selectedFlightPlans.map((plan) => plan.idFlightPlan)}
+                onSelect={setSelectedFlightPlans}
+                locked={Boolean(initialFlightPlanIds?.length)}
+              />
+              {selectedFlightPlans.length > 0 && (
+                <p className="map-field-label">
+                  {selectedFlightPlans.length} {selectedFlightPlans.length === 1 ? "activo" : "activos"} · {totalPhotoCount} fotos previstas
+                </p>
+              )}
             </article>
 
             <article className="mission-detail-card mission-builder-fields">
@@ -370,7 +384,7 @@ export function ConfigurarMisionView({
               )}
 
               <div className="form-actions">
-                <button className="configure-create mission-builder-submit" disabled={isSubmitting || !selectedFlightPlan} type="submit">
+                <button className="configure-create mission-builder-submit" disabled={isSubmitting || selectedFlightPlans.length === 0} type="submit">
                   <Save size={15} aria-hidden="true" />
                   {isSubmitting ? "Creando..." : "Crear misión"}
                 </button>
