@@ -109,6 +109,7 @@
 .real-report-summary div { padding: 13px 16px; background: #fff; }
 .real-report-summary dt { margin-bottom: 4px; color: #71809a; font-size: 12px; }
 .real-report-summary dd { margin: 0; color: #17346d; font-weight: 700; }
+.real-report-summary dd small { color: #71809a; font-weight: 500; }
 
 .real-report-selectors {
   display: grid;
@@ -291,6 +292,10 @@
   gap: 12px;
 }
 
+.real-report-images.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .real-report-images figure {
   margin: 0;
 }
@@ -317,6 +322,10 @@
   border-radius: 999px;
   font-size: 13px;
   font-weight: 800;
+}
+
+.real-report-result-badge + .real-report-result-badge {
+  margin-left: 8px;
 }
 
 .real-report-result-badge.detected {
@@ -464,6 +473,7 @@
   }
 
   .real-report-images,
+  .real-report-images.three,
   .real-report-selectors,
   .real-report-result-data div {
     grid-template-columns: 1fr;

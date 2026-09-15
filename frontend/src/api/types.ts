@@ -224,10 +224,19 @@ export type AiSeverityReport = {
   warning?: string;
 };
 
+export type AiCrackReport = {
+  status: "crack_candidate_detected" | "no_crack_detected";
+  detected_area_percent: number;
+  model_score_max?: number;
+  overlay_url?: string | null;
+  warning?: string;
+};
+
 export type AiAnalysisFindings = {
-  schema_version?: "2.0";
+  schema_version?: "2.0" | "2.1";
   corrosion: AiCorrosionReport;
-  severity: AiSeverityReport | null;
+  severity?: AiSeverityReport | null;
+  crack?: AiCrackReport | null;
 };
 
 export type InspectionPhotoStatus =
@@ -267,5 +276,7 @@ export type BackendReport = {
   validatedAt: string | null;
   severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" | "NOT_REPORTED";
   findingsCount: number;
+  corrosionFindingsCount?: number;
+  crackFindingsCount?: number;
   photos: BackendInspectionPhoto[];
 };

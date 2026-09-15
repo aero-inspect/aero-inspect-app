@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { AlertTriangle, Ban, CalendarDays, CheckCircle2, Download, Eye, ImagePlus, LoaderCircle, PenLine, X } from "lucide-react";
 import { createReport, downloadReportPdf, getInspectionPhoto, getMissions, getReport, uploadInspectionPhoto, validateReport as saveValidation } from "../api/client";
-import type { AiAnalysisFindings, AiCorrosionReport, AiSeverityReport, BackendInspectionPhoto, BackendMission, BackendReport } from "../api/types";
+import type { AiAnalysisFindings, AiCorrosionReport, AiCrackReport, AiSeverityReport, BackendInspectionPhoto, BackendMission, BackendReport } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
 
 const MAX_IMAGES = 5;
@@ -263,7 +263,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
       {persistedReport && <dl className="real-report-summary">
         <div><dt>Código</dt><dd>{persistedReport.code}</dd></div><div><dt>Activo</dt><dd>{persistedReport.assetName}</dd></div>
         <div><dt>Misión</dt><dd>{persistedReport.missionName}</dd></div><div><dt>Fecha</dt><dd>{new Date(persistedReport.createdAt).toLocaleString("es-AR")}</dd></div>
-        <div><dt>Hallazgos</dt><dd>{persistedReport.findingsCount}</dd></div><div><dt>Severidad</dt><dd>{getBackendSeverityLabel(persistedReport.severity)}</dd></div>
+        <div><dt>Hallazgos</dt><dd>{persistedReport.findingsCount}{persistedReport.crackFindingsCount !== undefined && <small> ({persistedReport.corrosionFindingsCount ?? 0} corrosion · {persistedReport.crackFindingsCount} fisuras)</small>}</dd></div><div><dt>Severidad</dt><dd>{getBackendSeverityLabel(persistedReport.severity)}</dd></div>
       </dl>}
 
       <div className="real-report-grid">
@@ -413,8 +413,12 @@ function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boo
   const findings = parseFindings(photo.analysis?.findings);
   const report = findings?.corrosion ?? null;
   const severity = findings?.severity ?? null;
+  const crack = findings?.crack ?? null;
   const result = report ? getResult(report, severity) : null;
-  const overlayUrl = photo.analysis?.analyzedImageUrl ?? "";
+  const crackResult = crack ? getCrackResult(crack) : null;
+  const overlayUrl = photo.analysis?.analyzedImageUrl ?? null;
+  const crackOverlayUrl = crack?.overlay_url ?? null;
+  const imageCount = 1 + (overlayUrl ? 1 : 0) + (crackOverlayUrl ? 1 : 0);
 
   return (
     <section className="real-report-photo-card">
@@ -433,23 +437,34 @@ function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boo
 
       {photo.analysis && report && result && (
         <div className="real-report-result" aria-live="polite">
-          <div className="real-report-images">
+          <div className={`real-report-images${imageCount === 3 ? " three" : ""}`}>
             <figure>
               <img alt={`Imagen original ${index + 1}`} src={photo.previewUrl} />
               <figcaption>Imagen original</figcaption>
             </figure>
-            <figure>
-              <img alt={`Corrosion resaltada en evidencia ${index + 1}`} src={overlayUrl} />
-              <figcaption>Resultado del analisis</figcaption>
-            </figure>
+            {overlayUrl && (
+              <figure>
+                <img alt={`Corrosion resaltada en evidencia ${index + 1}`} src={overlayUrl} />
+                <figcaption>Corrosion resaltada</figcaption>
+              </figure>
+            )}
+            {crackOverlayUrl && (
+              <figure>
+                <img alt={`Fisuras resaltadas en evidencia ${index + 1}`} src={crackOverlayUrl} />
+                <figcaption>Fisuras resaltadas</figcaption>
+              </figure>
+            )}
           </div>
           <div className={`real-report-result-badge ${result.tone}`}>{result.label}</div>
+          {crackResult && <div className={`real-report-result-badge ${crackResult.tone}`}>{crackResult.label}</div>}
           <dl className="real-report-result-data">
-            <div><dt>Tipo de anomalia</dt><dd>Corrosion</dd></div>
+            <div><dt>Tipo de anomalia</dt><dd>{getAnomalyType(report, crack)}</dd></div>
             <div><dt>Fecha de la foto</dt><dd><CalendarDays size={15} /> {photo.photoDate.value} <small>({photo.photoDate.source === "captura" ? "metadato de captura" : "fecha del archivo"})</small></dd></div>
-            <div><dt>Area detectada</dt><dd>{report.detected_area_percent.toFixed(2)}%</dd></div>
+            <div><dt>Area con corrosion</dt><dd>{formatPercent(report.detected_area_percent)}</dd></div>
+            {crack && <div><dt>Area con fisuras</dt><dd>{formatPercent(crack.detected_area_percent)}</dd></div>}
             <div><dt>Severidad estimada</dt><dd><span className={`real-report-severity ${severityTone(severity)}`}>{getSeverityLabel(severity)}</span></dd></div>
             <div><dt>Descripcion del resultado</dt><dd>{result.description}</dd></div>
+            {crackResult && <div><dt>Resultado de fisuras</dt><dd>{crackResult.description}</dd></div>}
           </dl>
         </div>
       )}
@@ -493,12 +508,44 @@ function getResult(report: AiCorrosionReport, severity: AiSeverityReport | null)
   };
 }
 
+function getCrackResult(crack: AiCrackReport) {
+  if (crack.status === "crack_candidate_detected") {
+    return {
+      label: "FISURA DETECTADA - REQUIERE REVISION",
+      tone: "review",
+      description: "El modelo marco lineas compatibles con fisuras. Validar en campo: juntas, bordes o sombras pueden generar falsas alarmas."
+    };
+  }
+  return {
+    label: "SIN FISURAS DETECTADAS",
+    tone: "clear",
+    description: "El modelo no marco fisuras visibles en esta imagen."
+  };
+}
+
+function getAnomalyType(report: AiCorrosionReport, crack: AiCrackReport | null) {
+  const corrosion = report.status === "corrosion_candidate_detected";
+  const fissure = crack?.status === "crack_candidate_detected";
+  if (corrosion && fissure) return "Corrosion y fisura";
+  if (corrosion) return "Corrosion";
+  if (fissure) return "Fisura";
+  return "Sin anomalias";
+}
+
+function formatPercent(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? `${value.toFixed(2)}%` : "—";
+}
+
 function parseFindings(findings: string | null | undefined): AiAnalysisFindings | null {
   if (!findings) return null;
   try {
-    const parsed = JSON.parse(findings) as AiAnalysisFindings | AiCorrosionReport;
-    if ("corrosion" in parsed) return parsed;
-    if ("status" in parsed) return { corrosion: parsed, severity: null };
+    const parsed: unknown = JSON.parse(findings);
+    if (!parsed || typeof parsed !== "object") return null;
+    if ("corrosion" in parsed) {
+      const wrapped = parsed as AiAnalysisFindings;
+      return { ...wrapped, severity: wrapped.severity ?? null, crack: wrapped.crack ?? null };
+    }
+    if ("status" in parsed) return { corrosion: parsed as AiCorrosionReport, severity: null, crack: null };
     return null;
   } catch {
     return null;
