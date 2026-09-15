@@ -415,5 +415,27 @@
 .mission-asset-picker { min-width: 0; width: 100%; }
 .mission-asset-picker .bragado-map:not(.bragado-map-expanded) { height: min(58vh, 560px); min-height: 330px; }
 .mission-asset-picker .map-field-label { padding: 8px 12px; margin: 0; }
+.mission-route-budget { justify-content: space-between; }
+.mission-route-budget.exceeded {
+  border-color: rgba(169, 68, 66, 0.34) !important;
+  background: #fff5f5 !important;
+  color: #a94442 !important;
+}
+.mission-route-budget-error {
+  display: block;
+  margin: 6px 0 0;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #b42318;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 700;
+}
+
+.mission-route-budget-error svg {
+  display: none;
+}
 .missions-dashboard .mission-builder-map.mission-builder-map-3d { display: block; height: auto; overflow: visible; }
 .missions-dashboard .mission-builder-map.mission-builder-map-3d .map-field-label { min-height: 32px; margin-top: 6px; padding: 8px 12px; }

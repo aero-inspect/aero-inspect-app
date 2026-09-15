@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { getAssets } from "../api/client";
 import type { BackendAsset, BackendFlightPlan } from "../api/types";
-import { composeInspectionRoute } from "../utils/missionPlanComposer";
+import {
+  availableMissionDistanceMeters,
+  estimateMissionDistanceMeters,
+  formatMissionDistance,
+  missionReservePct,
+  missionRouteForPlans
+} from "../utils/missionAutonomy";
 import { BragadoPlant3DMap } from "./BragadoPlant3DMap";
 
 const INSPECTABLE_TYPES = ["SILO", "SILO_FLOTANTE", "CELDA", "NORIA", "SECADORA"];
@@ -21,17 +27,22 @@ export function MissionAssetPicker({
   plans,
   selectedPlanIds,
   onSelect,
-  locked = false
+  locked = false,
+  distanceLimitMeters,
+  batteryPercentage
 }: {
   plans: BackendFlightPlan[];
   selectedPlanIds: number[];
   onSelect: (plans: BackendFlightPlan[]) => void;
   locked?: boolean;
+  distanceLimitMeters?: number;
+  batteryPercentage?: number | null;
 }) {
   const [assets, setAssets] = useState<BackendAsset[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [missing, setMissing] = useState<BackendAsset | null>(null);
+  const [budgetError, setBudgetError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -55,7 +66,13 @@ export function MissionAssetPicker({
     [plans, selectedPlanIds]
   );
   const selectedAssetIds = useMemo(() => selectedPlans.flatMap((plan) => plan.assetIds), [selectedPlans]);
-  const previewRoute = useMemo(() => composeInspectionRoute(selectedPlans), [selectedPlans]);
+  const previewRoute = useMemo(() => missionRouteForPlans(selectedPlans), [selectedPlans]);
+  const routeDistanceMeters = useMemo(() => estimateMissionDistanceMeters(selectedPlans), [selectedPlans]);
+  const routeLimitMeters = useMemo(
+    () => distanceLimitMeters ?? availableMissionDistanceMeters(batteryPercentage, missionReservePct(selectedPlans)),
+    [batteryPercentage, distanceLimitMeters, selectedPlans]
+  );
+  const exceedsLimit = selectedPlans.length > 0 && routeDistanceMeters > routeLimitMeters;
 
   const handleAssetSelect = (idAsset: number) => {
     if (locked) return;
@@ -68,12 +85,22 @@ export function MissionAssetPicker({
     setMissing(null);
     if (!resolved) return;
     const alreadySelected = selectedPlanIds.includes(resolved.idFlightPlan);
-    onSelect(alreadySelected ? selectedPlans.filter((plan) => plan.idFlightPlan !== resolved.idFlightPlan) : [...selectedPlans, resolved]);
+    const nextPlans = alreadySelected ? selectedPlans.filter((plan) => plan.idFlightPlan !== resolved.idFlightPlan) : [...selectedPlans, resolved];
+    const nextDistance = estimateMissionDistanceMeters(nextPlans);
+    const nextLimit = distanceLimitMeters ?? availableMissionDistanceMeters(batteryPercentage, missionReservePct(nextPlans));
+    if (!alreadySelected && nextDistance > nextLimit) {
+      setBudgetError(
+        `No se puede agregar ${asset?.name ?? "el activo"}: el consumo estimado quedaría en ${formatMissionDistance(nextDistance)} y el límite disponible es ${formatMissionDistance(nextLimit)}.`
+      );
+      return;
+    }
+    setBudgetError("");
+    onSelect(nextPlans);
   };
 
   const selectionLabel = selectedPlans.length === 0
     ? "Seleccioná uno o más activos para continuar"
-    : `${selectedPlans.length} ${selectedPlans.length === 1 ? "activo seleccionado" : "activos seleccionados"}`;
+    : `${selectedPlans.length} ${selectedPlans.length === 1 ? "activo seleccionado" : "activos seleccionados"} · consumo ${formatMissionDistance(routeDistanceMeters)} de ${formatMissionDistance(routeLimitMeters)} disponibles`;
 
   return (
     <div className="mission-asset-picker">
@@ -81,10 +108,17 @@ export function MissionAssetPicker({
         assets={assets}
         assetSelection={{ assets, selectedIds: selectedAssetIds, route: previewRoute, onSelect: handleAssetSelect }}
       />
-      <p className="map-field-label" role="status">{loading ? "Cargando activos..." : error || selectionLabel}</p>
+      <p className={exceedsLimit ? "map-field-label mission-route-budget exceeded" : "map-field-label mission-route-budget"} role="status">
+        {loading ? "Cargando activos..." : error || selectionLabel}
+      </p>
       {missing && (
         <p className="mission-empty" role="alert">
           {missing.name} todavía no tiene un plan de inspección disponible. Reiniciá el backend para cargar los planes nuevos.
+        </p>
+      )}
+      {budgetError && (
+        <p className="mission-empty mission-route-budget-error" role="alert">
+          {budgetError}
         </p>
       )}
     </div>

@@ -1,13 +1,14 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Save, CheckCircle2, AlertCircle, CalendarClock, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import type { BackendFlightPlan, BackendDrone } from "../api/types";
-import { getFlightPlans, getDrones, createFlightPlan, createMission } from "../api/client";
+import type { BackendFlightPlan, BackendDrone, BackendDroneStatus } from "../api/types";
+import { getFlightPlans, getDrones, getDroneStatuses, createFlightPlan, createMission } from "../api/client";
 import { FieldError } from "../components/FieldError";
 import { MissionAssetPicker } from "../components/MissionAssetPicker";
 import { AppTopActions } from "../components/AppTopActions";
 
 import { photoCountForWaypoint } from "../utils/missionPhotos";
 import { buildCombinedFlightPlan } from "../utils/missionPlanComposer";
+import { availableMissionDistanceMeters, estimateMissionDistanceMeters, formatMissionDistance, missionReservePct } from "../utils/missionAutonomy";
 
 type FieldErrors = Partial<Record<"name" | "idDrone" | "scheduledAt", string>>;
 
@@ -70,6 +71,7 @@ export function ConfigurarMisionView({
 
   const [drones, setDrones] = useState<BackendDrone[] | null>(null);
   const [dronesError, setDronesError] = useState<string | null>(null);
+  const [droneStatuses, setDroneStatuses] = useState<BackendDroneStatus[]>([]);
 
   const [selectedFlightPlans, setSelectedFlightPlans] = useState<BackendFlightPlan[]>([]);
 
@@ -99,6 +101,9 @@ export function ConfigurarMisionView({
     getDrones()
       .then(setDrones)
       .catch((error: unknown) => setDronesError(error instanceof Error ? error.message : "No se pudieron cargar los drones."));
+    getDroneStatuses()
+      .then(setDroneStatuses)
+      .catch(() => setDroneStatuses([]));
   }, []);
 
   useEffect(() => {
@@ -122,6 +127,16 @@ export function ConfigurarMisionView({
     .reduce((total, point) => total + photoCountForWaypoint(point), 0);
 
   const selectedDrone = drones?.find((drone) => drone.idDrone === idDrone) ?? null;
+  const selectedDroneStatus = selectedDrone
+    ? droneStatuses.find((status) => status.droneId === selectedDrone.droneId) ?? null
+    : null;
+  const routeDistanceMeters = estimateMissionDistanceMeters(selectedFlightPlans);
+  const routeReservePct = missionReservePct(selectedFlightPlans);
+  const availableDistanceMeters = availableMissionDistanceMeters(selectedDroneStatus?.battery?.percentage, routeReservePct);
+  const routeExceedsBattery = selectedFlightPlans.length > 0 && routeDistanceMeters > availableDistanceMeters;
+  const batteryLabel = selectedDroneStatus?.battery
+    ? `${selectedDroneStatus.battery.percentage}%`
+    : "sin telemetría, se calcula con batería completa";
   const selectedScheduledDate = scheduledAt ? new Date(scheduledAt) : null;
   const calendarDays = buildCalendarDays(visibleDate);
 
@@ -179,6 +194,12 @@ export function ConfigurarMisionView({
       setFieldErrors(nextFieldErrors);
       return;
     }
+    if (routeExceedsBattery) {
+      setSubmitError(
+        `La misión recorre ${formatMissionDistance(routeDistanceMeters)} y el dron seleccionado tiene autonomía disponible para ${formatMissionDistance(availableDistanceMeters)}. Quitá activos o elegí un dron con más batería.`
+      );
+      return;
+    }
     setFieldErrors({});
 
     setIsSubmitting(true);
@@ -228,10 +249,11 @@ export function ConfigurarMisionView({
                 selectedPlanIds={selectedFlightPlans.map((plan) => plan.idFlightPlan)}
                 onSelect={setSelectedFlightPlans}
                 locked={Boolean(initialFlightPlanIds?.length)}
+                batteryPercentage={selectedDroneStatus?.battery?.percentage}
               />
               {selectedFlightPlans.length > 0 && (
-                <p className="map-field-label">
-                  {selectedFlightPlans.length} {selectedFlightPlans.length === 1 ? "activo" : "activos"} · {totalPhotoCount} fotos previstas
+                <p className={routeExceedsBattery ? "map-field-label mission-route-budget exceeded" : "map-field-label mission-route-budget"}>
+                  {selectedFlightPlans.length} {selectedFlightPlans.length === 1 ? "activo" : "activos"} · {totalPhotoCount} fotos previstas · {formatMissionDistance(routeDistanceMeters)}
                 </p>
               )}
             </article>
@@ -301,6 +323,12 @@ export function ConfigurarMisionView({
                 </div>
                 {fieldErrors.idDrone && <FieldError message={fieldErrors.idDrone} />}
               </label>
+
+              <div className={routeExceedsBattery ? "mission-battery-check exceeded" : "mission-battery-check"}>
+                <span>Autonomía estimada</span>
+                <strong>{formatMissionDistance(routeDistanceMeters)} / {formatMissionDistance(availableDistanceMeters)}</strong>
+                <small>Batería: {batteryLabel} · reserva mínima {routeReservePct}%</small>
+              </div>
 
               <label>
                 <span>
@@ -384,7 +412,7 @@ export function ConfigurarMisionView({
               )}
 
               <div className="form-actions">
-                <button className="configure-create mission-builder-submit" disabled={isSubmitting || selectedFlightPlans.length === 0} type="submit">
+                <button className="configure-create mission-builder-submit" disabled={isSubmitting || selectedFlightPlans.length === 0 || routeExceedsBattery} type="submit">
                   <Save size={15} aria-hidden="true" />
                   {isSubmitting ? "Creando..." : "Crear misión"}
                 </button>
