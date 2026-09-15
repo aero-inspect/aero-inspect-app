@@ -66,15 +66,17 @@ export function generateInspectionPlans(assetCodes?:string[]) {
     const points:Point[]=[{position:home.clone(),photo:false,target:home.clone()}];
     const add=(p:T.Vector3,photo=false,target=p)=>{if(points[points.length-1].position.distanceTo(p)<.001&&!photo)return;points.push({position:p.clone(),photo,target:target.clone()});};
     const report={code:asset.code,levels:[] as {height:number;accepted:number;omitted:number}[],segments:0};
-    const heights=round?[asset.h*.8,Math.max(asset.type==='SILO_FLOTANTE'?4.5:3,asset.h*.4)]:[17,9];
-    const transitFloor=(round?asset.h+asset.r*.3:17)+2+plantGeoreference.groundHeight;
+    const towerTop=Math.max(...catalog.filter(a=>a.type==='NORIA').map(a=>a.h))+2;
+    const heights=asset.type==='NORIA'?[towerTop,asset.h*.6,asset.h*.4]:round?[asset.h*.8,Math.max(asset.type==='SILO_FLOTANTE'?4.5:3,asset.h*.4)]:[17,9];
+    const transitFloor=Math.max(round?asset.h+asset.r*.3:17,heights[0])+2+plantGeoreference.groundHeight;
     for(const rawHeight of heights){
       let y=0,valid:T.Vector3[]|undefined;
       for(let attempt=0;attempt<(round?7:1);attempt++){
       y=Number((rawHeight+attempt*asset.h*.05).toFixed(2))+plantGeoreference.groundHeight;
-      if((round&&y>asset.h*.95+plantGeoreference.groundHeight)||(report.levels.length&&y>=report.levels[0].height-.5))break;
+      const ceiling=asset.type==='NORIA'?towerTop+1:asset.h*.95;
+      if((round&&y>ceiling+plantGeoreference.groundHeight)||(report.levels.length&&y>=report.levels[0].height-.5))break;
       const candidates:T.Vector3[]=[];
-      if(round){for(let i=0;i<32;i++){const angle=(i+.5)*Math.PI/16;candidates.push(new T.Vector3(asset.x+Math.cos(angle)*(radius+1.55),y,asset.z+Math.sin(angle)*(radius+1.55)));}}
+      if(round){const count=asset.type==='NORIA'?24:32;for(let i=0;i<count;i++){const angle=(i+.5)*Math.PI*2/count;candidates.push(new T.Vector3(asset.x+Math.cos(angle)*(radius+1.8),y,asset.z+Math.sin(angle)*(radius+1.8)));}}
       else {
         const halfX=27/2+3,halfZ=43/2+3;
         for(const [sx,sz,offset] of [[1,1,0],[-1,1,Math.PI/2],[-1,-1,Math.PI],[1,-1,Math.PI*1.5]])for(let i=0;i<3;i++){
@@ -83,24 +85,16 @@ export function generateInspectionPlans(assetCodes?:string[]) {
           candidates.push(new T.Vector3(asset.x+(x+z)/Math.sqrt(2),y,asset.z+(-x+z)/Math.sqrt(2)));
         }
       }
-      // Choose a closed collision-free contour, never omit blocked sides or hop over them.
+      // Circular assets keep a constant radius; try a nearby height if blocked.
+      if(round){
+        if(candidates.every(free)&&candidates.every((p,i)=>clear(p,candidates[(i+1)%candidates.length]))){valid=candidates;break;}
+        continue;
+      }
+      // Choose a closed collision-free contour for the rectangular cell.
       const choices=candidates.map(p=>{
         const outward=new T.Vector3(p.x-asset.x,0,p.z-asset.z).normalize();
         return Array.from({length:51},(_,i)=>p.clone().addScaledVector(outward,i<36?i*.1:3.5+(i-35)*.5)).filter(free);
       });
-      // Keep the same clear descent column between levels, even when the
-      // obstacle-aware contours require different radii around nearby tubes.
-      if (round && report.levels.length) {
-        const last = points[points.length - 1].position;
-        const below = new T.Vector3(last.x, y, last.z);
-        const bearing = new T.Vector3(last.x - asset.x, 0, last.z - asset.z).normalize();
-        let index = 0, best = -Infinity;
-        candidates.forEach((p, i) => {
-          const score = bearing.dot(new T.Vector3(p.x - asset.x, 0, p.z - asset.z).normalize());
-          if (score > best) { best = score; index = i; }
-        });
-        choices[index] = free(below) && clear(last, below) ? [below] : [];
-      }
       let bestCost=Infinity;
       const edgeCache=new Map<string,boolean>();
       const ids=new Map(choices.flat().map((p,i)=>[p,i]));
@@ -142,7 +136,7 @@ export function generateInspectionPlans(assetCodes?:string[]) {
       let entry=-1,entryHeight=last.y,entryDistance=Infinity;
       for(let i=0;i<valid.length;i++){
         const p=valid[i];
-        if (points.length === 1 && !clear(p, new T.Vector3(p.x, heights[1] + plantGeoreference.groundHeight, p.z))) continue;
+        if (points.length === 1 && !clear(p, new T.Vector3(p.x, heights[heights.length-1] + plantGeoreference.groundHeight, p.z))) continue;
         for(let height=points.length===1?Math.ceil(transitFloor):last.y;height<=cruise;height+=1){
           if(points.length>1&&height>last.y+.001)break;
           const above=new T.Vector3(p.x,height,p.z),origin=new T.Vector3(last.x,height,last.z);
@@ -158,7 +152,8 @@ export function generateInspectionPlans(assetCodes?:string[]) {
       move(new T.Vector3(last.x,entryHeight,last.z));
       move(new T.Vector3(first.x,entryHeight,first.z));move(first);
       const target=new T.Vector3(asset.x,Math.min(asset.h,y),asset.z);
-      const photoIndices=new Set(Array.from({length:Math.min(4,valid.length)},(_,i)=>Math.floor(i*valid.length/Math.min(4,valid.length))));
+      const photoCount=asset.type==='NORIA'?3:4;
+      const photoIndices=new Set(Array.from({length:Math.min(photoCount,valid.length)},(_,i)=>Math.floor(i*valid.length/Math.min(photoCount,valid.length))));
       for(const [index,p] of valid.entries()){
         move(p);
         if(photoIndices.has(index)){const last=points[points.length-1];last.photo=true;last.target.copy(target);}
@@ -209,13 +204,21 @@ export function generateInspectionPlans(assetCodes?:string[]) {
       throw Error(`${asset.code}: blocked perimeter segment`);
     }
   });
-  const combined = composeInspectionRoute(plans.map(p => ({route:p.route})) as unknown as Parameters<typeof composeInspectionRoute>[0]);
-  for (let i=1; i<combined.length; i++) {
-    const a=toPlantPosition(combined[i-1])!, b=toPlantPosition(combined[i])!;
-    if (!clear(a,b)) throw Error(`Shared corridor: blocked segment ${i}`);
-    if (Math.abs(a.y-b.y)>1e-6 && Math.hypot(a.x-b.x,a.z-b.z)>1e-6) throw Error(`Shared corridor: diagonal altitude change ${i}`);
+  const checkedEdges = new Set<string>();
+  function validateCombined(selected:typeof plans) {
+    const combined = composeInspectionRoute(selected.map(p => ({route:p.route})) as unknown as Parameters<typeof composeInspectionRoute>[0]);
+    for (let i=1; i<combined.length; i++) {
+      const a=toPlantPosition(combined[i-1])!, b=toPlantPosition(combined[i])!;
+      const key=`${a.toArray()}:${b.toArray()}`;
+      if (checkedEdges.has(key)) continue;
+      if (!clear(a,b)) throw Error(`Shared corridor: blocked segment ${i}`);
+      if (Math.abs(a.y-b.y)>1e-6 && Math.hypot(a.x-b.x,a.z-b.z)>1e-6) throw Error(`Shared corridor: diagonal altitude change ${i}`);
+      checkedEdges.add(key);
+    }
+    if (combined.filter(p=>p.action==='TAKEOFF').length!==1 || combined.filter(p=>p.action==='LAND').length!==1) throw Error('Shared corridor: repeated base visit');
   }
-  if (combined.filter(p=>p.action==='TAKEOFF').length!==1 || combined.filter(p=>p.action==='LAND').length!==1) throw Error('Shared corridor: repeated base visit');
+  validateCombined(plans);
+  for (const a of plans) for (const b of plans) if (a!==b) validateCombined([a,b]);
   const g=plantGeoreference, angle=g.northRotationDegrees*Math.PI/180;
   const assetLocations=catalog.map(a=>{
     const x=(a.x-g.x)/g.metresToUnits,z=(a.z-g.z)/g.metresToUnits;

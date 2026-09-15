@@ -8,10 +8,16 @@ const spineEnd = catalog.find(asset => asset.id === "silo-9")!;
 const dx = spineEnd.x - spineStart.x, dz = spineEnd.z - spineStart.z;
 const minimumCruiseAltitude = Math.ceil(Math.max(...catalog.map(asset => asset.h + asset.r * .3)) + 6);
 
+function spineProgress(point: BackendPlanWaypoint) {
+  const position = toPlantPosition(point);
+  if (!position) throw new Error("Coordenadas de inspección inválidas");
+  return ((position.x - spineStart.x) * dx + (position.z - spineStart.z) * dz) / (dx * dx + dz * dz);
+}
+
 function onSpine(point: BackendPlanWaypoint, altitude: number) {
   const position = toPlantPosition(point);
   if (!position) throw new Error("Coordenadas de inspección inválidas");
-  const t = ((position.x - spineStart.x) * dx + (position.z - spineStart.z) * dz) / (dx * dx + dz * dz);
+  const t = spineProgress(point);
   const g = plantGeoreference, angle = g.northRotationDegrees * Math.PI / 180;
   const x = (spineStart.x + t * dx - g.x) / g.metresToUnits;
   const z = (spineStart.z + t * dz - g.z) / g.metresToUnits;
@@ -59,11 +65,15 @@ export function composeInspectionRoute(plans: BackendFlightPlan[]): BackendPlanW
   if (plans.length === 1) return orderedRoute(plans[0]);
 
   const combined: BackendPlanWaypoint[] = [];
-  const routes = plans.map(orderedRoute);
+  const routes = plans.map(orderedRoute).sort((a, b) => spineProgress(a[1]) - spineProgress(b[1]));
   if (routes.some(route => route.length < 5 || route[0].action !== "TAKEOFF" || route[route.length - 1].action !== "LAND")) {
     throw new Error("El plan no tiene una entrada y una salida de inspección válidas");
   }
   if (routes.length === 0) return [];
+  const homeProgress = spineProgress(routes[0][0]);
+  if (Math.abs(homeProgress - spineProgress(routes[routes.length - 1][1])) < Math.abs(homeProgress - spineProgress(routes[0][1]))) {
+    routes.reverse();
+  }
   const cruiseAltitude = Math.max(minimumCruiseAltitude, ...routes.flatMap(route => route.map(point => point.altitude)));
   const takeoff = { ...routes[0][0], altitude: cruiseAltitude };
   combined.push(takeoff);

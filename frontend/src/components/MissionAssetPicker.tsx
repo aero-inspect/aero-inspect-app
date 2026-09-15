@@ -10,7 +10,7 @@ export function resolveInspectionPlan(asset: BackendAsset, plans: BackendFlightP
   if (!INSPECTABLE_TYPES.includes(asset.type)) return null;
   const matches = plans.filter(
     (plan) =>
-      plan.name === `Inspeccion 3D - ${asset.code} - perimetral-v4` &&
+      plan.name === `Inspeccion 3D - ${asset.code} - perimetral-v5` &&
       plan.assetIds.length === 1 &&
       plan.assetIds[0] === asset.idAsset
   );

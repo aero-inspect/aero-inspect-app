@@ -23,7 +23,7 @@ seed(code, type, route) AS (VALUES
 ${rows}
 ),
 catalog AS MATERIALIZED (
-  SELECT a.id_asset, s.*, 'Inspeccion 3D - ' || s.code || ' - perimetral-v4' AS plan_name
+  SELECT a.id_asset, s.*, 'Inspeccion 3D - ' || s.code || ' - perimetral-v5' AS plan_name
   FROM seed s JOIN asset a ON a.code = s.code AND a.type = s.type CROSS JOIN guard
 ),
 new_plans AS (
@@ -68,7 +68,7 @@ WHERE r."pointOfInterest" AND NOT EXISTS(SELECT 1 FROM plan_waypoint_camera_angl
     for(const p of result.plans){
       if(p.route.length>85||p.route.filter(w=>w.pointOfInterest).length>10)throw Error('Mission budget exceeded');
     }
-    const target=path.resolve(__dirname,'../../general-monolith/src/main/resources/database.script/bragado-inspection-plans-v4.sql');
+    const target=path.resolve(__dirname,'../../general-monolith/src/main/resources/database.script/bragado-inspection-plans-v5.sql');
     fs.writeFileSync(target,sql);
     console.log(JSON.stringify({plans:result.plans.map(p=>({code:p.code,points:p.route.length,photos:p.route.filter(w=>w.pointOfInterest).length})),bounds:result.bounds,cruise:result.cruise},null,2));
   } finally {await browser.close();}

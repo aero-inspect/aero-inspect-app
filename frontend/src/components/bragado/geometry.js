@@ -1,6 +1,7 @@
 // Geometry ported from the approved bragado-silos-3d prototype.
 import * as T from 'three';
 import assetCatalog from '../../data/bragado-assets.json';
+import {transferTubePath} from './transferTubes.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 export const GROUND_Y = -0.06;
 // One triangulated pavement surface: closed circulation loop and two access branches.
@@ -144,14 +145,15 @@ for(let i=0;i<16;i++){const a=i*Math.PI/8;beam([b.x,h+rise,b.z],[b.x+Math.cos(a)
 for(let i=0;i<12;i++){const a=i*Math.PI/6;beam([b.x+Math.cos(a)*(b.r+.04),base,b.z+Math.sin(a)*(b.r+.04)],[b.x+Math.cos(a)*(b.r+.04),h,b.z+Math.sin(a)*(b.r+.04)],.014,dark,dynamic);}
 if(small){const hopper=mesh(new T.CylinderGeometry(b.r,.3,2.6,40),frame,dynamic);hopper.position.set(b.x,1.9,b.z);for(const dx of [-1,1])for(const dz of [-1,1])beam([b.x+dx*b.r*.7,0,b.z+dz*b.r*.7],[b.x+dx*b.r*.7,base+1,b.z+dz*b.r*.7],.08,frame,dynamic);}else{for(const dx of [-.35,.35])beam([b.x+dx,.5,b.z+b.r+.2],[b.x+dx,h,b.z+b.r+.2],.035,yellow,dynamic);for(let y=.6;y<h;y+=.35)beam([b.x-.35,y,b.z+b.r+.2],[b.x+.35,y,b.z+b.r+.2],.025,yellow,dynamic);box(.65,.9,.3,b.x,.5,b.z+b.r,frame,dynamic);addFan(b,dynamic);}}
 const towers=[[-1,0,31],[12,5,25]];towers.forEach(([x,z,height])=>{const h=height*scale;for(const dx of [-.45,.45]){box(.38,h,.35,x+dx,0,z,frame,dynamic);for(let y=0;y<h;y+=2)box(.48,.08,.45,x+dx,y,z,rust,dynamic);}box(3.4,.15,3.4,x,h-1.3,z,dark,dynamic);for(const side of [-1,1]){beam([x-1.7,h,z+side*1.7],[x+1.7,h,z+side*1.7],.04,frame,dynamic);beam([x+side*1.7,h,z-1.7],[x+side*1.7,h,z+1.7],.04,frame,dynamic);}for(let y=1;y<h;y+=2){const ring=mesh(new T.TorusGeometry(.45,.025,6,20),frame,dynamic);ring.rotation.x=Math.PI/2;ring.position.set(x+1.2,y,z);}for(const dx of [-.8,.8])for(const dz of [-.8,.8])beam([x+dx,0,z+dz],[x+dx,h,z+dz],.1,frame,dynamic);for(let y=1;y<h-2;y+=2)for(const side of [-1,1]){beam([x-.8,y,z+side*.8],[x+.8,y+2,z+side*.8],.045,frame,dynamic);beam([x+side*.8,y,z-.8],[x+side*.8,y+2,z+.8],.045,frame,dynamic);}box(2.6,1.6,2.6,x,h-1,z,frame,dynamic);});
-for(const tube of tubeConnections){const {a,b}=tubeEnds(tube,scale);beam(a,b,.16,frame,dynamic);beam([a[0],a[1]+1,a[2]],[b[0],b[1]+.4,b[2]],.018,dark,dynamic);}
+for(const tube of tubeConnections){const {a,b,target}=tubeEnds(tube,scale);const path=transferTubePath(a,b,bins,target,scale);for(let i=1;i<path.length;i++){const start=path[i-1],end=path[i];beam(start,end,.16,frame,dynamic);beam([start[0],start[1]+.4,start[2]],[end[0],end[1]+.4,end[2]],.018,dark,dynamic);}}
 addOutlets({bins,numbers:siloNumbers,mesh,box,beam,frame,rust,dark,parent:dynamic,scale});
 updateLabels();}
 function tubeEnds(tube,scale){
   const find=id=>bins.find(b=>String(siloNumbers[b.id]||('F'+b.id.slice(1)))===String(id));
   const roof=b=>[b.x,b.h*scale+b.r*.3,b.z];
   const towers=[[-1,30*scale,0],[12,24*scale,5]];
-  return {a:tube.from?roof(find(tube.from)):towers[tube.noria-1],b:roof(find(tube.to))};
+  const target=find(tube.to);
+  return {a:tube.from?roof(find(tube.from)):towers[tube.noria-1],b:roof(target),target};
 }
 const collisionBounds=[];
 function batch(group){
