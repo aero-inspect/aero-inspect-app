@@ -8,6 +8,7 @@ import { AppTopActions } from "../components/AppTopActions";
 import { Compass } from "../components/Compass";
 import { useMissionTelemetry } from "../hooks/useMissionTelemetry";
 import { remainingRouteDistanceMeters, totalRouteDistanceMeters } from "../utils/geo";
+import { LoadingState } from "../components/LoadingState";
 
 type MonitorMissionViewProps = {
   missionId: string | null;
@@ -308,7 +309,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
 
       {loadError && <p className="mission-empty">{loadError}</p>}
 
-      {!loadError && !mission && <p className="mission-empty">Cargando misión...</p>}
+      {!loadError && !mission && <LoadingState text="Cargando misión..." />}
 
       {!loadError && mission && (
         <section className="monitor-body-grid">
@@ -317,7 +318,6 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
               <h2>{mission.name}</h2>
               <span className={`mission-state ${statusClass(missionStatus)}`}>{missionStatus}</span>
             </div>
-            <p className="monitor-map-label">PLANTA 3D</p>
 
             <div className={`monitor-map-frame${isPendingMission ? " pending" : ""}`}>
               <BragadoPlant3DMap

@@ -7,7 +7,7 @@
   overflow-x: hidden;
   overflow-y: auto;
   padding: 14px 22px 12px;
-  color: #0a1a38;
+  color: #063b7a;
   background: #f6fafd;
 }
 
@@ -114,7 +114,7 @@
 }
 
 .create-report-step strong {
-  color: #0a1a38;
+  color: #063b7a;
   font-size: 14px;
   line-height: 17px;
   font-weight: 750;
@@ -348,7 +348,7 @@
   position: relative;
   height: 40px;
   padding: 0 18px;
-  color: #1e293b;
+  color: #063b7a;
   font-size: 12px;
 }
 
@@ -362,7 +362,7 @@
 }
 
 .included-finding-row strong {
-  color: #0a1a38;
+  color: #063b7a;
   font-weight: 750;
 }
 
@@ -437,7 +437,7 @@
 
 .report-check-options label {
   gap: 12px;
-  color: #1e293b;
+  color: #063b7a;
   font-size: 13px;
   font-weight: 700;
 }
@@ -503,7 +503,7 @@
 }
 
 .report-preview-mini strong {
-  color: #0a1a38;
+  color: #063b7a;
   font-size: 12px;
 }
 

@@ -3,6 +3,7 @@ import { AlertTriangle, Ban, CalendarDays, CheckCircle2, Download, Eye, ImagePlu
 import { createReport, downloadReportPdf, getInspectionPhoto, getMissions, getReport, uploadInspectionPhoto, validateReport as saveValidation } from "../api/client";
 import type { AiAnalysisFindings, AiCorrosionReport, AiSeverityReport, BackendInspectionPhoto, BackendMission, BackendReport } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
+import { LoadingState } from "../components/LoadingState";
 
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -250,7 +251,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
       </header>
 
       {persistedReport && <div className="real-report-document-actions"><button onClick={() => void downloadReportPdf(persistedReport.code, true)} type="button"><Eye size={17} /> Visualizar PDF</button><button onClick={() => void downloadReportPdf(persistedReport.code)} type="button"><Download size={17} /> Descargar PDF</button></div>}
-      {isLoadingReport && <p className="reports-feedback"><LoaderCircle className="real-report-spinner" size={20} /> Cargando reporte...</p>}
+      {isLoadingReport && <LoadingState text="Cargando reporte..." compact />}
 
       <div className={`real-report-status ${status.tone}`} role="status">
         {reportState === "validated" ? <CheckCircle2 size={22} /> : reportState === "discarded" ? <Ban size={22} /> : <AlertTriangle size={22} />}

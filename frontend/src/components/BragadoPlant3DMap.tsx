@@ -21,7 +21,10 @@ const VIEW_MODE_LABELS: Record<ViewMode, string> = {
   street: "Nivel suelo"
 };
 
-const VIEW_MODE_OPTIONS = (Object.entries(VIEW_MODE_LABELS) as Array<[ViewMode, string]>).map(([value, label]) => ({ value, label }));
+const VIEW_MODE_OPTIONS: Array<{ value: ViewMode; label: string }> = [
+  { value: "top", label: VIEW_MODE_LABELS.top },
+  { value: "perspective", label: VIEW_MODE_LABELS.perspective }
+];
 const ENVIRONMENT_MODE_OPTIONS = (Object.entries(ENVIRONMENT_MODES) as Array<[EnvironmentMode, string]>).map(([value, label]) => ({ value, label }));
 
 type Equipment = {
@@ -162,7 +165,7 @@ function disposeObject(object: THREE.Object3D) {
   });
 }
 
-function createScene(root: HTMLDivElement, heightScale: number, onProject: (projected: ProjectedTag[]) => void, onCamera: (value: {bearing:number;zoom:number}) => void, playbackMode=false, selectionMode=false) {
+function createScene(root: HTMLDivElement, heightScale: number, onProject: (projected: ProjectedTag[]) => void, onCamera: (value: {bearing:number;zoom:number}) => void, playbackMode=false, selectionMode=false, assetPicking=false) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -176,17 +179,15 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.zoomToCursor = true;
-  controls.minDistance = 8;
+  controls.screenSpacePanning = false;
+  controls.minDistance = 1.2;
   controls.maxDistance = 1000;
   let motion: {start:number;from:THREE.Vector3;to:THREE.Vector3;target:THREE.Vector3;fromTarget:THREE.Vector3} | null = null;
   controls.addEventListener("start", () => { motion = null; });
   controls.maxPolarAngle = Math.PI / 2 - 0.025;
   const constrainCameraToGround = () => {
     const targetFloor = GROUND_Y + 0.02;
-    if (controls.target.y < targetFloor) {
-      camera.position.y += targetFloor - controls.target.y;
-      controls.target.y = targetFloor;
-    }
+    if (controls.target.y < targetFloor) controls.target.y = targetFloor;
     camera.position.y = Math.max(camera.position.y, GROUND_Y + Math.max(0.18, camera.near * 1.5));
   };
   let street = false;
@@ -215,7 +216,7 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   facilityBounds.union(new THREE.Box3().setFromObject(dock));
   const environment = createEnvironment(scene, renderer, heightScale);
   const playback = playbackMode ? createMissionPlayback(scene,dock,camera,controls) : null;
-  const picker = selectionMode ? createAssetSelection(scene,camera,renderer.domElement) : null;
+  const picker = selectionMode || assetPicking ? createAssetSelection(scene,camera,renderer.domElement) : null;
   const highlightGroup = new THREE.Group();
   scene.add(highlightGroup);
   const highlightMaterial = new THREE.MeshBasicMaterial({ color: "#3fbd68", transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide });
@@ -306,6 +307,27 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
     motion = {start:performance.now(),from:camera.position.clone(),to:sphere.center.clone().addScaledVector(direction,distance),target:sphere.center.clone(),fromTarget:controls.target.clone()};
     street = false; controls.enabled = true;
   };
+  const focusDrone = () => {
+    const dronePosition = playback?.getDronePosition();
+    if (!dronePosition) return;
+    const target = dronePosition.clone();
+    target.y = Math.max(target.y + 1.8, GROUND_Y + 1.8);
+    const cameraOffset = new THREE.Vector3(-16, 13, 22);
+    const nextPosition = target.clone().add(cameraOffset);
+    camera.fov = 52;
+    camera.updateProjectionMatrix();
+    controls.maxDistance = Math.max(1000, cameraOffset.length() * 12);
+    motion = {
+      start: performance.now(),
+      from: camera.position.clone(),
+      to: nextPosition,
+      target,
+      fromTarget: controls.target.clone()
+    };
+    street = false;
+    currentView = "perspective";
+    controls.enabled = true;
+  };
 
   let frameId = 0;
   let lastCameraUpdate = 0;
@@ -325,7 +347,8 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   return {
     updateSelection: (data:AssetSelectionData) => picker?.update(data),
     updatePlayback: (data:MissionPlaybackData) => playback?.update(data),
-    followDrone: (value:boolean) => {if(value&&street)setView('perspective');playback?.setFollowing(value);},
+    followDrone: (value:boolean) => {if(value)focusDrone();playback?.setFollowing(value);},
+    focusDrone,
     centerPlant,
     setView,
     highlight,
@@ -397,6 +420,7 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
   const [heightScale, setHeightScale] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>("top");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredAsset, setHoveredAsset] = useState<{ id: number; name: string; x: number; y: number } | null>(null);
   const [projected, setProjected] = useState<ProjectedTag[]>([]);
   const [types, setTypes] = useState<Set<EquipmentType>>(new Set(["silo", "flotante", "celda", "noria", "secadora"]));
   const [states, setStates] = useState<Set<DisplayStatus>>(new Set(["Activo", "Inactivo", "En mantenimiento", "Sin confirmar"]));
@@ -414,7 +438,8 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
     [equipment, states, types, filters]
   );
   const focusedId = focusedAssetCode ? equipment.find((item) => item.asset?.code === focusedAssetCode)?.id ?? null : null;
-  const activeHighlightId = focusedId ?? selectedId;
+  const hoveredId = hoveredAsset ? equipment.find((item) => item.asset?.idAsset === hoveredAsset.id)?.id ?? null : null;
+  const activeHighlightId = focusedId ?? hoveredId ?? selectedId;
   const selected = visibleEquipment.find((item) => item.id === activeHighlightId);
   const projectedById = new Map(projected.map((tag) => [tag.id, tag]));
 
@@ -431,14 +456,32 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
     const root = rootRef.current;
     if (!root) return undefined;
     sceneRef.current?.destroy();
-    sceneRef.current = createScene(root, heightScale, setProjected, setCameraInfo, playbackMode, selectionMode);
+    sceneRef.current = createScene(root, heightScale, setProjected, setCameraInfo, playbackMode, selectionMode, Boolean(onViewAsset));
     sceneRef.current.setView(viewMode);
     return () => {
       sceneRef.current?.destroy();
       sceneRef.current = null;
     };
-  }, [heightScale, playbackMode, selectionMode]);
-  useEffect(()=>{if(assetSelection)sceneRef.current?.updateSelection(assetSelection);},[assetSelection,heightScale]);
+  }, [heightScale, playbackMode, selectionMode, Boolean(onViewAsset)]);
+  useEffect(()=>{
+    if(assetSelection){
+      sceneRef.current?.updateSelection(assetSelection);
+      return;
+    }
+    if(onViewAsset){
+      sceneRef.current?.updateSelection({
+        assets,
+        selectedIds:[],
+        route:[],
+        onSelect:onViewAsset,
+        onHover:(id,position) => {
+          if(id===null || !position){setHoveredAsset(null);return;}
+          const asset=assets.find((item)=>item.idAsset===id);
+          setHoveredAsset(asset?{id,name:asset.name,x:position.x,y:position.y}:null);
+        }
+      });
+    }
+  },[assetSelection,assets,heightScale,onViewAsset]);
   useEffect(()=>{if(playback)sceneRef.current?.updatePlayback(playback);},[playback,heightScale]);
   useEffect(()=>{setFollowing(false);},[playback?.id]);
   useEffect(()=>{sceneRef.current?.followDrone(following);},[following,playback?.id]);
@@ -477,6 +520,14 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
   return (
     <div className={`bragado-map${expanded ? " bragado-map-expanded" : ""}`}>
       <div className="bragado-map-stage" ref={rootRef} />
+      {hoveredAsset && (
+        <span
+          className="bragado-map-hover-label"
+          style={{ left: hoveredAsset.x, top: hoveredAsset.y }}
+        >
+          {hoveredAsset.name}
+        </span>
+      )}
       <div className="bragado-map-toolbar">
         <button type="button" title={expanded ? "Reducir mapa" : "Ampliar mapa"} aria-label={expanded ? "Reducir mapa" : "Ampliar mapa"} aria-pressed={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
         {!playbackMode && !selectionMode && <button type="button" title={panelOpen ? "Minimizar panel" : "Equipos y controles"} aria-label={panelOpen ? "Minimizar panel" : "Equipos y controles"} aria-expanded={panelOpen} onClick={() => setPanelOpen(!panelOpen)}><SlidersHorizontal size={18} /></button>}
@@ -485,9 +536,8 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
       </div>
       <div className="bragado-camera-tools">
         <span className="bragado-compass" title="Norte" aria-label="Norte"><span style={{transform:`rotate(${cameraInfo.bearing}deg)`}}><b>N</b><ArrowUp size={16}/></span></span>
-        <button type="button" title="Centrar planta" aria-label="Centrar planta" onClick={()=>{setFollowing(false);sceneRef.current?.followDrone(false);sceneRef.current?.centerPlant();if(viewMode==='street')setViewMode('perspective');}}><Focus size={17}/></button>
-        {playbackMode && <button className="bragado-follow" type="button" title="Seguir dron" aria-pressed={following} onClick={()=>setFollowing(!following)}>Seguir dron</button>}
-        <span className="bragado-zoom">Zoom {cameraInfo.zoom}%</span>
+        <button type="button" title="Centrar planta" aria-label="Centrar planta" onClick={()=>{setFollowing(false);sceneRef.current?.followDrone(false);sceneRef.current?.centerPlant();}}><Focus size={17}/></button>
+        {playbackMode && <button className="bragado-follow" type="button" title="Seguir dron" aria-pressed={following} onClick={()=>{const next=!following;if(next)setViewMode("perspective");setFollowing(next);}}>Seguir dron</button>}
       </div>
       {panelOpen && !playbackMode && !selectionMode && <aside className="bragado-map-panel">
         <header>

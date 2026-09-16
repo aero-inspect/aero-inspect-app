@@ -132,6 +132,35 @@ export type CreateMissionPayload = {
   selectedPlanWaypointIds: number[];
 };
 
+export type MissionScheduleFrequency = "DAILY" | "WEEKLY";
+
+export type BackendMissionSchedule = {
+  idMissionSchedule: string;
+  idFlightPlan: number;
+  name: string;
+  objective: string;
+  idDrone: string;
+  droneId: string | null;
+  frequency: MissionScheduleFrequency;
+  scheduledTime: string;
+  weekDays: number[];
+  nextRunAt: string | null;
+  active: boolean;
+  createdByUsername: string | null;
+  selectedPlanWaypointIds: number[] | null;
+};
+
+export type CreateMissionSchedulePayload = {
+  idFlightPlan: number;
+  name: string;
+  objective: string;
+  idDrone: string;
+  frequency: MissionScheduleFrequency;
+  scheduledTime: string;
+  weekDays: number[];
+  selectedPlanWaypointIds: number[];
+};
+
 export type ManagedUser = {
   username: string;
   fullName: string;

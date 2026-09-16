@@ -45,9 +45,9 @@
 
 .sidebar-brand-logo {
   display: block;
-  width: 307px;
+  width: 240px;
   max-width: 100%;
-  height: 83px;
+  height: 66px;
   object-fit: contain;
 }
 
@@ -176,11 +176,6 @@
   line-height: 11px;
 }
 
-.sidebar-user-arrow {
-  flex-shrink: 0;
-  color: #fbfdfc;
-}
-
 .status-dot {
   width: 7px;
   height: 7px;
@@ -197,13 +192,19 @@
   place-items: center;
   width: 28px;
   height: 28px;
+  padding: 0;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: rgba(255, 255, 255, 0.78);
   cursor: pointer;
+  line-height: 0;
   opacity: 0;
   transition: background 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+.sidebar-collapse-button svg {
+  display: block;
 }
 
 .sidebar-full:hover .sidebar-collapse-button,

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from
 import { AlertCircle, ArrowRight, Camera, Edit3, HelpCircle, Lock, LogOut, Trash2, UserRound } from "lucide-react";
 import type { SessionUser } from "../types";
 import { AppTopActions } from "../components/AppTopActions";
+import { LoadingState } from "../components/LoadingState";
 import { mapBackendRole } from "../utils/auth";
 
 type ProfileData = {
@@ -313,7 +314,7 @@ export function ProfileView({
             </div>
 
             {isLoading ? (
-              <p className="profile-status-text">Cargando perfil...</p>
+              <LoadingState text="Cargando perfil..." compact />
             ) : (
               <>
                 {error && <p className="profile-error-text">{error}</p>}

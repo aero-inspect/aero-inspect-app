@@ -4,6 +4,7 @@ import { createDrone, deleteDrone, getDrones, updateDrone } from "../api/client"
 import type { BackendDrone } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
 import { DroneModelViewer } from "../components/DroneModelViewer";
+import { LoadingState } from "../components/LoadingState";
 
 type DroneFormState = {
   droneId: string;
@@ -152,7 +153,7 @@ export function DronesAbmView() {
 
       <section className="drones-abm-table-card">
         <div className="drones-abm-table-wrap">
-          {drones === null && !loadError && <p className="drones-abm-empty">Cargando drones...</p>}
+          {drones === null && !loadError && <LoadingState text="Cargando drones..." compact />}
           {drones !== null && drones.length === 0 && (
             <p className="drones-abm-empty">No hay drones registrados todavía. Empezá por crear uno desde &quot;Nuevo dron&quot;.</p>
           )}

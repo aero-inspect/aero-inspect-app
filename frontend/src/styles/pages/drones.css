@@ -2,7 +2,7 @@
   height: var(--app-canvas-height);
   overflow: hidden;
   padding: 10px 18px;
-  color: #0a1a38;
+  color: #063b7a;
   background: #f8fafc;
 }
 
@@ -175,7 +175,7 @@
 }
 
 .drone-select-update strong {
-  color: #0a1a38;
+  color: #063b7a;
   font-size: 14px;
   line-height: 18px;
 }

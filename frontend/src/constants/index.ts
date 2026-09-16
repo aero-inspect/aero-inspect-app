@@ -11,8 +11,8 @@ export const ASSET_TYPE_COLORS: Record<AssetType, string> = {
   Celda: "#637ca0",
   Secadora: "#ac7755"
 };
-export const DRONE_OPERATION_ROLES = ["Tecnico de Mantenimiento"];
-export const ASSET_CONSULT_ROLES = ["Jefe de Planta", "Tecnico de Mantenimiento"];
+export const DRONE_OPERATION_ROLES = ["Técnico de Mantenimiento"];
+export const ASSET_CONSULT_ROLES = ["Jefe de Planta", "Técnico de Mantenimiento"];
 export const ASSETS_STORAGE_KEY = "aeroinspect.assets";
 export const MISSIONS_STORAGE_KEY = "aeroinspect.missions";
 

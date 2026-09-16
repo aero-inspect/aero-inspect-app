@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Save, CheckCircle2, AlertCircle, CalendarClock, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { BackendFlightPlan, BackendDrone, BackendDroneStatus } from "../api/types";
-import { getFlightPlans, getDrones, getDroneStatuses, createFlightPlan, createMission } from "../api/client";
+import { getFlightPlans, getDrones, getDroneStatuses, createFlightPlan, createMission, createMissionSchedule } from "../api/client";
 import { FieldError } from "../components/FieldError";
 import { MissionAssetPicker } from "../components/MissionAssetPicker";
 import { AppTopActions } from "../components/AppTopActions";
@@ -10,9 +10,11 @@ import { photoCountForWaypoint } from "../utils/missionPhotos";
 import { buildCombinedFlightPlan } from "../utils/missionPlanComposer";
 import { availableMissionDistanceMeters, estimateMissionDistanceMeters, formatMissionDistance, missionReservePct } from "../utils/missionAutonomy";
 
-type FieldErrors = Partial<Record<"name" | "idDrone" | "scheduledAt", string>>;
+type RecurrenceMode = "once" | "daily" | "weekly";
+type FieldErrors = Partial<Record<"name" | "idDrone" | "scheduledAt" | "weekDays", string>>;
 
 const WEEK_DAYS = ["L", "M", "M", "J", "V", "S", "D"];
+const WEEK_DAY_NAMES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
 function toDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -88,12 +90,15 @@ export function ConfigurarMisionView({
   const [isDroneMenuOpen, setIsDroneMenuOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
   const [scheduledTimeInput, setScheduledTimeInput] = useState("09:00");
+  const [recurrenceMode, setRecurrenceMode] = useState<RecurrenceMode>("once");
+  const [selectedWeekDays, setSelectedWeekDays] = useState<number[]>([]);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [visibleDate, setVisibleDate] = useState(() => new Date());
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const [successKind, setSuccessKind] = useState<"mission" | "schedule">("mission");
 
   const loadFlightPlans = () => {
     setFlightPlansError(null);
@@ -183,6 +188,8 @@ export function ConfigurarMisionView({
     setIdDrone("");
     setScheduledAt("");
     setScheduledTimeInput("09:00");
+    setRecurrenceMode("once");
+    setSelectedWeekDays([]);
     setFieldErrors({});
     setSubmitError(null);
   };
@@ -196,8 +203,9 @@ export function ConfigurarMisionView({
     const nextFieldErrors: FieldErrors = {};
     if (!name.trim()) nextFieldErrors.name = "Ingrese un nombre para la misión.";
     if (!idDrone) nextFieldErrors.idDrone = "Seleccione un dron.";
-    if (!scheduledAt) nextFieldErrors.scheduledAt = "Seleccione fecha y hora programada.";
-    if (scheduledAt && isBeforeToday(new Date(scheduledAt))) nextFieldErrors.scheduledAt = "No se pueden programar misiones en días anteriores.";
+    if (recurrenceMode === "once" && !scheduledAt) nextFieldErrors.scheduledAt = "Seleccione fecha y hora programada.";
+    if (recurrenceMode === "once" && scheduledAt && isBeforeToday(new Date(scheduledAt))) nextFieldErrors.scheduledAt = "No se pueden programar misiones en días anteriores.";
+    if (recurrenceMode === "weekly" && selectedWeekDays.length === 0) nextFieldErrors.weekDays = "Seleccione al menos un día de la semana.";
 
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors);
@@ -219,14 +227,29 @@ export function ConfigurarMisionView({
       const missionWaypointIds = missionPlan.route
         .filter((point) => point.pointOfInterest)
         .map((point) => point.idPlanWaypoint);
-      await createMission({
-        idFlightPlan: missionPlan.idFlightPlan,
-        name: name.trim(),
-        objective: objective.trim(),
-        idDrone,
-        scheduledAt: new Date(scheduledAt).toISOString(),
-        selectedPlanWaypointIds: missionWaypointIds
-      });
+      if (recurrenceMode === "once") {
+        await createMission({
+          idFlightPlan: missionPlan.idFlightPlan,
+          name: name.trim(),
+          objective: objective.trim(),
+          idDrone,
+          scheduledAt: new Date(scheduledAt).toISOString(),
+          selectedPlanWaypointIds: missionWaypointIds
+        });
+        setSuccessKind("mission");
+      } else {
+        await createMissionSchedule({
+          idFlightPlan: missionPlan.idFlightPlan,
+          name: name.trim(),
+          objective: objective.trim(),
+          idDrone,
+          frequency: recurrenceMode === "daily" ? "DAILY" : "WEEKLY",
+          scheduledTime: `${scheduledTimeInput}:00`,
+          weekDays: recurrenceMode === "weekly" ? selectedWeekDays : [],
+          selectedPlanWaypointIds: missionWaypointIds
+        });
+        setSuccessKind("schedule");
+      }
       setIsSuccessOpen(true);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "No se pudo crear la misión.");
@@ -236,7 +259,7 @@ export function ConfigurarMisionView({
   };
 
   return (
-    <section className="missions-dashboard">
+    <section className="missions-dashboard mission-configure-dashboard">
       <header className="missions-topbar">
         <div className="configure-title-row">
           <button className="monitor-back-button" onClick={onBack} type="button" aria-label="Volver">
@@ -341,9 +364,35 @@ export function ConfigurarMisionView({
 
               <label>
                 <span>
-                  Programada para <small className="required-inline">*</small>
+                  Tipo de programación <small className="required-inline">*</small>
                 </span>
-                <div className={fieldErrors.scheduledAt ? "mission-date-input field-invalid" : scheduledAt ? "mission-date-input selected" : "mission-date-input"}>
+                <div className="mission-recurrence-control" role="group" aria-label="Tipo de programación">
+                  {([
+                    ["once", "Única vez"],
+                    ["daily", "Diaria"],
+                    ["weekly", "Semanal"]
+                  ] as const).map(([mode, label]) => (
+                    <button
+                      className={recurrenceMode === mode ? "selected" : undefined}
+                      key={mode}
+                      onClick={() => {
+                        setRecurrenceMode(mode);
+                        setFieldErrors((current) => ({ ...current, scheduledAt: undefined, weekDays: undefined }));
+                      }}
+                      type="button"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </label>
+
+              <label>
+                <span>
+                  {recurrenceMode === "once" ? "Programada para" : "Hora programada"} <small className="required-inline">*</small>
+                </span>
+                {recurrenceMode === "once" ? (
+                  <div className={fieldErrors.scheduledAt ? "mission-date-input field-invalid" : scheduledAt ? "mission-date-input selected" : "mission-date-input"}>
                   <button
                     aria-expanded={isDatePickerOpen}
                     aria-invalid={Boolean(fieldErrors.scheduledAt)}
@@ -416,8 +465,49 @@ export function ConfigurarMisionView({
                     </div>
                   )}
                 </div>
+                ) : (
+                  <input
+                    aria-label="Hora programada"
+                    className="mission-time-only-input"
+                    onChange={(event) => handleSelectTime(event.target.value)}
+                    type="time"
+                    value={scheduledTimeInput}
+                  />
+                )}
                 {fieldErrors.scheduledAt && <FieldError message={fieldErrors.scheduledAt} />}
               </label>
+
+              {recurrenceMode === "weekly" && (
+                <label>
+                  <span>
+                    Días de la semana <small className="required-inline">*</small>
+                  </span>
+                  <div className={fieldErrors.weekDays ? "mission-weekday-picker field-invalid" : "mission-weekday-picker"}>
+                    {WEEK_DAY_NAMES.map((dayName, index) => {
+                      const dayValue = index + 1;
+                      const selected = selectedWeekDays.includes(dayValue);
+                      return (
+                        <button
+                          className={selected ? "selected" : undefined}
+                          key={dayName}
+                          onClick={() => {
+                            setSelectedWeekDays((current) =>
+                              selected
+                                ? current.filter((day) => day !== dayValue)
+                                : [...current, dayValue].sort((a, b) => a - b)
+                            );
+                            setFieldErrors((current) => ({ ...current, weekDays: undefined }));
+                          }}
+                          type="button"
+                        >
+                          {dayName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {fieldErrors.weekDays && <FieldError message={fieldErrors.weekDays} />}
+                </label>
+              )}
 
               {submitError && (
                 <p className="mission-empty">
@@ -437,6 +527,7 @@ export function ConfigurarMisionView({
 
       {isSuccessOpen && (
         <MissionSuccessModal
+          kind={successKind}
           onGoHome={() => {
             setIsSuccessOpen(false);
             resetForm();
@@ -453,15 +544,16 @@ export function ConfigurarMisionView({
   );
 }
 
-function MissionSuccessModal({ onGoHome, onViewMissions }: { onGoHome: () => void; onViewMissions: () => void }) {
+function MissionSuccessModal({ kind, onGoHome, onViewMissions }: { kind: "mission" | "schedule"; onGoHome: () => void; onViewMissions: () => void }) {
+  const isSchedule = kind === "schedule";
   return (
     <div className="modal-backdrop" role="presentation">
       <section aria-modal="true" className="success-modal" role="dialog">
         <div className="success-icon">
           <CheckCircle2 size={48} aria-hidden="true" />
         </div>
-        <h2>Misión creada</h2>
-        <p>La misión se creo correctamente y quedo planificada.</p>
+        <h2>{isSchedule ? "Programación creada" : "Misión creada"}</h2>
+        <p>{isSchedule ? "La rutina se creó correctamente y generará la misión un día antes del vuelo." : "La misión se creó correctamente y quedó planificada."}</p>
         <div className="modal-actions">
           <button className="ghost-button" onClick={onGoHome} type="button">
             Volver al inicio

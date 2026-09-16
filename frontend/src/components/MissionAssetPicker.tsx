@@ -9,6 +9,7 @@ import {
   missionRouteForPlans
 } from "../utils/missionAutonomy";
 import { BragadoPlant3DMap } from "./BragadoPlant3DMap";
+import { LoadingState } from "./LoadingState";
 
 const INSPECTABLE_TYPES = ["SILO", "SILO_FLOTANTE", "CELDA", "NORIA", "SECADORA"];
 
@@ -112,8 +113,10 @@ export function MissionAssetPicker({
         assets={assets}
         assetSelection={{ assets, selectedIds: selectedAssetIds, route: previewRoute, onSelect: handleAssetSelect }}
       />
-      {loading || error ? (
-        <p className="map-field-label mission-route-budget" role="status">{loading ? "Cargando activos..." : error}</p>
+      {loading ? (
+        <LoadingState text="Cargando activos..." compact />
+      ) : error ? (
+        <p className="map-field-label mission-route-budget" role="status">{error}</p>
       ) : (
         <div className={displayedExceeded || exceedsLimit ? "mission-budget-meter exceeded" : "mission-budget-meter"} role="status">
           <div className="mission-budget-meter-header">

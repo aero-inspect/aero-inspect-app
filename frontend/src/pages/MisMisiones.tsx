@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertCircle, Box, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, Play, Plus, RefreshCw, Route, Search, Trash2, X, XCircle } from "lucide-react";
-import type { BackendFlightPlan, BackendMission, BackendMissionStatus, ManagedUser } from "../api/types";
+import { AlertCircle, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, Play, Plus, RefreshCw, Search, Trash2, X, XCircle } from "lucide-react";
+import type { BackendFlightPlan, BackendMission, BackendMissionSchedule, BackendMissionStatus, ManagedUser } from "../api/types";
 import type { SessionUser } from "../types";
-import { deleteMission, getFlightPlans, getManagedUsers, getMission, getMissions, startMission, updateMissionPilot, updateMissionSchedule } from "../api/client";
-import { MissionAssetPicker } from "../components/MissionAssetPicker";
+import { deleteMission, deleteMissionSchedule, getFlightPlans, getManagedUsers, getMission, getMissions, getMissionSchedules, startMission, updateMissionPilot, updateMissionSchedule } from "../api/client";
 import { BragadoPlant3DMap } from "../components/BragadoPlant3DMap";
 import { AppTopActions } from "../components/AppTopActions";
+import { LoadingState } from "../components/LoadingState";
 
 type MissionDisplayStatus = "Pendiente" | "Enviando al dron" | "En progreso" | "Completada" | "Cancelada" | "Fallida";
 
@@ -16,6 +16,7 @@ type MissionRow = {
 };
 
 const WEEK_DAYS = ["L", "M", "M", "J", "V", "S", "D"];
+const WEEK_DAY_NAMES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
 function normalizeStatus(status: BackendMissionStatus): MissionDisplayStatus {
   if (status === "UPLOADING") return "Enviando al dron";
@@ -107,18 +108,30 @@ function nextMinuteValue() {
   return toDatetimeLocalValue(date);
 }
 
+function formatScheduleFrequency(schedule: BackendMissionSchedule) {
+  if (schedule.frequency === "DAILY") return "Diaria";
+  return "Semanal";
+}
+
+function formatScheduleDays(schedule: BackendMissionSchedule) {
+  if (schedule.frequency === "DAILY") return "Todos los días";
+  return schedule.weekDays
+    .map((day) => WEEK_DAY_NAMES[day - 1])
+    .filter(Boolean)
+    .join(", ");
+}
+
 export function MisMisionesView({
   user,
   onCreateMission,
-  onGeneratePlan,
   onViewMission
 }: {
   user: SessionUser;
   onCreateMission: (idFlightPlans: number[]) => void;
-  onGeneratePlan: () => void;
   onViewMission: (idMission: string) => void;
 }) {
   const [missions, setMissions] = useState<BackendMission[] | null>(null);
+  const [missionSchedules, setMissionSchedules] = useState<BackendMissionSchedule[] | null>(null);
   const [flightPlans, setFlightPlans] = useState<BackendFlightPlan[]>([]);
   const [technicians, setTechnicians] = useState<ManagedUser[]>([]);
   const [flightPlansById, setFlightPlansById] = useState<Map<number, BackendFlightPlan>>(new Map());
@@ -126,12 +139,14 @@ export function MisMisionesView({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDetailClosed, setIsDetailClosed] = useState(false);
+  const [activeTable, setActiveTable] = useState<"missions" | "schedules">("missions");
   const [statusFilter, setStatusFilter] = useState<"Todas" | MissionDisplayStatus>("Todas");
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [startingId, setStartingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<BackendMission | null>(null);
+  const [deleteScheduleCandidate, setDeleteScheduleCandidate] = useState<BackendMissionSchedule | null>(null);
   const [postponeCandidate, setPostponeCandidate] = useState<BackendMission | null>(null);
   const [postponeValue, setPostponeValue] = useState("");
   const [postponeTimeInput, setPostponeTimeInput] = useState("09:00");
@@ -142,8 +157,6 @@ export function MisMisionesView({
   const [openPilotMissionId, setOpenPilotMissionId] = useState<string | null>(null);
   const [savingPilotMissionId, setSavingPilotMissionId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
-  const [planModal, setPlanModal] = useState<"choose" | null>(null);
-  const [selectedPlanIds, setSelectedPlanIds] = useState<number[]>([]);
   const activePolls = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
@@ -156,9 +169,15 @@ export function MisMisionesView({
   const loadData = () => {
     setIsRefreshing(true);
     setLoadError(null);
-    Promise.all([getMissions(), getFlightPlans(), user.role === "Jefe de Planta" ? getManagedUsers() : Promise.resolve([] as ManagedUser[])])
-      .then(([missionList, flightPlans, userList]) => {
+    Promise.all([
+      getMissions(),
+      getMissionSchedules(),
+      getFlightPlans(),
+      user.role === "Jefe de Planta" ? getManagedUsers() : Promise.resolve([] as ManagedUser[])
+    ])
+      .then(([missionList, scheduleList, flightPlans, userList]) => {
         setMissions(missionList);
+        setMissionSchedules(scheduleList);
         setFlightPlans(flightPlans);
         setTechnicians(userList.filter((item) => item.role === "TECNICO_MANTENIMIENTO" && item.active));
         setFlightPlansById(new Map(flightPlans.map((plan) => [plan.idFlightPlan, plan])));
@@ -194,11 +213,23 @@ export function MisMisionesView({
     return matchesStatus && matchesSearch;
   });
 
-  const selectedRow = selectedId
+  const filteredSchedules = (missionSchedules ?? []).filter((schedule) => {
+    const planName = flightPlansById.get(schedule.idFlightPlan)?.name ?? `Plan #${schedule.idFlightPlan}`;
+    const searchSource = `${schedule.name} ${planName} ${schedule.droneId ?? ""} ${formatScheduleFrequency(schedule)} ${formatScheduleDays(schedule)}`.toLowerCase();
+    return !searchTerm.trim() || searchSource.includes(searchTerm.toLowerCase());
+  });
+
+  const selectedRow = activeTable === "missions" && selectedId
     ? filteredRows.find((row) => row.mission.idMission === selectedId) ?? null
-    : isDetailClosed
+    : activeTable !== "missions" || isDetailClosed
       ? null
       : filteredRows[0] ?? null;
+
+  const selectedSchedule = activeTable === "schedules" && selectedId
+    ? filteredSchedules.find((schedule) => schedule.idMissionSchedule === selectedId) ?? null
+    : activeTable !== "schedules" || isDetailClosed
+      ? null
+      : filteredSchedules[0] ?? null;
 
   const totals = {
     all: missionRows.length,
@@ -258,6 +289,24 @@ export function MisMisionesView({
       getMissions().then(setMissions).catch(()=>{});
     } catch (error) {
       setStartError(error instanceof Error ? error.message : "No se pudo borrar la misión.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleDeleteSchedule = async (schedule: BackendMissionSchedule) => {
+    setStartError(null);
+    setDeletingId(schedule.idMissionSchedule);
+    try {
+      await deleteMissionSchedule(schedule.idMissionSchedule);
+      setMissionSchedules((current) => current?.filter((item) => item.idMissionSchedule !== schedule.idMissionSchedule) ?? current);
+      if (selectedId === schedule.idMissionSchedule) {
+        setSelectedId(null);
+        setIsDetailClosed(true);
+      }
+      setDeleteScheduleCandidate(null);
+    } catch (error) {
+      setStartError(error instanceof Error ? error.message : "No se pudo borrar la rutina.");
     } finally {
       setDeletingId(null);
     }
@@ -337,17 +386,6 @@ export function MisMisionesView({
     }
   };
 
-  const handleOpenCreateMission = () => {
-    setSelectedPlanIds([]);
-    setPlanModal("choose");
-  };
-
-  const handleContinuePlan = () => {
-    if (selectedPlanIds.length === 0) return;
-    setPlanModal(null);
-    onCreateMission(selectedPlanIds);
-  };
-
   const pollMissionStatus = (idMission: string) => {
     if (activePolls.current.has(idMission)) return;
 
@@ -383,11 +421,7 @@ export function MisMisionesView({
         <MissionSummaryCard icon={<Clock3 size={22} />} label="Pendientes" tone="amber" value={totals.pending} />
         <MissionSummaryCard icon={<Play size={22} />} label="En progreso" tone="blue" value={totals.active} />
         <MissionSummaryCard icon={<CheckCircle2 size={22} />} label="Completadas" tone="green" value={totals.completed} />
-        <button className="missions-generate-plan-button" onClick={onGeneratePlan} type="button">
-          <Route size={18} />
-          Generar plan desde recorrido
-        </button>
-        <button className="missions-new-button" onClick={handleOpenCreateMission} type="button">
+        <button className="missions-new-button" onClick={() => onCreateMission([])} type="button">
           <Plus size={18} />
           Nueva Misión
         </button>
@@ -405,40 +439,71 @@ export function MisMisionesView({
         </p>
       )}
 
-      {missions === null && !loadError && <p className="mission-empty">Cargando misiones...</p>}
+      {(missions === null || missionSchedules === null) && !loadError && (
+        <LoadingState text="Cargando misiones..." />
+      )}
 
-      {missions !== null && !loadError && (
-        <section className={selectedRow ? "missions-content-grid" : "missions-content-grid missions-content-grid-empty"}>
+      {missions !== null && missionSchedules !== null && !loadError && (
+        <section className={selectedRow || selectedSchedule ? "missions-content-grid" : "missions-content-grid missions-content-grid-empty"}>
           <article className="missions-list-card">
+            <div className="missions-table-tabs" role="tablist" aria-label="Vista de misiones">
+              <button
+                className={activeTable === "missions" ? "active" : undefined}
+                onClick={() => {
+                  setActiveTable("missions");
+                  setSelectedId(null);
+                  setIsDetailClosed(false);
+                }}
+                type="button"
+              >
+                Misiones
+              </button>
+              <button
+                className={activeTable === "schedules" ? "active" : undefined}
+                onClick={() => {
+                  setActiveTable("schedules");
+                  setSelectedId(null);
+                  setIsDetailClosed(false);
+                }}
+                type="button"
+              >
+                Rutinas
+              </button>
+            </div>
+
             <div className="missions-list-toolbar">
-              <div className="missions-filters" aria-label="Filtro de misiones">
-                <button className={statusFilter === "Todas" ? "active" : undefined} onClick={() => setStatusFilter("Todas")} type="button">
-                  Todas
-                </button>
-                <div className={statusFilter === "Todas" ? "missions-status-filter" : "missions-status-filter selected"}>
-                  <button onClick={() => setIsStatusMenuOpen((open) => !open)} type="button">
-                    {statusFilter === "Todas" ? "Filtrar por estado" : statusFilter}
+              {activeTable === "missions" ? (
+                <div className="missions-filters" aria-label="Filtro de misiones">
+                  <button className={statusFilter === "Todas" ? "active" : undefined} onClick={() => setStatusFilter("Todas")} type="button">
+                    Todas
                   </button>
-                  <ChevronDown size={14} />
-                  {isStatusMenuOpen && (
-                    <div className="missions-status-menu">
-                      {(["Todas", "Pendiente", "Enviando al dron", "En progreso", "Completada", "Cancelada", "Fallida"] as const).map((option) => (
-                        <button
-                          className={statusFilter === option ? "selected" : undefined}
-                          key={option}
-                          onClick={() => {
-                            setStatusFilter(option);
-                            setIsStatusMenuOpen(false);
-                          }}
-                          type="button"
-                        >
-                          {option === "Todas" ? "Filtrar por estado" : option}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <div className={statusFilter === "Todas" ? "missions-status-filter" : "missions-status-filter selected"}>
+                    <button onClick={() => setIsStatusMenuOpen((open) => !open)} type="button">
+                      {statusFilter === "Todas" ? "Filtrar por estado" : statusFilter}
+                    </button>
+                    <ChevronDown size={14} />
+                    {isStatusMenuOpen && (
+                      <div className="missions-status-menu">
+                        {(["Todas", "Pendiente", "Enviando al dron", "En progreso", "Completada", "Cancelada", "Fallida"] as const).map((option) => (
+                          <button
+                            className={statusFilter === option ? "selected" : undefined}
+                            key={option}
+                            onClick={() => {
+                              setStatusFilter(option);
+                              setIsStatusMenuOpen(false);
+                            }}
+                            type="button"
+                          >
+                            {option === "Todas" ? "Filtrar por estado" : option}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="missions-filters missions-filters-empty" aria-label="Rutinas" />
+              )}
 
               <div className="missions-toolbar-actions">
                 <label className="missions-search">
@@ -453,126 +518,204 @@ export function MisMisionesView({
 
             <div className="missions-table-wrap">
               <table className="missions-table">
-                <thead>
-                  <tr>
-                    <th>Misión</th>
-                    <th>Plan de vuelo</th>
-                    <th>Fecha</th>
-                    <th>Estado</th>
-                    <th>Piloto asignado</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRows.length === 0 && (
-                    <tr className="mission-empty-row">
-                      <td colSpan={6}>
-                        {missions.length === 0
-                          ? 'No hay misiones creadas todavía. Empezá por crear una desde "Nueva misión".'
-                          : "No hay misiones que coincidan con el filtro seleccionado."}
-                      </td>
-                    </tr>
-                  )}
+                {activeTable === "missions" ? (
+                  <>
+                    <thead>
+                      <tr>
+                        <th>Misión</th>
+                        <th>Plan de vuelo</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                        <th>Piloto asignado</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredRows.length === 0 && (
+                        <tr className="mission-empty-row">
+                          <td colSpan={6}>
+                            {missions.length === 0
+                              ? 'No hay misiones creadas todavía. Empezá por crear una desde "Nueva misión".'
+                              : "No hay misiones que coincidan con el filtro seleccionado."}
+                          </td>
+                        </tr>
+                      )}
 
-                  {filteredRows.map(({ mission, flightPlanName, statusLabel }) => (
-                    <tr
-                      className={selectedRow?.mission.idMission === mission.idMission ? "selected" : undefined}
-                      key={mission.idMission}
-                      onClick={() => {
-                        setSelectedId(mission.idMission);
-                        setIsDetailClosed(false);
-                      }}
-                    >
-                      <td>
-                        <strong>{mission.name}</strong>
-                        <small>{mission.idMission.slice(0, 8)}</small>
-                      </td>
-                      <td>
-                        <strong>{flightPlanName}</strong>
-                        <small>{mission.objective || "Inspección"}</small>
-                      </td>
-                      <td>
-                        <span>{formatDate(mission.scheduledAt)}</span>
-                        <small>{formatTime(mission.scheduledAt)}</small>
-                      </td>
-                      <td>
-                        <span className={`mission-state ${statusClass(statusLabel)}`}>{statusLabel}</span>
-                      </td>
-                      <td onClick={(event) => event.stopPropagation()}>
-                        {user.role === "Jefe de Planta" ? (
-                          <div className={mission.assignedPilotUsername ? "mission-pilot-select selected" : "mission-pilot-select"}>
-                            <button
-                              disabled={savingPilotMissionId === mission.idMission}
-                              onClick={() => setOpenPilotMissionId((current) => current === mission.idMission ? null : mission.idMission)}
-                              type="button"
-                            >
-                              {savingPilotMissionId === mission.idMission ? "Guardando..." : pilotName(mission.assignedPilotUsername)}
-                            </button>
-                            <ChevronDown size={14} />
-                            {openPilotMissionId === mission.idMission && (
-                              <div className="missions-status-menu mission-pilot-menu">
+                      {filteredRows.map(({ mission, flightPlanName, statusLabel }) => (
+                        <tr
+                          className={selectedRow?.mission.idMission === mission.idMission ? "selected" : undefined}
+                          key={mission.idMission}
+                          onClick={() => {
+                            setSelectedId(mission.idMission);
+                            setIsDetailClosed(false);
+                          }}
+                        >
+                          <td>
+                            <strong>{mission.name}</strong>
+                            <small>{mission.idMission.slice(0, 8)}</small>
+                          </td>
+                          <td>
+                            <strong>{flightPlanName}</strong>
+                            <small>{mission.objective || "Inspección"}</small>
+                          </td>
+                          <td>
+                            <span>{formatDate(mission.scheduledAt)}</span>
+                            <small>{formatTime(mission.scheduledAt)}</small>
+                          </td>
+                          <td>
+                            <span className={`mission-state ${statusClass(statusLabel)}`}>{statusLabel}</span>
+                          </td>
+                          <td onClick={(event) => event.stopPropagation()}>
+                            {user.role === "Jefe de Planta" ? (
+                              <div className={mission.assignedPilotUsername ? "mission-pilot-select selected" : "mission-pilot-select"}>
                                 <button
-                                  className={!mission.assignedPilotUsername ? "selected" : undefined}
-                                  onClick={() => void handleAssignPilot(mission, null)}
+                                  disabled={savingPilotMissionId === mission.idMission}
+                                  onClick={() => setOpenPilotMissionId((current) => current === mission.idMission ? null : mission.idMission)}
                                   type="button"
                                 >
-                                  Sin asignar
+                                  {savingPilotMissionId === mission.idMission ? "Guardando..." : pilotName(mission.assignedPilotUsername)}
                                 </button>
-                                {technicians.map((technician) => (
-                                  <button
-                                    className={mission.assignedPilotUsername === technician.username ? "selected" : undefined}
-                                    key={technician.username}
-                                    onClick={() => void handleAssignPilot(mission, technician.username)}
-                                    type="button"
-                                  >
-                                    {technician.fullName}
-                                  </button>
-                                ))}
+                                <ChevronDown size={14} />
+                                {openPilotMissionId === mission.idMission && (
+                                  <div className="missions-status-menu mission-pilot-menu">
+                                    <button
+                                      className={!mission.assignedPilotUsername ? "selected" : undefined}
+                                      onClick={() => void handleAssignPilot(mission, null)}
+                                      type="button"
+                                    >
+                                      Sin asignar
+                                    </button>
+                                    {technicians.map((technician) => (
+                                      <button
+                                        className={mission.assignedPilotUsername === technician.username ? "selected" : undefined}
+                                        key={technician.username}
+                                        onClick={() => void handleAssignPilot(mission, technician.username)}
+                                        type="button"
+                                      >
+                                        {technician.fullName}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
+                            ) : (
+                              pilotName(mission.assignedPilotUsername)
                             )}
-                          </div>
-                        ) : (
-                          pilotName(mission.assignedPilotUsername)
-                        )}
-                      </td>
-                      <td>
-                        <div className="mission-row-actions">
-                          <button
-                            className="mission-view-button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onViewMission(mission.idMission);
-                            }}
-                            title="Ver misión"
-                            type="button"
-                            aria-label="Ver misión"
-                          >
-                            <Eye size={15} />
-                          </button>
-                          <button
-                            className="mission-delete-button"
-                            disabled={deletingId === mission.idMission}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setDeleteCandidate(mission);
-                            }}
-                            title="Borrar misión"
-                            type="button"
-                            aria-label="Borrar misión"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                          </td>
+                          <td>
+                            <div className="mission-row-actions">
+                              <button
+                                className="mission-view-button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onViewMission(mission.idMission);
+                                }}
+                                title="Ver misión"
+                                type="button"
+                                aria-label="Ver misión"
+                              >
+                                <Eye size={15} />
+                              </button>
+                              <button
+                                className="mission-delete-button"
+                                disabled={deletingId === mission.idMission}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setDeleteCandidate(mission);
+                                }}
+                                title="Borrar misión"
+                                type="button"
+                                aria-label="Borrar misión"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </>
+                ) : (
+                  <>
+                    <thead>
+                      <tr>
+                        <th>Rutina</th>
+                        <th>Plan de vuelo</th>
+                        <th>Frecuencia</th>
+                        <th>Próxima misión</th>
+                        <th>Dron</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredSchedules.length === 0 && (
+                        <tr className="mission-empty-row">
+                          <td colSpan={6}>
+                            {missionSchedules.length === 0
+                              ? "No hay rutinas creadas todavía."
+                              : "No hay rutinas que coincidan con la búsqueda."}
+                          </td>
+                        </tr>
+                      )}
+                      {filteredSchedules.map((schedule) => (
+                        <tr
+                          className={selectedSchedule?.idMissionSchedule === schedule.idMissionSchedule ? "selected" : undefined}
+                          key={schedule.idMissionSchedule}
+                          onClick={() => {
+                            setSelectedId(schedule.idMissionSchedule);
+                            setIsDetailClosed(false);
+                          }}
+                        >
+                          <td>
+                            <strong>{schedule.name}</strong>
+                            <small>{schedule.idMissionSchedule.slice(0, 8)}</small>
+                          </td>
+                          <td>
+                            <strong>{flightPlansById.get(schedule.idFlightPlan)?.name ?? `Plan #${schedule.idFlightPlan}`}</strong>
+                            <small>{schedule.objective || "Inspección"}</small>
+                          </td>
+                          <td>
+                            <span>{formatScheduleFrequency(schedule)}</span>
+                            <small>{formatScheduleDays(schedule)}</small>
+                          </td>
+                          <td>
+                            <span>{formatDate(schedule.nextRunAt)}</span>
+                            <small>{formatTime(schedule.nextRunAt)}</small>
+                          </td>
+                          <td>
+                            <span>{schedule.droneId ?? "--"}</span>
+                            <small>{schedule.active ? "Activa" : "Pausada"}</small>
+                          </td>
+                          <td>
+                            <div className="mission-row-actions">
+                              <button
+                                className="mission-delete-button"
+                                disabled={deletingId === schedule.idMissionSchedule}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setDeleteScheduleCandidate(schedule);
+                                }}
+                                title="Borrar rutina"
+                                type="button"
+                                aria-label="Borrar rutina"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </>
+                )}
               </table>
             </div>
 
             <div className="missions-table-footer">
               <span>
-                {missions.length === 0 ? "Mostrando 0 de 0 misiones" : `Mostrando ${filteredRows.length} de ${missionRows.length} misiones`}
+                {activeTable === "missions"
+                  ? missions.length === 0 ? "Mostrando 0 de 0 misiones" : `Mostrando ${filteredRows.length} de ${missionRows.length} misiones`
+                  : missionSchedules.length === 0 ? "Mostrando 0 de 0 rutinas" : `Mostrando ${filteredSchedules.length} de ${missionSchedules.length} rutinas`}
               </span>
             </div>
 
@@ -669,36 +812,64 @@ export function MisMisionesView({
               )}
             </aside>
           )}
+
+          {selectedSchedule && (
+            <aside className="mission-detail-card">
+              <div className="mission-detail-header">
+                <div>
+                  <h2>{selectedSchedule.name}</h2>
+                  <div className="mission-detail-id">
+                    <span className={`mission-state ${selectedSchedule.active ? "completed" : "cancelled"}`}>
+                      {selectedSchedule.active ? "Activa" : "Pausada"}
+                    </span>
+                    <small>{selectedSchedule.idMissionSchedule.slice(0, 8)}</small>
+                  </div>
+                </div>
+                <button
+                  className="mission-detail-close"
+                  onClick={() => {
+                    setSelectedId(null);
+                    setIsDetailClosed(true);
+                  }}
+                  type="button"
+                  aria-label="Cerrar detalle"
+                >
+                  <X size={17} />
+                </button>
+              </div>
+
+              <div className="mission-detail-map">
+                <BragadoPlant3DMap
+                  assets={[]}
+                  playback={{
+                    id: selectedSchedule.idMissionSchedule,
+                    status: "PLANNED",
+                    telemetry: null,
+                    points: flightPlansById.get(selectedSchedule.idFlightPlan)?.route ?? []
+                  }}
+                />
+              </div>
+
+              <div className="mission-detail-grid">
+                <MissionInfo
+                  label="Plan de vuelo"
+                  value={flightPlansById.get(selectedSchedule.idFlightPlan)?.name ?? `Plan #${selectedSchedule.idFlightPlan}`}
+                />
+                <MissionInfo label="Dron" value={selectedSchedule.droneId ?? "--"} />
+                <MissionInfo
+                  label="Fecha y hora"
+                  value={`${formatDate(selectedSchedule.nextRunAt)} - ${formatTime(selectedSchedule.nextRunAt)}`}
+                />
+                <MissionInfo label="Duración" value="Sin iniciar" />
+                <MissionInfo label="Objetivo" value={selectedSchedule.objective || "-"} />
+                <MissionInfo
+                  label="Puntos seleccionados"
+                  value={`${selectedSchedule.selectedPlanWaypointIds?.length ?? 0} puntos`}
+                />
+              </div>
+            </aside>
+          )}
         </section>
-      )}
-
-      {planModal && (
-        <div className="mission-plan-modal-backdrop" role="presentation">
-          <section className="mission-plan-modal mission-asset-modal" role="dialog" aria-modal="true">
-            <button className="mission-plan-modal-close" onClick={() => setPlanModal(null)} type="button" aria-label="Cerrar">
-              <X size={16} />
-            </button>
-            <div className="mission-plan-modal-header">
-              <span className="mission-plan-modal-icon" aria-hidden="true">
-                <Box size={20} />
-              </span>
-              <h2>Seleccionar activos</h2>
-            </div>
-            <div className="mission-plan-modal-divider" />
-
-            <MissionAssetPicker
-              plans={flightPlans}
-              selectedPlanIds={selectedPlanIds}
-              onSelect={(selectedPlans) => setSelectedPlanIds(selectedPlans.map((plan) => plan.idFlightPlan))}
-            />
-
-            <div className="mission-plan-modal-footer">
-              <button className="mission-plan-modal-primary" disabled={selectedPlanIds.length === 0} onClick={handleContinuePlan} type="button">
-                Continuar
-              </button>
-            </div>
-          </section>
-        </div>
       )}
 
       {deleteCandidate && (
@@ -723,6 +894,34 @@ export function MisMisionesView({
                 type="button"
               >
                 {deletingId === deleteCandidate.idMission ? "Eliminando..." : "Eliminar"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {deleteScheduleCandidate && (
+        <div className="modal-backdrop profile-delete-modal-backdrop" role="presentation">
+          <section aria-modal="true" className="profile-delete-modal mission-delete-modal" role="dialog">
+            <div className="profile-delete-modal-icon">
+              <Trash2 size={26} />
+            </div>
+            <h2>Eliminar rutina</h2>
+            <p>
+              ¿Está seguro de que desea eliminar la rutina "{deleteScheduleCandidate.name}"?<br />
+              No se borrarán las misiones reales que ya se hayan creado.
+            </p>
+            <div className="profile-delete-modal-actions">
+              <button className="profile-delete-modal-secondary" onClick={() => setDeleteScheduleCandidate(null)} type="button">
+                Cancelar
+              </button>
+              <button
+                className="profile-delete-modal-primary"
+                disabled={deletingId === deleteScheduleCandidate.idMissionSchedule}
+                onClick={() => void handleDeleteSchedule(deleteScheduleCandidate)}
+                type="button"
+              >
+                {deletingId === deleteScheduleCandidate.idMissionSchedule ? "Eliminando..." : "Eliminar"}
               </button>
             </div>
           </section>

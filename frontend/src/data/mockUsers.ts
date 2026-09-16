@@ -5,7 +5,7 @@ export const REGISTERED_USERS: MockUser[] = [
     username: "tecnico",
     password: "Tecnico#123",
     name: "Camila Solimano",
-    role: "Tecnico de Mantenimiento",
+    role: "Técnico de Mantenimiento",
     active: true
   },
   {
@@ -19,7 +19,7 @@ export const REGISTERED_USERS: MockUser[] = [
     username: "tecnico_inactivo",
     password: "Tecnico#999",
     name: "Tecnico Inactivo",
-    role: "Tecnico de Mantenimiento",
+    role: "Técnico de Mantenimiento",
     active: false
   }
 ];

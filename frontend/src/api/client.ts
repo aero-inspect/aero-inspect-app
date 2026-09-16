@@ -6,12 +6,14 @@ import type {
   BackendInspectionPhoto,
   ManagedUser,
   BackendMission,
+  BackendMissionSchedule,
   BackendReport,
   BackendWeather,
   CreateAssetPayload,
   CreateDronePayload,
   CreateFlightPlanPayload,
   CreateMissionPayload,
+  CreateMissionSchedulePayload,
   UpdateDronePayload
 } from "./types";
 
@@ -75,6 +77,13 @@ export function getFlightPlan(idFlightPlan: number) {
   return request<BackendFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}`);
 }
 
+export function updateAsset(idAsset: number, payload: CreateAssetPayload) {
+  return request<BackendAsset>(`/api/v1/assets/${idAsset}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
 export function createFlightPlan(payload: CreateFlightPlanPayload) {
   return request<BackendFlightPlan>("/api/v1/flight-plans", {
     method: "POST",
@@ -94,6 +103,23 @@ export function createMission(payload: CreateMissionPayload) {
   return request<BackendMission>("/api/v1/missions", {
     method: "POST",
     body: JSON.stringify(payload)
+  });
+}
+
+export function getMissionSchedules() {
+  return request<BackendMissionSchedule[]>("/api/v1/mission-schedules");
+}
+
+export function createMissionSchedule(payload: CreateMissionSchedulePayload) {
+  return request<BackendMissionSchedule>("/api/v1/mission-schedules", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteMissionSchedule(idMissionSchedule: string) {
+  return request<void>(`/api/v1/mission-schedules/${idMissionSchedule}`, {
+    method: "DELETE"
   });
 }
 

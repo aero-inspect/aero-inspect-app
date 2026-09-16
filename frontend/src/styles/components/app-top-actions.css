@@ -1,4 +1,4 @@
-﻿.app-top-actions {
+.app-top-actions {
   display: flex;
   align-items: center;
   gap: 18px;
@@ -17,7 +17,7 @@
 
 .app-weather strong {
   display: block;
-  color: #111827;
+  color: #063b7a;
   font-size: 13px;
   font-weight: 800;
   line-height: 1;

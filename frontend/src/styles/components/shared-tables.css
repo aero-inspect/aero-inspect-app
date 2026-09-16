@@ -1,4 +1,4 @@
-﻿.assets-table-panel {
+.assets-table-panel {
   display: grid;
   gap: 14px;
   padding: 18px;
@@ -51,7 +51,7 @@
 .assets-table td {
   padding: 12px 8px;
   border-bottom: 1px solid rgba(11, 95, 137, 0.1);
-  color: #10253a;
+  color: #063b7a;
   font-size: 0.88rem;
   text-align: left;
 }
@@ -97,7 +97,7 @@
 
 .asset-detail-header h2 {
   margin: 0 0 8px;
-  color: #10253a;
+  color: #063b7a;
   font-size: 1.45rem;
   line-height: 1.1;
 }

@@ -1,9 +1,9 @@
-﻿.profile-dashboard {
+.profile-dashboard {
   height: var(--app-canvas-height);
   overflow: hidden;
   padding: 20px 22px 30px 24px;
   background: #f8fafc;
-  color: #0a1426;
+  color: #063b7a;
 }
 
 .profile-topbar {
@@ -46,7 +46,7 @@
 
 .profile-dashboard .app-weather strong {
   display: block;
-  color: #0f172a;
+  color: #063b7a;
   font-size: 11px;
   line-height: 14px;
   font-weight: 700;
@@ -163,7 +163,7 @@
 
 .profile-identity-copy h2 {
   margin: 0 0 6px;
-  color: #10253a;
+  color: #063b7a;
   font-size: 14px;
   line-height: 16px;
   font-weight: 700;
@@ -171,7 +171,7 @@
 
 .profile-identity-copy p {
   margin: 0;
-  color: #10253a;
+  color: #063b7a;
   font-size: 14px;
   line-height: 16px;
   font-weight: 300;
@@ -192,7 +192,7 @@
 
 .profile-card-heading h2 {
   margin: 0;
-  color: #10253a;
+  color: #063b7a;
   font-size: 14px;
   line-height: 16px;
   font-weight: 700;
@@ -235,7 +235,7 @@
 }
 
 .profile-modern-field span {
-  color: #0a1426;
+  color: #063b7a;
   font-size: 11px;
   line-height: 12px;
   font-weight: 400;
@@ -249,7 +249,7 @@
   border-bottom: 1px solid #e2e8f0;
   border-radius: 0;
   background: transparent;
-  color: #0a1426;
+  color: #063b7a;
   font: inherit;
   font-size: 10px;
   line-height: 12px;
@@ -312,7 +312,7 @@
 
 .profile-action-copy h2 {
   margin: 0 0 4px;
-  color: #0a1426;
+  color: #063b7a;
   font-size: 11px;
   line-height: 16px;
   font-weight: 700;
@@ -364,7 +364,7 @@
 
 .profile-side-card h2 {
   margin: 0 0 12px;
-  color: #0a1426;
+  color: #063b7a;
   font-size: 14px;
   line-height: 16px;
   font-weight: 700;
@@ -415,7 +415,7 @@
 
 .profile-activity-row h3 {
   margin: 0 0 4px;
-  color: #0a1426;
+  color: #063b7a;
   font-size: 10px;
   line-height: 15px;
   font-weight: 600;

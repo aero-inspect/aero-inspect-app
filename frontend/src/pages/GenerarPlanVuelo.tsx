@@ -25,6 +25,7 @@ import { MissionDetailRouteMap } from "../components/MissionDetailRouteMap";
 import { PlanDraftMap } from "../components/PlanDraftMap";
 import { AppTopActions } from "../components/AppTopActions";
 import { FieldError } from "../components/FieldError";
+import { LoadingState } from "../components/LoadingState";
 import { getNavigateMovementKind, NAVIGATE_MOVEMENT_LABELS } from "../utils/waypointMovement";
 
 type WizardStep = "recorrido" | "sensibilidad" | "revision" | "confirmado";
@@ -218,7 +219,7 @@ export function GenerarPlanVueloView({
                 <AlertCircle size={16} aria-hidden="true" /> {recordingDetailError}
               </p>
             )}
-            {recordingDetailLoading && <p className="mission-empty">Cargando recorrido...</p>}
+            {recordingDetailLoading && <LoadingState text="Cargando recorrido..." compact />}
             {!recordingDetailLoading && !recordingDetailError && recordingDetail && (
               <MissionDetailRouteMap
                 points={recordingDetail.points.map((point, index) => ({
@@ -241,7 +242,7 @@ export function GenerarPlanVueloView({
                 <AlertCircle size={16} aria-hidden="true" /> {recordingsError}
               </p>
             )}
-            {recordings === null && !recordingsError && <p className="mission-empty">Cargando recorridos...</p>}
+            {recordings === null && !recordingsError && <LoadingState text="Cargando recorridos..." compact />}
             {recordings !== null && recordings.length === 0 && (
               <p className="mission-empty">No hay recorridos manuales registrados todavía.</p>
             )}

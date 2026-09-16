@@ -16,7 +16,7 @@ type LoginErrorResponse = {
 const NO_AUTH_SESSION: SessionUser = {
   username: "no-auth",
   name: "Desarrollo no-auth",
-  role: "Tecnico de Mantenimiento",
+  role: "Técnico de Mantenimiento",
   token: ""
 };
 

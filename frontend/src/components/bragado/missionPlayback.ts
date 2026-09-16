@@ -47,7 +47,7 @@ from.copy(drone.position);target.copy(position);fromRotation.copy(drone.quaterni
     }
     if(finished){terminal=true;if(last){drone.position.fromArray(last.position);drone.rotation.y=last.heading;if(!trail.length||!new T.Vector3().fromArray(trail[trail.length-1]).equals(drone.position)){trail.push(drone.position.toArray());redraw();}duration=0;save();}}
   }
-  return {update,setFollowing(value:boolean){following=value;},animate(now=performance.now()){
+  return {update,setFollowing(value:boolean){following=value;},getDronePosition(){return drone.position.clone();},animate(now=performance.now()){
     const dt=Math.min(.1,(now-previousFrame)/1000);previousFrame=now;
     if(spinning&&!terminal)propellers.forEach((propeller,i)=>{propeller.rotation.y=(propeller.rotation.y+dt*90*(i%2?1:-1))%(Math.PI*2);});
     if(duration){const t=Math.min(1,(now-start)/duration);drone.position.lerpVectors(from,target,t);drone.quaternion.slerpQuaternions(fromRotation,targetRotation,t);if(t===1)duration=0;}

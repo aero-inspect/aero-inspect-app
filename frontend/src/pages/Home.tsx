@@ -26,6 +26,7 @@ import { ReporteDetalleRealView } from "./ReporteDetalleReal";
 import { CentroAyudaView } from "./CentroAyuda";
 import { ActividadRecienteView } from "./ActividadReciente";
 import { AppTopActions, DroneGlyph } from "../components/AppTopActions";
+import { LoadingState } from "../components/LoadingState";
 import sidebarLogo from "../assets/aeroinspect-sidebar-logo.png";
 
 const MOCK_PLANT = {
@@ -102,7 +103,7 @@ export function Home({
   const [selectedFlightPlanIds, setSelectedFlightPlanIds] = useState<number[]>([]);
   const [selectedReportCode, setSelectedReportCode] = useState<string | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
-  const sidebarRoleLabel = user.role === "Tecnico de Mantenimiento" ? "Técnico de Mantenimiento" : user.role;
+  const sidebarRoleLabel = user.role === "Técnico de Mantenimiento" ? "Técnico de Mantenimiento" : user.role;
   return (
     <main className={isSidebarCollapsed ? "home-shell-no-header sidebar-collapsed" : "home-shell-no-header"}>
       <aside className="sidebar-full">
@@ -139,7 +140,7 @@ export function Home({
             </button>
           )}
 
-          {(userCanConsultAssets || user.role === "Tecnico de Mantenimiento") && (
+          {(userCanConsultAssets || user.role === "Técnico de Mantenimiento") && (
             <button className={isMissionsPath || isMissionPath || isGeneratePlanPath ? "active" : undefined} onClick={() => navigateTo("/mis-misiones")} type="button">
               <Plane size={20} />
               {!isSidebarCollapsed && <span>Misiones</span>}
@@ -173,12 +174,11 @@ export function Home({
               </div>
             </div>
           )}
-          {!isSidebarCollapsed && <ArrowRight className="sidebar-user-arrow" size={15} aria-hidden="true" />}
         </button>
       </aside>
 
       <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isRoleMgmtPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
-        {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isHelpPath && !isActivityPath && user.role !== "Tecnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
+        {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isHelpPath && !isActivityPath && user.role !== "Técnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">
             <div>
               <p className="eyebrow">Bienvenida, {user.name}</p>
@@ -218,7 +218,6 @@ export function Home({
               setSelectedFlightPlanIds(idFlightPlans);
               navigateTo("/configurar-mision");
             }}
-            onGeneratePlan={() => navigateTo("/generar-plan")}
             onViewMission={(idMission) => {
               setSelectedBackendMissionId(idMission);
               navigateTo("/monitorear-mision");
@@ -260,7 +259,7 @@ export function Home({
           <ActividadRecienteView />
         ) : isReportsPath ? (
           <ReportesView onRunAi={() => { setSelectedReportCode(null); navigateTo("/reporte-detalle-real"); }} onViewReport={(code) => { setSelectedReportCode(code); navigateTo("/reporte-detalle-real"); }} />
-        ) : user.role === "Jefe de Planta" || user.role === "Tecnico de Mantenimiento" ? (
+        ) : user.role === "Jefe de Planta" || user.role === "Técnico de Mantenimiento" ? (
           <InspectionHomeView
             navigateTo={navigateTo}
             onViewAsset={(idAsset) => {
@@ -369,7 +368,7 @@ export function Home({
                       </button>
                     </>
                   )}
-                  {user.role === "Tecnico de Mantenimiento" && (
+                  {user.role === "Técnico de Mantenimiento" && (
                     <button className="action-button" onClick={() => navigateTo("/configurar-mision")}>
                       <MapPin size={20} />
                       <span>Configurar Misión</span>
@@ -515,7 +514,7 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
           </header>
           <div className="inspection-latest-list">
             {isLoading ? (
-              <p className="inspection-home-feedback">Cargando misiones...</p>
+              <LoadingState text="Cargando misiones..." compact />
             ) : loadError ? (
               <p className="inspection-home-feedback error">{loadError}</p>
             ) : latestMissions.length ? (
