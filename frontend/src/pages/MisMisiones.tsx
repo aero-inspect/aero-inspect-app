@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertCircle, Box, CalendarCheck, CheckCircle2, ChevronDown, Clock3, Eye, Play, Plus, RefreshCw, Route, Search, Trash2, X, XCircle } from "lucide-react";
+import { AlertCircle, Box, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, Play, Plus, RefreshCw, Route, Search, Trash2, X, XCircle } from "lucide-react";
 import type { BackendFlightPlan, BackendMission, BackendMissionStatus, ManagedUser } from "../api/types";
 import type { SessionUser } from "../types";
-import { deleteMission, getFlightPlans, getManagedUsers, getMission, getMissions, startMission, updateMissionPilot } from "../api/client";
+import { deleteMission, getFlightPlans, getManagedUsers, getMission, getMissions, startMission, updateMissionPilot, updateMissionSchedule } from "../api/client";
 import { MissionAssetPicker } from "../components/MissionAssetPicker";
 import { BragadoPlant3DMap } from "../components/BragadoPlant3DMap";
 import { AppTopActions } from "../components/AppTopActions";
@@ -14,6 +14,8 @@ type MissionRow = {
   flightPlanName: string;
   statusLabel: MissionDisplayStatus;
 };
+
+const WEEK_DAYS = ["L", "M", "M", "J", "V", "S", "D"];
 
 function normalizeStatus(status: BackendMissionStatus): MissionDisplayStatus {
   if (status === "UPLOADING") return "Enviando al dron";
@@ -50,6 +52,61 @@ function formatDuration(startedAt: string | null, finishedAt: string | null) {
   return `${minutes} min`;
 }
 
+function toDatetimeLocalValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function formatScheduledLabel(value: string) {
+  if (!value) return "Seleccione fecha y hora";
+  return new Date(value).toLocaleString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function monthLabel(date: Date) {
+  return date.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+}
+
+function buildCalendarDays(monthDate: Date) {
+  const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const mondayOffset = (firstDay.getDay() + 6) % 7;
+  const firstVisibleDay = new Date(firstDay);
+  firstVisibleDay.setDate(firstDay.getDate() - mondayOffset);
+  return Array.from({ length: 42 }, (_, index) => {
+    const day = new Date(firstVisibleDay);
+    day.setDate(firstVisibleDay.getDate() + index);
+    return day;
+  });
+}
+
+function sameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function isBeforeToday(date: Date) {
+  return startOfDay(date).getTime() < startOfDay(new Date()).getTime();
+}
+
+function nextMinuteValue() {
+  const date = new Date();
+  date.setSeconds(0, 0);
+  date.setMinutes(date.getMinutes() + 1);
+  return toDatetimeLocalValue(date);
+}
+
 export function MisMisionesView({
   user,
   onCreateMission,
@@ -75,6 +132,13 @@ export function MisMisionesView({
   const [startingId, setStartingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<BackendMission | null>(null);
+  const [postponeCandidate, setPostponeCandidate] = useState<BackendMission | null>(null);
+  const [postponeValue, setPostponeValue] = useState("");
+  const [postponeTimeInput, setPostponeTimeInput] = useState("09:00");
+  const [postponeVisibleDate, setPostponeVisibleDate] = useState(() => new Date());
+  const [isPostponePickerOpen, setIsPostponePickerOpen] = useState(false);
+  const [postponeError, setPostponeError] = useState<string | null>(null);
+  const [isPostponing, setIsPostponing] = useState(false);
   const [openPilotMissionId, setOpenPilotMissionId] = useState<string | null>(null);
   const [savingPilotMissionId, setSavingPilotMissionId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
@@ -196,6 +260,80 @@ export function MisMisionesView({
       setStartError(error instanceof Error ? error.message : "No se pudo borrar la misión.");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const openPostponeModal = (mission: BackendMission) => {
+    const minValue = nextMinuteValue();
+    const currentValue = mission.scheduledAt ? toDatetimeLocalValue(new Date(mission.scheduledAt)) : minValue;
+    const nextValue = currentValue >= minValue ? currentValue : minValue;
+    const nextDate = new Date(nextValue);
+    setPostponeCandidate(mission);
+    setPostponeValue(nextValue);
+    setPostponeTimeInput(nextValue.slice(11, 16));
+    setPostponeVisibleDate(nextDate);
+    setIsPostponePickerOpen(false);
+    setPostponeError(null);
+  };
+
+  const closePostponeModal = () => {
+    if (isPostponing) return;
+    setPostponeCandidate(null);
+    setPostponeValue("");
+    setPostponeTimeInput("09:00");
+    setIsPostponePickerOpen(false);
+    setPostponeError(null);
+  };
+
+  const handleSelectPostponeDate = (date: Date) => {
+    if (isBeforeToday(date)) return;
+    const nextDate = new Date(date);
+    const selectedDate = postponeValue ? new Date(postponeValue) : null;
+    if (selectedDate) {
+      nextDate.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
+    } else {
+      const [hours, minutes] = /^\d{2}:\d{2}$/.test(postponeTimeInput) ? postponeTimeInput.split(":").map(Number) : [9, 0];
+      nextDate.setHours(hours, minutes, 0, 0);
+    }
+    const minValue = nextMinuteValue();
+    const nextValue = toDatetimeLocalValue(nextDate);
+    const safeValue = sameDay(nextDate, new Date()) && nextValue < minValue ? minValue : nextValue;
+    setPostponeValue(safeValue);
+    setPostponeTimeInput(safeValue.slice(11, 16));
+    setPostponeVisibleDate(new Date(safeValue));
+    setPostponeError(null);
+  };
+
+  const handleSelectPostponeTime = (time: string) => {
+    setPostponeTimeInput(time);
+    if (!/^\d{2}:\d{2}$/.test(time)) return;
+    const [hours, minutes] = time.split(":").map(Number);
+    if (hours > 23 || minutes > 59) return;
+    const nextDate = postponeValue ? new Date(postponeValue) : new Date();
+    nextDate.setHours(hours, minutes, 0, 0);
+    setPostponeValue(toDatetimeLocalValue(nextDate));
+    setPostponeVisibleDate(nextDate);
+    setPostponeError(null);
+  };
+
+  const handlePostpone = async () => {
+    if (!postponeCandidate) return;
+    const minValue = nextMinuteValue();
+    if (!postponeValue || postponeValue < minValue) {
+      setPostponeError("Elegí una fecha y hora posterior al momento actual.");
+      return;
+    }
+    setIsPostponing(true);
+    setPostponeError(null);
+    try {
+      const updated = await updateMissionSchedule(postponeCandidate.idMission, new Date(postponeValue).toISOString());
+      setMissions((current) => current?.map((item) => (item.idMission === updated.idMission ? updated : item)) ?? current);
+      setPostponeCandidate(null);
+      setPostponeValue("");
+    } catch (error) {
+      setPostponeError(error instanceof Error ? error.message : "No se pudo postergar la misión.");
+    } finally {
+      setIsPostponing(false);
     }
   };
 
@@ -515,7 +653,7 @@ export function MisMisionesView({
                       <Play size={14} />
                       {startingId === selectedRow.mission.idMission ? "Iniciando..." : "Iniciar"}
                     </button>
-                    <button className="mission-action postpone" type="button">Postergar</button>
+                    <button className="mission-action postpone" onClick={() => openPostponeModal(selectedRow.mission)} type="button">Postergar</button>
                     <button className="mission-action cancel" type="button">
                       <XCircle size={14} />
                       Cancelar
@@ -585,6 +723,106 @@ export function MisMisionesView({
                 type="button"
               >
                 {deletingId === deleteCandidate.idMission ? "Eliminando..." : "Eliminar"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {postponeCandidate && (
+        <div className="modal-backdrop profile-delete-modal-backdrop" role="presentation">
+          <section aria-modal="true" className="mission-postpone-modal" role="dialog">
+            <button className="mission-plan-modal-close" onClick={closePostponeModal} type="button" aria-label="Cerrar">
+              <X size={16} />
+            </button>
+            <span className="mission-postpone-icon" aria-hidden="true">
+              <CalendarClock size={24} />
+            </span>
+            <h2>Postergar misión</h2>
+            <p>Elegí una nueva fecha y hora para <strong>{postponeCandidate.name}</strong>.</p>
+            <label className="mission-postpone-field">
+              <span>Nueva fecha y hora</span>
+              <div className="mission-date-input selected mission-postpone-date-input">
+                <button
+                  aria-expanded={isPostponePickerOpen}
+                  onClick={() => setIsPostponePickerOpen((open) => !open)}
+                  type="button"
+                >
+                  {formatScheduledLabel(postponeValue)}
+                </button>
+                <CalendarClock size={15} />
+                {isPostponePickerOpen && (
+                  <div className="mission-date-popover">
+                    <div className="mission-calendar-panel">
+                      <div className="mission-calendar-header">
+                        <button
+                          aria-label="Mes anterior"
+                          onClick={() => setPostponeVisibleDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
+                          type="button"
+                        >
+                          <ChevronLeft size={14} />
+                        </button>
+                        <strong>{monthLabel(postponeVisibleDate)}</strong>
+                        <button
+                          aria-label="Mes siguiente"
+                          onClick={() => setPostponeVisibleDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
+                          type="button"
+                        >
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                      <div className="mission-calendar-weekdays">
+                        {WEEK_DAYS.map((day, index) => (
+                          <span key={`${day}-${index}`}>{day}</span>
+                        ))}
+                      </div>
+                      <div className="mission-calendar-grid">
+                        {buildCalendarDays(postponeVisibleDate).map((day) => {
+                          const disabled = isBeforeToday(day);
+                          const selectedDate = postponeValue ? new Date(postponeValue) : null;
+                          return (
+                            <button
+                              className={[
+                                day.getMonth() !== postponeVisibleDate.getMonth() ? "muted" : "",
+                                selectedDate && sameDay(day, selectedDate) ? "selected" : "",
+                                sameDay(day, new Date()) ? "today" : "",
+                                disabled ? "disabled" : ""
+                              ].filter(Boolean).join(" ")}
+                              disabled={disabled}
+                              key={day.toISOString()}
+                              onClick={() => handleSelectPostponeDate(day)}
+                              type="button"
+                            >
+                              {day.getDate()}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="mission-time-panel">
+                      <span>Hora</span>
+                      <input
+                        aria-label="Hora"
+                        className="mission-time-input"
+                        onChange={(event) => handleSelectPostponeTime(event.target.value)}
+                        type="time"
+                        value={postponeTimeInput}
+                      />
+                      <button className="mission-date-done" onClick={() => setIsPostponePickerOpen(false)} type="button">
+                        Listo
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </label>
+            {postponeError && <p className="mission-postpone-error" role="alert">{postponeError}</p>}
+            <div className="profile-delete-modal-actions">
+              <button className="profile-delete-modal-secondary" disabled={isPostponing} onClick={closePostponeModal} type="button">
+                Cancelar
+              </button>
+              <button className="profile-delete-modal-primary" disabled={isPostponing || !postponeValue || postponeValue < nextMinuteValue()} onClick={() => void handlePostpone()} type="button">
+                {isPostponing ? "Guardando..." : "Guardar"}
               </button>
             </div>
           </section>

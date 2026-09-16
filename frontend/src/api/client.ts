@@ -114,6 +114,13 @@ export function updateMissionPilot(idMission: string, assignedPilotUsername: str
   });
 }
 
+export function updateMissionSchedule(idMission: string, scheduledAt: string) {
+  return request<BackendMission>(`/api/v1/missions/${idMission}/schedule`, {
+    method: "PATCH",
+    body: JSON.stringify({ scheduledAt })
+  });
+}
+
 export function deleteMission(idMission: string) {
   return request<void>(`/api/v1/missions/${idMission}`, {
     method: "DELETE"

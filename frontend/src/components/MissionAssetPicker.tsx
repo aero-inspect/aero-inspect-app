@@ -42,7 +42,7 @@ export function MissionAssetPicker({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [missing, setMissing] = useState<BackendAsset | null>(null);
-  const [budgetError, setBudgetError] = useState("");
+  const [blockedBudget, setBlockedBudget] = useState<{ assetName: string; distance: number; limit: number } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -89,18 +89,22 @@ export function MissionAssetPicker({
     const nextDistance = estimateMissionDistanceMeters(nextPlans);
     const nextLimit = distanceLimitMeters ?? availableMissionDistanceMeters(batteryPercentage, missionReservePct(nextPlans));
     if (!alreadySelected && nextDistance > nextLimit) {
-      setBudgetError(
-        `No se puede agregar ${asset?.name ?? "el activo"}: el consumo estimado quedaría en ${formatMissionDistance(nextDistance)} y el límite disponible es ${formatMissionDistance(nextLimit)}.`
-      );
+      setBlockedBudget({ assetName: asset?.name ?? "el activo", distance: nextDistance, limit: nextLimit });
       return;
     }
-    setBudgetError("");
+    setBlockedBudget(null);
     onSelect(nextPlans);
   };
 
-  const selectionLabel = selectedPlans.length === 0
-    ? "Seleccioná uno o más activos para continuar"
-    : `${selectedPlans.length} ${selectedPlans.length === 1 ? "activo seleccionado" : "activos seleccionados"} · consumo ${formatMissionDistance(routeDistanceMeters)} de ${formatMissionDistance(routeLimitMeters)} disponibles`;
+  const displayedDistance = blockedBudget?.distance ?? routeDistanceMeters;
+  const displayedLimit = blockedBudget?.limit ?? routeLimitMeters;
+  const budgetPercent = displayedLimit > 0 ? Math.min(100, Math.round((displayedDistance / displayedLimit) * 100)) : 100;
+  const displayedExceeded = displayedDistance > displayedLimit;
+  const selectionLabel = blockedBudget
+    ? `${blockedBudget.assetName} supera el límite`
+    : selectedPlans.length === 0
+      ? "Seleccioná uno o más activos"
+      : `${selectedPlans.length} ${selectedPlans.length === 1 ? "activo seleccionado" : "activos seleccionados"}`;
 
   return (
     <div className="mission-asset-picker">
@@ -108,17 +112,26 @@ export function MissionAssetPicker({
         assets={assets}
         assetSelection={{ assets, selectedIds: selectedAssetIds, route: previewRoute, onSelect: handleAssetSelect }}
       />
-      <p className={exceedsLimit ? "map-field-label mission-route-budget exceeded" : "map-field-label mission-route-budget"} role="status">
-        {loading ? "Cargando activos..." : error || selectionLabel}
-      </p>
+      {loading || error ? (
+        <p className="map-field-label mission-route-budget" role="status">{loading ? "Cargando activos..." : error}</p>
+      ) : (
+        <div className={displayedExceeded || exceedsLimit ? "mission-budget-meter exceeded" : "mission-budget-meter"} role="status">
+          <div className="mission-budget-meter-header">
+            <span>{selectionLabel}</span>
+            <strong>{formatMissionDistance(displayedDistance)} / {formatMissionDistance(displayedLimit)}</strong>
+          </div>
+          <div className="mission-budget-track" aria-hidden="true">
+            <i style={{ width: `${budgetPercent}%` }} />
+          </div>
+          <div className="mission-budget-meter-footer">
+            <span>{displayedExceeded || exceedsLimit ? "Límite excedido" : "Dentro del límite"}</span>
+            <small>Tope máximo disponible</small>
+          </div>
+        </div>
+      )}
       {missing && (
         <p className="mission-empty" role="alert">
           {missing.name} todavía no tiene un plan de inspección disponible. Reiniciá el backend para cargar los planes nuevos.
-        </p>
-      )}
-      {budgetError && (
-        <p className="mission-empty mission-route-budget-error" role="alert">
-          {budgetError}
         </p>
       )}
     </div>

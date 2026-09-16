@@ -842,6 +842,16 @@
   color: #b6c1cc;
 }
 
+.mission-calendar-grid button.disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.mission-calendar-grid button.disabled:hover {
+  background: transparent;
+  color: #b6c1cc;
+}
+
 .mission-calendar-grid button.today {
   box-shadow: inset 0 0 0 1px rgba(41, 91, 135, 0.28);
 }

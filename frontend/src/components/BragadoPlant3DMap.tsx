@@ -6,7 +6,7 @@ import { addMissionDrone } from "./bragado/drone";
 import { useEffect, useMemo, useRef, useState } from "react";
 import catalog from "../data/bragado-assets.json";
 import { buildPlant, GROUND_Y } from "./bragado/geometry.js";
-import { Maximize2, Minimize2, SlidersHorizontal, X, Focus, ArrowUp } from "lucide-react";
+import { Maximize2, Minimize2, SlidersHorizontal, X, Focus, ArrowUp, ChevronDown } from "lucide-react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { BackendAsset, BackendAssetStatus } from "../api/types";
@@ -14,6 +14,15 @@ import type { BackendAsset, BackendAssetStatus } from "../api/types";
 type EquipmentType = "silo" | "flotante" | "celda" | "noria" | "secadora";
 type DisplayStatus = "Activo" | "Inactivo" | "En mantenimiento" | "Sin confirmar";
 type ViewMode = "top" | "perspective" | "street";
+
+const VIEW_MODE_LABELS: Record<ViewMode, string> = {
+  top: "Desde arriba",
+  perspective: "Perspectiva",
+  street: "Nivel suelo"
+};
+
+const VIEW_MODE_OPTIONS = (Object.entries(VIEW_MODE_LABELS) as Array<[ViewMode, string]>).map(([value, label]) => ({ value, label }));
+const ENVIRONMENT_MODE_OPTIONS = (Object.entries(ENVIRONMENT_MODES) as Array<[EnvironmentMode, string]>).map(([value, label]) => ({ value, label }));
 
 type Equipment = {
   id: string;
@@ -35,6 +44,59 @@ type ProjectedTag = {
   y: number;
   visible: boolean;
 };
+
+function MapToolbarSelect<T extends string>({
+  ariaLabel,
+  title,
+  value,
+  options,
+  onChange
+}: {
+  ariaLabel: string;
+  title?: string;
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (value: T) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const active = options.find((option) => option.value === value) ?? options[0];
+
+  return (
+    <div className="bragado-map-select" onBlur={(event) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+    }}>
+      <button
+        aria-expanded={open}
+        aria-label={ariaLabel}
+        onClick={() => setOpen((current) => !current)}
+        title={title}
+        type="button"
+      >
+        <span>{active.label}</span>
+        <ChevronDown size={15} />
+      </button>
+      {open && (
+        <div className="bragado-map-select-menu" role="listbox" aria-label={ariaLabel}>
+          {options.map((option) => (
+            <button
+              aria-selected={option.value === value}
+              className={option.value === value ? "selected" : undefined}
+              key={option.value}
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+              role="option"
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -418,14 +480,8 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
       <div className="bragado-map-toolbar">
         <button type="button" title={expanded ? "Reducir mapa" : "Ampliar mapa"} aria-label={expanded ? "Reducir mapa" : "Ampliar mapa"} aria-pressed={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
         {!playbackMode && !selectionMode && <button type="button" title={panelOpen ? "Minimizar panel" : "Equipos y controles"} aria-label={panelOpen ? "Minimizar panel" : "Equipos y controles"} aria-expanded={panelOpen} onClick={() => setPanelOpen(!panelOpen)}><SlidersHorizontal size={18} /></button>}
-        <select aria-label="Vista 3D" onChange={(event) => setViewMode(event.target.value as ViewMode)} value={viewMode}>
-          <option value="top">Desde arriba</option>
-          <option value="perspective">Perspectiva</option>
-          <option value="street">Nivel suelo</option>
-        </select>
-        <select aria-label="Iluminación del ambiente" title="Iluminación del ambiente" value={environmentMode} onChange={event => setEnvironmentMode(event.target.value as EnvironmentMode)}>
-          {Object.entries(ENVIRONMENT_MODES).map(([value,label]) => <option key={value} value={value}>{label}</option>)}
-        </select>
+        <MapToolbarSelect ariaLabel="Vista 3D" value={viewMode} options={VIEW_MODE_OPTIONS} onChange={setViewMode} />
+        <MapToolbarSelect ariaLabel="Iluminación del ambiente" title="Iluminación del ambiente" value={environmentMode} options={ENVIRONMENT_MODE_OPTIONS} onChange={setEnvironmentMode} />
       </div>
       <div className="bragado-camera-tools">
         <span className="bragado-compass" title="Norte" aria-label="Norte"><span style={{transform:`rotate(${cameraInfo.bearing}deg)`}}><b>N</b><ArrowUp size={16}/></span></span>

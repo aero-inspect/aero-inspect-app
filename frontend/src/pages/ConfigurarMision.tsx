@@ -55,6 +55,13 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function isBeforeToday(date: Date) {
+  return startOfDay(date).getTime() < startOfDay(new Date()).getTime();
+}
 
 export function ConfigurarMisionView({
   initialFlightPlanIds,
@@ -141,6 +148,7 @@ export function ConfigurarMisionView({
   const calendarDays = buildCalendarDays(visibleDate);
 
   const handleSelectDate = (date: Date) => {
+    if (isBeforeToday(date)) return;
     const nextDate = new Date(date);
     if (selectedScheduledDate) {
       nextDate.setHours(selectedScheduledDate.getHours(), selectedScheduledDate.getMinutes(), 0, 0);
@@ -189,6 +197,7 @@ export function ConfigurarMisionView({
     if (!name.trim()) nextFieldErrors.name = "Ingrese un nombre para la misión.";
     if (!idDrone) nextFieldErrors.idDrone = "Seleccione un dron.";
     if (!scheduledAt) nextFieldErrors.scheduledAt = "Seleccione fecha y hora programada.";
+    if (scheduledAt && isBeforeToday(new Date(scheduledAt))) nextFieldErrors.scheduledAt = "No se pueden programar misiones en días anteriores.";
 
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors);
@@ -370,20 +379,25 @@ export function ConfigurarMisionView({
                           ))}
                         </div>
                         <div className="mission-calendar-grid">
-                          {calendarDays.map((day) => (
-                            <button
-                              className={[
-                                day.getMonth() !== visibleDate.getMonth() ? "muted" : "",
-                                selectedScheduledDate && sameDay(day, selectedScheduledDate) ? "selected" : "",
-                                sameDay(day, new Date()) ? "today" : ""
-                              ].filter(Boolean).join(" ")}
-                              key={day.toISOString()}
-                              onClick={() => handleSelectDate(day)}
-                              type="button"
-                            >
-                              {day.getDate()}
-                            </button>
-                          ))}
+                          {calendarDays.map((day) => {
+                            const disabled = isBeforeToday(day);
+                            return (
+                              <button
+                                className={[
+                                  day.getMonth() !== visibleDate.getMonth() ? "muted" : "",
+                                  selectedScheduledDate && sameDay(day, selectedScheduledDate) ? "selected" : "",
+                                  sameDay(day, new Date()) ? "today" : "",
+                                  disabled ? "disabled" : ""
+                                ].filter(Boolean).join(" ")}
+                                disabled={disabled}
+                                key={day.toISOString()}
+                                onClick={() => handleSelectDate(day)}
+                                type="button"
+                              >
+                                {day.getDate()}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                       <div className="mission-time-panel">

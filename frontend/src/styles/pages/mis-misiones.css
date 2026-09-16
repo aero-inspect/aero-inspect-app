@@ -179,7 +179,7 @@
   display: grid;
   grid-template-rows: 50px 1fr 42px;
   min-width: 0;
-  height: 514px;
+  height: clamp(514px, calc(var(--app-canvas-height) - 168px), 690px);
   overflow: hidden;
 }
 
@@ -778,6 +778,103 @@
   opacity: 0.55;
 }
 
+.mission-postpone-modal {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  width: min(486px, calc(100vw - 40px));
+  padding: 30px;
+  border: 1px solid #e3ebf2;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 26, 43, 0.16);
+  color: #10253a;
+}
+
+.mission-postpone-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid #d29a3c;
+  border-radius: 15px;
+  background: #fff8e1;
+  color: #d29a3c;
+}
+
+.mission-postpone-modal h2,
+.mission-postpone-modal p {
+  margin: 0;
+}
+
+.mission-postpone-modal h2 {
+  color: #10253a;
+  font-size: 21px;
+  line-height: 28px;
+  font-weight: 800;
+}
+
+.mission-postpone-modal p {
+  color: #5d6f8b;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+}
+
+.mission-postpone-modal p strong {
+  color: #063b7a;
+}
+
+.mission-postpone-field {
+  position: relative;
+  display: grid;
+  gap: 7px;
+}
+
+.mission-postpone-field span {
+  color: #5c708c;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.mission-postpone-field > input {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #d7e0ea;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #10253a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+}
+
+.mission-postpone-field > input:focus {
+  border-color: rgba(41, 91, 135, 0.48);
+  box-shadow: 0 0 0 3px rgba(126, 194, 255, 0.2);
+}
+
+.mission-postpone-date-input {
+  height: 42px;
+  border-radius: 10px;
+}
+
+.mission-postpone-modal .mission-date-popover {
+  top: calc(100% + 9px);
+  width: min(406px, calc(100vw - 78px));
+}
+
+.mission-postpone-error {
+  padding: 9px 11px;
+  border: 1px solid rgba(169, 68, 66, 0.3);
+  border-radius: 10px;
+  background: #fff5f5;
+  color: #a94442 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
 .missions-table-footer {
   justify-content: flex-start;
   gap: 0;
@@ -794,8 +891,8 @@
 
 .mission-detail-card {
   display: grid;
-  grid-template-rows: auto 260px auto auto auto;
-  height: 514px;
+  grid-template-rows: auto 315px auto auto auto;
+  height: clamp(514px, calc(var(--app-canvas-height) - 168px), 690px);
   padding: 16px 18px 14px;
   gap: 9px;
   overflow-x: hidden;
@@ -841,7 +938,7 @@
 }
 
 .mission-detail-map {
-  height: 260px;
+  height: 315px;
   overflow: hidden;
   border-radius: 6px;
   background: #0f172a;
