@@ -1,0 +1,91 @@
+/* --- Inspección manual: arrancar y cortar la grabación del recorrido --- */
+.manual-recording-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.manual-recording-dot {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: #ffffff;
+  color: #8b9caf;
+}
+
+.manual-recording-dot.recording {
+  border-color: #d92d20;
+  color: #d92d20;
+  background: rgba(217, 45, 32, 0.08);
+  animation: manual-recording-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes manual-recording-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.manual-recording-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  color: #45566b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.manual-recording-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.manual-recording-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.manual-recording-hint {
+  margin: 0;
+  color: #8b9caf;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.manual-recording-result {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(12, 167, 91, 0.35);
+  border-radius: 12px;
+  background: rgba(12, 167, 91, 0.08);
+}
+
+.manual-recording-result p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #0ca75b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* El empujón desde el estado vacío del wizard: si no hay recorridos, el camino es volar uno. */
+.plan-builder-empty-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}

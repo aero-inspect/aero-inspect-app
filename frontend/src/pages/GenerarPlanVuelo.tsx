@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   AlertCircle,
   CheckCircle2,
+  Radio,
   RefreshCw,
   Route,
   Trash2
@@ -70,10 +71,16 @@ function formatDateTime(iso: string) {
 
 export function GenerarPlanVueloView({
   onBack,
-  onPlanConfirmed
+  onPlanConfirmed,
+  onStartManualInspection,
+  initialRecordingId = null
 }: {
   onBack: () => void;
   onPlanConfirmed: (idFlightPlan: number) => void;
+  // Volver a volar: el camino de salida cuando todavía no hay ningún recorrido que usar.
+  onStartManualInspection?: () => void;
+  // Recorrido recién grabado, para entrar al wizard con él ya elegido.
+  initialRecordingId?: number | null;
 }) {
   const [step, setStep] = useState<WizardStep>("recorrido");
 
@@ -105,6 +112,14 @@ export function GenerarPlanVueloView({
       .then(setRecordings)
       .catch((error: unknown) => setRecordingsError(error instanceof Error ? error.message : "No se pudieron cargar los recorridos."));
   }, []);
+
+  useEffect(() => {
+    if (initialRecordingId !== null) {
+      handleSelectRecording(initialRecordingId);
+    }
+    // Sólo al entrar: después el usuario elige con la lista y no hay que pisarle la selección.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialRecordingId]);
 
   const handleSelectRecording = (idFlightRecording: number) => {
     setSelectedRecordingId(idFlightRecording);
@@ -244,7 +259,18 @@ export function GenerarPlanVueloView({
             )}
             {recordings === null && !recordingsError && <LoadingState text="Cargando recorridos..." compact />}
             {recordings !== null && recordings.length === 0 && (
-              <p className="mission-empty">No hay recorridos manuales registrados todavía.</p>
+              <>
+                <p className="mission-empty">No hay recorridos manuales registrados todavía.</p>
+                {onStartManualInspection && (
+                  <button
+                    className="configure-submit plan-builder-empty-action"
+                    onClick={onStartManualInspection}
+                    type="button"
+                  >
+                    <Radio size={16} aria-hidden="true" /> Iniciar inspección manual
+                  </button>
+                )}
+              </>
             )}
 
             <div className="plan-builder-recording-list" role="radiogroup" aria-label="Recorridos">

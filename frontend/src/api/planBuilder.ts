@@ -51,6 +51,9 @@ export type TrackPoint = {
   longitude: number;
   altitude: number;
   headingDegree: number;
+  // El piloto apretó el botón del radiocontrol sobre este punto: la generación lo respeta
+  // como waypoint aunque la simplificación lo hubiera descartado.
+  marked?: boolean;
 };
 
 export type FlightRecordingDetail = {
@@ -120,5 +123,22 @@ export function deletePlanWaypoint(idFlightPlan: number, sequence: number) {
 export function confirmFlightPlan(idFlightPlan: number) {
   return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/confirm`, {
     method: "POST"
+  });
+}
+
+// Inspección manual: el backend le publica la orden al dron por MQTT y responde 202. No hay
+// recorrido que devolver todavía — el dron lo sube recién cuando aterriza, y aparece en
+// getFlightRecordings().
+export function startManualRecording(idDrone: string) {
+  return request<void>("/api/v1/flight-recordings/start", {
+    method: "POST",
+    body: JSON.stringify({ idDrone })
+  });
+}
+
+export function stopManualRecording(idDrone: string) {
+  return request<void>("/api/v1/flight-recordings/stop", {
+    method: "POST",
+    body: JSON.stringify({ idDrone })
   });
 }

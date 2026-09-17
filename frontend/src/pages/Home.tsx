@@ -10,6 +10,7 @@ import { AssetsOverviewMap } from "../components/AssetsOverviewMap";
 import { MisActivosView } from "./MisActivos";
 import { ConfigurarMisionView } from "./ConfigurarMision";
 import { GenerarPlanVueloView } from "./GenerarPlanVuelo";
+import { InspeccionManualView } from "./InspeccionManual";
 import { MisMisionesView } from "./MisMisiones";
 import { DroneTelemetryView } from "./DroneTelemetry";
 import { DronesAbmView } from "./DronesAbm";
@@ -83,6 +84,7 @@ export function Home({
   const isMissionPath = currentPath === "/configurar-mision";
   const isMissionsPath = currentPath === "/mis-misiones";
   const isGeneratePlanPath = currentPath === "/generar-plan";
+  const isManualInspectionPath = currentPath === "/inspeccion-manual";
   const isDronePath = currentPath === "/dron";
   const isDronesAbmPath = currentPath === "/gestion-drones";
   const isLaunchPath = currentPath === "/ejecutar-despegue";
@@ -101,6 +103,8 @@ export function Home({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedBackendMissionId, setSelectedBackendMissionId] = useState<string | null>(null);
   const [selectedFlightPlanIds, setSelectedFlightPlanIds] = useState<number[]>([]);
+  // Recorrido elegido en la inspección manual, para entrar al wizard con él ya seleccionado.
+  const [selectedRecordingId, setSelectedRecordingId] = useState<number | null>(null);
   const [selectedReportCode, setSelectedReportCode] = useState<string | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const sidebarRoleLabel = user.role === "Técnico de Mantenimiento" ? "Técnico de Mantenimiento" : user.role;
@@ -114,7 +118,7 @@ export function Home({
           <img className="sidebar-brand-logo" src={sidebarLogo} alt="AeroInspect" />
         </div>
         <nav className="nav-list" aria-label="Principal">
-          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isReportDetailRealPath && !isRoleMgmtPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
+          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isManualInspectionPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isReportDetailRealPath && !isRoleMgmtPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
             <HomeIcon size={20} />
             {!isSidebarCollapsed && <span>Inicio</span>}
           </button>
@@ -141,7 +145,7 @@ export function Home({
           )}
 
           {(userCanConsultAssets || user.role === "Técnico de Mantenimiento") && (
-            <button className={isMissionsPath || isMissionPath || isGeneratePlanPath ? "active" : undefined} onClick={() => navigateTo("/mis-misiones")} type="button">
+            <button className={isMissionsPath || isMissionPath || isGeneratePlanPath || isManualInspectionPath ? "active" : undefined} onClick={() => navigateTo("/mis-misiones")} type="button">
               <Plane size={20} />
               {!isSidebarCollapsed && <span>Misiones</span>}
             </button>
@@ -177,8 +181,8 @@ export function Home({
         </button>
       </aside>
 
-      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isRoleMgmtPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
-        {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isHelpPath && !isActivityPath && user.role !== "Técnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
+      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isManualInspectionPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isRoleMgmtPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
+        {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isManualInspectionPath && !isHelpPath && !isActivityPath && user.role !== "Técnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">
             <div>
               <p className="eyebrow">Bienvenida, {user.name}</p>
@@ -225,10 +229,20 @@ export function Home({
           />
         ) : isGeneratePlanPath && userCanConsultAssets ? (
           <GenerarPlanVueloView
+            initialRecordingId={selectedRecordingId}
             onBack={() => navigateTo("/mis-misiones")}
             onPlanConfirmed={(idFlightPlan) => {
               setSelectedFlightPlanIds([idFlightPlan]);
               navigateTo("/configurar-mision");
+            }}
+            onStartManualInspection={() => navigateTo("/inspeccion-manual")}
+          />
+        ) : isManualInspectionPath && DRONE_OPERATION_ROLES.includes(user.role) ? (
+          <InspeccionManualView
+            onBack={() => navigateTo("/")}
+            onGeneratePlan={(idFlightRecording) => {
+              setSelectedRecordingId(idFlightRecording);
+              navigateTo("/generar-plan");
             }}
           />
         ) : isMissionPath && userCanConsultAssets ? (
@@ -383,6 +397,10 @@ export function Home({
                       <button className="action-button" onClick={() => navigateTo("/ejecutar-despegue")}>
                         <ArrowRight size={20} />
                         <span>Ejecutar Despegue</span>
+                      </button>
+                      <button className="action-button" onClick={() => navigateTo("/inspeccion-manual")}>
+                        <Radio size={20} />
+                        <span>Inspección Manual</span>
                       </button>
                     </>
                   )}
