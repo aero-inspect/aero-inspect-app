@@ -170,7 +170,9 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // three@0.186 elimino PCFSoftShadowMap (cae a PCFShadowMap con un warning en cada escena
+  // nueva); pedimos directamente PCFShadowMap para evitar el warning y el chequeo de mas.
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   root.append(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -342,7 +344,10 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
     if(now-lastCameraUpdate>100){const north=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion.clone().invert());onCamera({bearing:Math.atan2(north.x,north.y)*180/Math.PI,zoom:Math.round(100*(1-THREE.MathUtils.clamp((camera.position.distanceTo(controls.target)-controls.minDistance)/(controls.maxDistance-controls.minDistance),0,1)))});lastCameraUpdate=now;}
     frameId = requestAnimationFrame(animate);
   };
-  animate();
+  // Compilar shaders en paralelo (KHR_parallel_shader_compile) antes del primer frame: si no,
+  // el primer render() los compila sincronicamente y congela la UI ~700ms.
+  let disposed = false;
+  renderer.compileAsync(scene, camera).catch(() => undefined).then(() => { if (!disposed) animate(); });
 
   return {
     updateSelection: (data:AssetSelectionData) => picker?.update(data),
@@ -391,6 +396,7 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
       }));
     },
     destroy() {
+      disposed = true;
       cancelAnimationFrame(frameId);
       observer.disconnect();
       controls.dispose();
@@ -399,6 +405,13 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
       environment.destroy();
       disposeObject(scene);
       renderer.dispose();
+      // dispose() libera texturas/buffers pero NO el contexto WebGL en si: sin esto, cada
+      // vez que se desmonta el mapa (entrar/salir de un detalle de mision, o el doble-mount
+      // de StrictMode en dev) queda un contexto huerfano. El navegador tiene un limite de
+      // contextos activos (8-16 tipicamente); al superarlo empieza a evictar los mas viejos
+      // a la fuerza, y ese contexto agonizante sigue intentando dibujar hasta que se corta,
+      // generando cientos de errores GL_INVALID_OPERATION por frame y trabando todo.
+      renderer.forceContextLoss();
       renderer.domElement.remove();
     }
   };
@@ -417,6 +430,8 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
   const [panelOpen, setPanelOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<ReturnType<typeof createScene> | null>(null);
+  const [sceneVersion, setSceneVersion] = useState(0);
+  const [heightScaleInput, setHeightScaleInput] = useState(1);
   const [heightScale, setHeightScale] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>("top");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -444,6 +459,11 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
   const projectedById = new Map(projected.map((tag) => [tag.id, tag]));
 
   useEffect(() => {
+    const timer = window.setTimeout(() => setHeightScale(heightScaleInput), 150);
+    return () => window.clearTimeout(timer);
+  }, [heightScaleInput]);
+
+  useEffect(() => {
     if (!expanded) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -455,10 +475,21 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return undefined;
-    sceneRef.current?.destroy();
-    sceneRef.current = createScene(root, heightScale, setProjected, setCameraInfo, playbackMode, selectionMode, Boolean(onViewAsset));
-    sceneRef.current.setView(viewMode);
+    // Construir la escena bloquea el hilo principal; se difiere a despues del paint para que la
+    // pagina se muestre primero, y como es cancelable, el mount->unmount->mount de StrictMode
+    // no la construye dos veces.
+    let timer = 0;
+    const frame = requestAnimationFrame(() => {
+      timer = window.setTimeout(() => {
+        sceneRef.current?.destroy();
+        sceneRef.current = createScene(root, heightScale, setProjected, setCameraInfo, playbackMode, selectionMode, Boolean(onViewAsset));
+        sceneRef.current.setView(viewMode);
+        setSceneVersion((version) => version + 1);
+      });
+    });
     return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
       sceneRef.current?.destroy();
       sceneRef.current = null;
     };
@@ -481,10 +512,10 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
         }
       });
     }
-  },[assetSelection,assets,heightScale,onViewAsset]);
-  useEffect(()=>{if(playback)sceneRef.current?.updatePlayback(playback);},[playback,heightScale]);
+  },[assetSelection,assets,sceneVersion,onViewAsset]);
+  useEffect(()=>{if(playback)sceneRef.current?.updatePlayback(playback);},[playback,sceneVersion]);
   useEffect(()=>{setFollowing(false);},[playback?.id]);
-  useEffect(()=>{sceneRef.current?.followDrone(following);},[following,playback?.id]);
+  useEffect(()=>{sceneRef.current?.followDrone(following);},[following,playback?.id,sceneVersion]);
 
   useEffect(() => {
     sceneRef.current?.setView(viewMode);
@@ -498,7 +529,7 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
 
   useEffect(() => {
     sceneRef.current?.highlight(activeHighlightId);
-  }, [activeHighlightId, heightScale]);
+  }, [activeHighlightId, sceneVersion]);
 
 
   const toggleType = (type: EquipmentType) => setTypes((current) => {
@@ -545,7 +576,7 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
           <strong>Mapa 3D Bragado</strong>
           <button type="button" title="Minimizar panel" aria-label="Minimizar panel" onClick={() => setPanelOpen(false)}><X size={16} /></button>
         </header>
-        <label>Altura <input aria-label="Altura estimada" max="1.35" min="0.75" onChange={(event) => setHeightScale(Number(event.target.value))} step="0.01" type="range" value={heightScale} /></label>
+        <label>Altura <input aria-label="Altura estimada" max="1.35" min="0.75" onChange={(event) => setHeightScaleInput(Number(event.target.value))} step="0.01" type="range" value={heightScaleInput} /></label>
         {!filters && <>
         <div className="bragado-map-filter-block">
           <span>Tipo</span>

@@ -5,7 +5,7 @@ import {blendEnvironment,getEnvironmentMode,resolveEnvironment,subscribeEnvironm
 export function createEnvironment(scene:T.Scene,renderer:T.WebGLRenderer,heightScale=1) {
   const rig=new T.Group();rig.name='Shared plant environment';scene.add(rig);
   const ambient=new T.HemisphereLight('#dcecff','#354338',1.6);rig.add(ambient);
-  const sun=new T.DirectionalLight('#fff7ed',2.7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.normalBias=.07;sun.shadow.bias=-.0001;
+  const sun=new T.DirectionalLight('#fff7ed',2.7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.normalBias=.07;sun.shadow.bias=-.0001;sun.shadow.autoUpdate=false;
   Object.assign(sun.shadow.camera,{left:-125,right:125,top:125,bottom:-125,near:.5,far:400});sun.target.position.set(-20,0,-35);rig.add(sun,sun.target);
   const skyMaterial=new T.ShaderMaterial({side:T.BackSide,depthWrite:false,uniforms:{top:{value:new T.Color()},horizon:{value:new T.Color()}},vertexShader:'varying vec3 direction; void main(){direction=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:'uniform vec3 top;uniform vec3 horizon;varying vec3 direction;void main(){float h=max(normalize(direction).y,0.0);gl_FragColor=vec4(mix(horizon,top,smoothstep(0.0,0.65,h)),1.0);\n #include <tonemapping_fragment>\n #include <colorspace_fragment>\n }'});
   const sky=new T.Mesh(new T.SphereGeometry(850,40,24),skyMaterial);sky.position.set(-20,0,-35);rig.add(sky);
@@ -80,6 +80,9 @@ scene.traverse(o=>{if(o instanceof T.PointLight){lamps.push({light:o,power:o.int
   function update(now=performance.now()){
     const t=Math.min(1,(now-started)/2200),smooth=t*t*(3-2*t);current=blendEnvironment(from,target,smooth);
     ambient.intensity=current.ambient;ambient.color.copy(current.ambientColor);sun.intensity=current.sun;sun.color.copy(current.sunColor);sun.position.copy(current.sunPosition);renderer.toneMappingExposure=current.exposure;
+    // El sol solo se mueve durante una transicion de ambiente (~2.2s); fuera de eso su sombra de
+    // 2048x2048 no cambia, asi que recalcularla en cada frame (60/s) era puro desperdicio de GPU.
+    if(t<1)sun.shadow.needsUpdate=true;
     skyMaterial.uniforms.top.value.copy(current.top);skyMaterial.uniforms.horizon.value.copy(current.horizon);fog.color.copy(current.horizon);
     stars.forEach((s,i)=>{s.material.opacity=current.stars*(.45+i*.23);s.visible=current.stars>.001;});moonMaterial.opacity=current.moon;haloMaterial.uniforms.opacity.value=current.moon;
     solar.position.copy(current.sunPosition).normalize().multiplyScalar(650);solarMaterial.opacity=1-current.moon;solarMaterial.color.copy(current.sunColor);
