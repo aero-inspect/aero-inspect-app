@@ -10,8 +10,7 @@ export function AssetsOverviewMap({
   onViewAsset,
   selectedLocation,
   filters,
-  focusedAssetCode,
-  missionMode = false
+  focusedAssetCode
 }: {
   assets: BackendAsset[];
   plant: Plant;
@@ -20,7 +19,6 @@ export function AssetsOverviewMap({
   selectedLocation?: { latitude: string; longitude: string };
   filters?: MapFilters;
   focusedAssetCode?: string | null;
-  missionMode?: boolean;
 }) {
   if (onSelect || selectedLocation) {
     return (
@@ -37,5 +35,5 @@ export function AssetsOverviewMap({
   // Fallback preservado: LeafletAssetsOverviewMap contiene el mapa satelital anterior.
   // Para volver temporalmente al mapa viejo en estas vistas, reemplazar la linea de abajo por:
   // return <LeafletAssetsOverviewMap assets={assets} onViewAsset={onViewAsset} plant={plant} />;
-  return <BragadoPlant3DMap assets={assets} onViewAsset={onViewAsset} filters={filters} focusedAssetCode={focusedAssetCode} missionMode={missionMode} />;
+  return <BragadoPlant3DMap assets={assets} onViewAsset={onViewAsset} filters={filters} focusedAssetCode={focusedAssetCode} />;
 }

@@ -6,11 +6,14 @@ import type {
   BackendInspectionPhoto,
   ManagedUser,
   BackendMission,
+  BackendMissionSchedule,
   BackendReport,
   BackendWeather,
   CreateAssetPayload,
   CreateDronePayload,
+  CreateFlightPlanPayload,
   CreateMissionPayload,
+  CreateMissionSchedulePayload,
   UpdateDronePayload
 } from "./types";
 
@@ -41,7 +44,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     return undefined as T;
   }
 
-  return response.json() as Promise<T>;
+  const body = await response.text();
+  return body.trim() ? JSON.parse(body) as T : undefined as T;
 }
 
 export function getAssets() {
@@ -73,6 +77,20 @@ export function getFlightPlan(idFlightPlan: number) {
   return request<BackendFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}`);
 }
 
+export function updateAsset(idAsset: number, payload: CreateAssetPayload) {
+  return request<BackendAsset>(`/api/v1/assets/${idAsset}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function createFlightPlan(payload: CreateFlightPlanPayload) {
+  return request<BackendFlightPlan>("/api/v1/flight-plans", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 export function getMissions() {
   return request<BackendMission[]>("/api/v1/missions");
 }
@@ -88,16 +106,44 @@ export function createMission(payload: CreateMissionPayload) {
   });
 }
 
+export function getMissionSchedules() {
+  return request<BackendMissionSchedule[]>("/api/v1/mission-schedules");
+}
+
+export function createMissionSchedule(payload: CreateMissionSchedulePayload) {
+  return request<BackendMissionSchedule>("/api/v1/mission-schedules", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteMissionSchedule(idMissionSchedule: string) {
+  return request<void>(`/api/v1/mission-schedules/${idMissionSchedule}`, {
+    method: "DELETE"
+  });
+}
+
 export function startMission(idMission: string) {
   return request<BackendMission>(`/api/v1/missions/${idMission}/start`, {
     method: "POST"
   });
 }
 
+export function cancelMission(idMission: string) {
+  return request<BackendMission>(`/api/v1/missions/${idMission}/cancel`, {method: "POST"});
+}
+
 export function updateMissionPilot(idMission: string, assignedPilotUsername: string | null) {
   return request<BackendMission>(`/api/v1/missions/${idMission}/pilot`, {
     method: "PATCH",
     body: JSON.stringify({ assignedPilotUsername })
+  });
+}
+
+export function updateMissionSchedule(idMission: string, scheduledAt: string) {
+  return request<BackendMission>(`/api/v1/missions/${idMission}/schedule`, {
+    method: "PATCH",
+    body: JSON.stringify({ scheduledAt })
   });
 }
 

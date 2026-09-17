@@ -3,7 +3,7 @@ import { AlertTriangle, BarChart3, Download, Eye, Plus, RadioTower, Search, Tras
 import type { Asset } from "../types";
 import { AppTopActions } from "../components/AppTopActions";
 
-type ReportStatus = "Completado" | "En revision";
+type ReportStatus = "Completado" | "En revisión";
 
 type MockReport = {
   id: string;
@@ -18,17 +18,17 @@ type MockReport = {
 };
 
 const MOCK_REPORTS: MockReport[] = [
-  { id: "REP-2025-024", title: "Inspeccion Silo Norte", assetName: "Silo Norte", date: "2025-05-28", time: "09:45", missions: 1, findings: 12, critical: 2, status: "Completado" },
-  { id: "REP-2025-023", title: "Inspeccion Cinta Transportadora 2", assetName: "Cinta Transportadora 2", date: "2025-05-28", time: "11:30", missions: 1, findings: 8, critical: 1, status: "Completado" },
-  { id: "REP-2025-022", title: "Inspeccion Noria Principal", assetName: "Noria Principal", date: "2025-05-27", time: "16:20", missions: 1, findings: 15, critical: 3, status: "En revision" },
-  { id: "REP-2025-021", title: "Inspeccion Tuberia de Vapor", assetName: "Tuberia de Vapor", date: "2025-05-27", time: "14:15", missions: 1, findings: 6, critical: 0, status: "Completado" },
-  { id: "REP-2025-020", title: "Inspeccion Techo Almacen 2", assetName: "Techo Almacen 2", date: "2025-05-26", time: "10:50", missions: 1, findings: 5, critical: 0, status: "Completado" }
+  { id: "REP-2025-024", title: "Inspección Silo Norte", assetName: "Silo Norte", date: "2025-05-28", time: "09:45", missions: 1, findings: 12, critical: 2, status: "Completado" },
+  { id: "REP-2025-023", title: "Inspección Cinta Transportadora 2", assetName: "Cinta Transportadora 2", date: "2025-05-28", time: "11:30", missions: 1, findings: 8, critical: 1, status: "Completado" },
+  { id: "REP-2025-022", title: "Inspección Noria Principal", assetName: "Noria Principal", date: "2025-05-27", time: "16:20", missions: 1, findings: 15, critical: 3, status: "En revisión" },
+  { id: "REP-2025-021", title: "Inspección Tubería de Vapor", assetName: "Tubería de Vapor", date: "2025-05-27", time: "14:15", missions: 1, findings: 6, critical: 0, status: "Completado" },
+  { id: "REP-2025-020", title: "Inspección Techo Almacen 2", assetName: "Techo Almacen 2", date: "2025-05-26", time: "10:50", missions: 1, findings: 5, critical: 0, status: "Completado" }
 ];
 
 const FINDING_TYPES = [
-  { label: "Corrosion", value: 4 },
+  { label: "Corrosión", value: 4 },
   { label: "Grietas", value: 3 },
-  { label: "Acumulacion de polvo", value: 7 },
+  { label: "Acumulación de polvo", value: 7 },
   { label: "Otros", value: 2 }
 ];
 
@@ -76,7 +76,7 @@ export function ReportesView({ assets, onCreateReport, onViewReport }: { assets:
         <ReportMetric icon={<Search size={21} />} label="Hallazgos detectados" tone="amber" value="58" />
         <ReportMetric icon={<AlertTriangle size={21} />} label="Hallazgos criticos" tone="red" value="7" />
         <ReportMetric icon={<RadioTower size={21} />} label="Misiones inspeccionadas" tone="blue" value="18" />
-        <ReportMetric icon={<TrendingUp size={21} />} label="Tendencia (30 dias)" tone="green" value="12%" />
+        <ReportMetric icon={<TrendingUp size={21} />} label="Tendencia (30 días)" tone="green" value="12%" />
       </section>
 
       <section className="reports-filters-row">
@@ -101,7 +101,7 @@ export function ReportesView({ assets, onCreateReport, onViewReport }: { assets:
             <select onChange={(event) => setSeverityFilter(event.target.value as "Severidad" | ReportStatus)} value={severityFilter}>
               <option>Severidad</option>
               <option>Completado</option>
-              <option>En revision</option>
+              <option>En revisión</option>
             </select>
           </label>
           <label className="reports-search">
@@ -124,7 +124,7 @@ export function ReportesView({ assets, onCreateReport, onViewReport }: { assets:
               <span>Total</span>
             </div>
             <div className="severity-legend">
-              <ReportLegend color="#ef4444" label="Criticos" value="7 (12%)" />
+              <ReportLegend color="#ef4444" label="Críticos" value="7 (12%)" />
               <ReportLegend color="#f97316" label="Altos" value="16 (28%)" />
               <ReportLegend color="#4f6ee9" label="Medios" value="20 (34%)" />
               <ReportLegend color="#22c55e" label="Bajos" value="15 (26%)" />

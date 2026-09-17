@@ -1,4 +1,4 @@
-﻿@import "./base.css";
+@import "./base.css";
 @import "./pages/login.css";
 @import "./layouts/legacy-shell.css";
 @import "./components/maps.css";
@@ -106,7 +106,7 @@
 .drones-abm-dashboard .app-weather strong,
 .personnel-page .app-weather strong {
   display: block;
-  color: #0f172a;
+  color: #063b7a;
   font-size: 13px;
   line-height: 17px;
   font-weight: 700;

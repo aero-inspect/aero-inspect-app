@@ -1,18 +1,20 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Save, CheckCircle2, AlertCircle, CalendarClock, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import type { BackendFlightPlan, BackendAsset, BackendDrone } from "../api/types";
-import { getFlightPlans, getAssets, getDrones, createMission } from "../api/client";
+import type { BackendFlightPlan, BackendDrone, BackendDroneStatus } from "../api/types";
+import { getFlightPlans, getDrones, getDroneStatuses, createFlightPlan, createMission, createMissionSchedule } from "../api/client";
 import { FieldError } from "../components/FieldError";
-import { MissionPlanMap } from "../components/MissionPlanMap";
+import { MissionAssetPicker } from "../components/MissionAssetPicker";
 import { AppTopActions } from "../components/AppTopActions";
-import type { InspectionPoint } from "../types";
+
 import { photoCountForWaypoint } from "../utils/missionPhotos";
+import { buildCombinedFlightPlan } from "../utils/missionPlanComposer";
+import { availableMissionDistanceMeters, estimateMissionDistanceMeters, formatMissionDistance, missionReservePct } from "../utils/missionAutonomy";
 
-type FieldErrors = Partial<Record<"name" | "idDrone" | "scheduledAt", string>>;
-
-type MissionDraftStatus = "Pendiente";
+type RecurrenceMode = "once" | "daily" | "weekly";
+type FieldErrors = Partial<Record<"name" | "idDrone" | "scheduledAt" | "weekDays", string>>;
 
 const WEEK_DAYS = ["L", "M", "M", "J", "V", "S", "D"];
+const WEEK_DAY_NAMES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
 function toDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -55,21 +57,20 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-const DEFAULT_ROUTE: InspectionPoint[] = [
-  { id: 1, latitude: "-35.140110", longitude: "-60.458900" },
-  { id: 2, latitude: "-35.140410", longitude: "-60.458520" },
-  { id: 3, latitude: "-35.140205", longitude: "-60.457920" },
-  { id: 4, latitude: "-35.140760", longitude: "-60.457710" },
-  { id: 5, latitude: "-35.141045", longitude: "-60.458240" },
-  { id: 6, latitude: "-35.140820", longitude: "-60.458760" }
-];
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function isBeforeToday(date: Date) {
+  return startOfDay(date).getTime() < startOfDay(new Date()).getTime();
+}
 
 export function ConfigurarMisionView({
-  initialFlightPlanId,
+  initialFlightPlanIds,
   onBack,
   onViewMissions
 }: {
-  initialFlightPlanId?: number | null;
+  initialFlightPlanIds?: number[];
   onBack: () => void;
   onViewMissions: () => void;
 }) {
@@ -79,25 +80,25 @@ export function ConfigurarMisionView({
 
   const [drones, setDrones] = useState<BackendDrone[] | null>(null);
   const [dronesError, setDronesError] = useState<string | null>(null);
+  const [droneStatuses, setDroneStatuses] = useState<BackendDroneStatus[]>([]);
 
-  const [selectedFlightPlan, setSelectedFlightPlan] = useState<BackendFlightPlan | null>(null);
-  const [planAssets, setPlanAssets] = useState<BackendAsset[]>([]);
-  const [assetsLoading, setAssetsLoading] = useState(false);
-  const [assetsError, setAssetsError] = useState<string | null>(null);
+  const [selectedFlightPlans, setSelectedFlightPlans] = useState<BackendFlightPlan[]>([]);
 
-  const [selectedWaypointIds, setSelectedWaypointIds] = useState<Set<number>>(new Set());
   const [name, setName] = useState("");
   const [objective, setObjective] = useState("");
   const [idDrone, setIdDrone] = useState("");
   const [isDroneMenuOpen, setIsDroneMenuOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
   const [scheduledTimeInput, setScheduledTimeInput] = useState("09:00");
+  const [recurrenceMode, setRecurrenceMode] = useState<RecurrenceMode>("once");
+  const [selectedWeekDays, setSelectedWeekDays] = useState<number[]>([]);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [visibleDate, setVisibleDate] = useState(() => new Date());
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const [successKind, setSuccessKind] = useState<"mission" | "schedule">("mission");
 
   const loadFlightPlans = () => {
     setFlightPlansError(null);
@@ -112,46 +113,47 @@ export function ConfigurarMisionView({
     getDrones()
       .then(setDrones)
       .catch((error: unknown) => setDronesError(error instanceof Error ? error.message : "No se pudieron cargar los drones."));
+    getDroneStatuses()
+      .then(setDroneStatuses)
+      .catch(() => setDroneStatuses([]));
   }, []);
-
-  const handleSelectFlightPlan = (plan: BackendFlightPlan) => {
-    setSelectedFlightPlan(plan);
-    setSelectedWaypointIds(new Set());
-    setPlanAssets([]);
-    setAssetsError(null);
-    setAssetsLoading(true);
-    getAssets()
-      .then((allAssets) => {
-        setPlanAssets(allAssets.filter((asset) => plan.assetIds.includes(asset.idAsset)));
-      })
-      .catch((error: unknown) => setAssetsError(error instanceof Error ? error.message : "No se pudieron cargar los activos."))
-      .finally(() => setAssetsLoading(false));
-  };
 
   useEffect(() => {
     setHasAppliedInitialPlan(false);
-  }, [initialFlightPlanId]);
+  }, [initialFlightPlanIds]);
 
   useEffect(() => {
-    if (hasAppliedInitialPlan || !initialFlightPlanId || selectedFlightPlan || !flightPlans?.length) return;
-    const initialPlan = flightPlans.find((plan) => plan.idFlightPlan === initialFlightPlanId);
-    if (initialPlan) {
-      handleSelectFlightPlan(initialPlan);
+    if (hasAppliedInitialPlan || !initialFlightPlanIds?.length || selectedFlightPlans.length > 0 || !flightPlans?.length) return;
+    const initialPlans = initialFlightPlanIds
+      .map((id) => flightPlans.find((plan) => plan.idFlightPlan === id))
+      .filter((plan): plan is BackendFlightPlan => Boolean(plan));
+    if (initialPlans.length) {
+      setSelectedFlightPlans(initialPlans);
       setHasAppliedInitialPlan(true);
     }
-  }, [hasAppliedInitialPlan, initialFlightPlanId, flightPlans, selectedFlightPlan]);
+  }, [hasAppliedInitialPlan, initialFlightPlanIds, flightPlans, selectedFlightPlans.length]);
 
-  const totalPhotoCount = selectedFlightPlan
-    ? selectedFlightPlan.route
-        .filter((point) => selectedWaypointIds.has(point.idPlanWaypoint))
-        .reduce((total, point) => total + photoCountForWaypoint(point), 0)
-    : 0;
+  const totalPhotoCount = selectedFlightPlans
+    .flatMap((plan) => plan.route)
+    .filter((point) => point.pointOfInterest)
+    .reduce((total, point) => total + photoCountForWaypoint(point), 0);
 
   const selectedDrone = drones?.find((drone) => drone.idDrone === idDrone) ?? null;
+  const selectedDroneStatus = selectedDrone
+    ? droneStatuses.find((status) => status.droneId === selectedDrone.droneId) ?? null
+    : null;
+  const routeDistanceMeters = estimateMissionDistanceMeters(selectedFlightPlans);
+  const routeReservePct = missionReservePct(selectedFlightPlans);
+  const availableDistanceMeters = availableMissionDistanceMeters(selectedDroneStatus?.battery?.percentage, routeReservePct);
+  const routeExceedsBattery = selectedFlightPlans.length > 0 && routeDistanceMeters > availableDistanceMeters;
+  const batteryLabel = selectedDroneStatus?.battery
+    ? `${selectedDroneStatus.battery.percentage}%`
+    : "sin telemetría, se calcula con batería completa";
   const selectedScheduledDate = scheduledAt ? new Date(scheduledAt) : null;
   const calendarDays = buildCalendarDays(visibleDate);
 
   const handleSelectDate = (date: Date) => {
+    if (isBeforeToday(date)) return;
     const nextDate = new Date(date);
     if (selectedScheduledDate) {
       nextDate.setHours(selectedScheduledDate.getHours(), selectedScheduledDate.getMinutes(), 0, 0);
@@ -177,141 +179,129 @@ export function ConfigurarMisionView({
     setFieldErrors((current) => ({ ...current, scheduledAt: undefined }));
   };
 
-  const handleToggleWaypoint = (idPlanWaypoint: number) => {
-    setSelectedWaypointIds((current) => {
-      const next = new Set(current);
-      if (next.has(idPlanWaypoint)) {
-        next.delete(idPlanWaypoint);
-      } else {
-        next.add(idPlanWaypoint);
-      }
-      return next;
-    });
-  };
-
   const resetForm = () => {
-    setSelectedFlightPlan(null);
-    setPlanAssets([]);
-    setSelectedWaypointIds(new Set());
+    setSelectedFlightPlans([]);
+
+
     setName("");
     setObjective("");
     setIdDrone("");
     setScheduledAt("");
     setScheduledTimeInput("09:00");
+    setRecurrenceMode("once");
+    setSelectedWeekDays([]);
     setFieldErrors({});
     setSubmitError(null);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedFlightPlan) return;
+    if (selectedFlightPlans.length === 0) { setSubmitError("Seleccioná al menos un activo para continuar"); return; }
 
     setSubmitError(null);
 
     const nextFieldErrors: FieldErrors = {};
-    if (!name.trim()) nextFieldErrors.name = "Ingrese un nombre para la mision.";
+    if (!name.trim()) nextFieldErrors.name = "Ingrese un nombre para la misión.";
     if (!idDrone) nextFieldErrors.idDrone = "Seleccione un dron.";
-    if (!scheduledAt) nextFieldErrors.scheduledAt = "Seleccione fecha y hora programada.";
+    if (recurrenceMode === "once" && !scheduledAt) nextFieldErrors.scheduledAt = "Seleccione fecha y hora programada.";
+    if (recurrenceMode === "once" && scheduledAt && isBeforeToday(new Date(scheduledAt))) nextFieldErrors.scheduledAt = "No se pueden programar misiones en días anteriores.";
+    if (recurrenceMode === "weekly" && selectedWeekDays.length === 0) nextFieldErrors.weekDays = "Seleccione al menos un día de la semana.";
 
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors);
+      return;
+    }
+    if (routeExceedsBattery) {
+      setSubmitError(
+        `La misión recorre ${formatMissionDistance(routeDistanceMeters)} y el dron seleccionado tiene autonomía disponible para ${formatMissionDistance(availableDistanceMeters)}. Quitá activos o elegí un dron con más batería.`
+      );
       return;
     }
     setFieldErrors({});
 
     setIsSubmitting(true);
     try {
-      await createMission({
-        idFlightPlan: selectedFlightPlan.idFlightPlan,
-        name: name.trim(),
-        objective: objective.trim(),
-        idDrone,
-        scheduledAt: new Date(scheduledAt).toISOString(),
-        selectedPlanWaypointIds: Array.from(selectedWaypointIds)
-      });
+      const missionPlan = selectedFlightPlans.length === 1
+        ? selectedFlightPlans[0]
+        : await createFlightPlan(buildCombinedFlightPlan(selectedFlightPlans, name.trim()));
+      const missionWaypointIds = missionPlan.route
+        .filter((point) => point.pointOfInterest)
+        .map((point) => point.idPlanWaypoint);
+      if (recurrenceMode === "once") {
+        await createMission({
+          idFlightPlan: missionPlan.idFlightPlan,
+          name: name.trim(),
+          objective: objective.trim(),
+          idDrone,
+          scheduledAt: new Date(scheduledAt).toISOString(),
+          selectedPlanWaypointIds: missionWaypointIds
+        });
+        setSuccessKind("mission");
+      } else {
+        await createMissionSchedule({
+          idFlightPlan: missionPlan.idFlightPlan,
+          name: name.trim(),
+          objective: objective.trim(),
+          idDrone,
+          frequency: recurrenceMode === "daily" ? "DAILY" : "WEEKLY",
+          scheduledTime: `${scheduledTimeInput}:00`,
+          weekDays: recurrenceMode === "weekly" ? selectedWeekDays : [],
+          selectedPlanWaypointIds: missionWaypointIds
+        });
+        setSuccessKind("schedule");
+      }
       setIsSuccessOpen(true);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "No se pudo crear la mision.");
+      setSubmitError(error instanceof Error ? error.message : "No se pudo crear la misión.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <section className="missions-dashboard">
+    <section className="missions-dashboard mission-configure-dashboard">
       <header className="missions-topbar">
         <div className="configure-title-row">
           <button className="monitor-back-button" onClick={onBack} type="button" aria-label="Volver">
             <ArrowLeft size={19} />
           </button>
           <div>
-            <h1>Configurar mision</h1>
-            <p>Elegi un plan de vuelo y marca los puntos de interes a inspeccionar.</p>
+            <h1>Configurar misión</h1>
           </div>
         </div>
         <AppTopActions />
       </header>
 
-      {!selectedFlightPlan ? (
-        <article className="missions-list-card mission-builder-missing-plan">
-          {flightPlansError ? (
-            <p className="mission-empty">
-              <AlertCircle size={16} aria-hidden="true" /> {flightPlansError}
-            </p>
-          ) : (
-            <p className="mission-empty">Selecciona un plan desde Nueva Mision para configurar una mision.</p>
-          )}
-        </article>
-      ) : (
+      {flightPlansError && <p className="mission-empty" role="alert">{flightPlansError}</p>}
         <form onSubmit={handleSubmit}>
           <div className="mission-builder-grid">
-            <article className="mission-detail-card mission-builder-map">
-              <div className="mission-detail-header">
-                <div>
-                  <h2>{selectedFlightPlan.name}</h2>
-                  <div className="mission-detail-id">
-                    <small>{selectedFlightPlan.objective}</small>
-                  </div>
-                </div>
-              </div>
-
-              {assetsError && (
-                <p className="mission-empty">
-                  <AlertCircle size={16} aria-hidden="true" /> {assetsError}
+            <article className="mission-detail-card mission-builder-map mission-builder-map-3d">
+              <MissionAssetPicker
+                plans={flightPlans ?? []}
+                selectedPlanIds={selectedFlightPlans.map((plan) => plan.idFlightPlan)}
+                onSelect={setSelectedFlightPlans}
+                locked={Boolean(initialFlightPlanIds?.length)}
+                batteryPercentage={selectedDroneStatus?.battery?.percentage}
+              />
+              {selectedFlightPlans.length > 0 && (
+                <p className={routeExceedsBattery ? "map-field-label mission-route-budget exceeded" : "map-field-label mission-route-budget"}>
+                  {selectedFlightPlans.length} {selectedFlightPlans.length === 1 ? "activo" : "activos"} · {totalPhotoCount} fotos previstas · {formatMissionDistance(routeDistanceMeters)}
                 </p>
               )}
-              {assetsLoading && <p className="mission-empty">Cargando activos...</p>}
-
-              {!assetsLoading && !assetsError && (
-                <MissionPlanMap
-                  assets={planAssets}
-                  flightPlan={selectedFlightPlan}
-                  onToggleWaypoint={handleToggleWaypoint}
-                  selectedWaypointIds={selectedWaypointIds}
-                />
-              )}
-
-              <p className="map-field-label">
-                {selectedWaypointIds.size} puntos de interes seleccionados
-                {selectedWaypointIds.size > 0
-                  ? ` · ${totalPhotoCount} foto${totalPhotoCount === 1 ? "" : "s"} en total`
-                  : ""}
-                . Toca un activo en el mapa para elegir sus puntos.
-              </p>
             </article>
 
             <article className="mission-detail-card mission-builder-fields">
-              <h3 className="mission-quick-actions-title">Datos de la mision</h3>
+              <h3 className="mission-quick-actions-title">Datos de la misión</h3>
 
               <label>
                 <span>
-                  Nombre de la mision <small className="required-inline">*</small>
+                  Nombre de la misión <small className="required-inline">*</small>
                 </span>
                 <input
                   aria-invalid={Boolean(fieldErrors.name)}
                   className={fieldErrors.name ? "field-invalid" : undefined}
                   onChange={(event) => setName(event.target.value)}
-                  placeholder="Ej: Inspeccion trimestral Q1"
+                  placeholder="Ej: Inspección trimestral Q1"
                   type="text"
                   value={name}
                 />
@@ -366,11 +356,43 @@ export function ConfigurarMisionView({
                 {fieldErrors.idDrone && <FieldError message={fieldErrors.idDrone} />}
               </label>
 
+              <div className={routeExceedsBattery ? "mission-battery-check exceeded" : "mission-battery-check"}>
+                <span>Autonomía estimada</span>
+                <strong>{formatMissionDistance(routeDistanceMeters)} / {formatMissionDistance(availableDistanceMeters)}</strong>
+                <small>Batería: {batteryLabel} · reserva mínima {routeReservePct}%</small>
+              </div>
+
               <label>
                 <span>
-                  Programada para <small className="required-inline">*</small>
+                  Tipo de programación <small className="required-inline">*</small>
                 </span>
-                <div className={fieldErrors.scheduledAt ? "mission-date-input field-invalid" : scheduledAt ? "mission-date-input selected" : "mission-date-input"}>
+                <div className="mission-recurrence-control" role="group" aria-label="Tipo de programación">
+                  {([
+                    ["once", "Única vez"],
+                    ["daily", "Diaria"],
+                    ["weekly", "Semanal"]
+                  ] as const).map(([mode, label]) => (
+                    <button
+                      className={recurrenceMode === mode ? "selected" : undefined}
+                      key={mode}
+                      onClick={() => {
+                        setRecurrenceMode(mode);
+                        setFieldErrors((current) => ({ ...current, scheduledAt: undefined, weekDays: undefined }));
+                      }}
+                      type="button"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </label>
+
+              <label>
+                <span>
+                  {recurrenceMode === "once" ? "Programada para" : "Hora programada"} <small className="required-inline">*</small>
+                </span>
+                {recurrenceMode === "once" ? (
+                  <div className={fieldErrors.scheduledAt ? "mission-date-input field-invalid" : scheduledAt ? "mission-date-input selected" : "mission-date-input"}>
                   <button
                     aria-expanded={isDatePickerOpen}
                     aria-invalid={Boolean(fieldErrors.scheduledAt)}
@@ -406,20 +428,25 @@ export function ConfigurarMisionView({
                           ))}
                         </div>
                         <div className="mission-calendar-grid">
-                          {calendarDays.map((day) => (
-                            <button
-                              className={[
-                                day.getMonth() !== visibleDate.getMonth() ? "muted" : "",
-                                selectedScheduledDate && sameDay(day, selectedScheduledDate) ? "selected" : "",
-                                sameDay(day, new Date()) ? "today" : ""
-                              ].filter(Boolean).join(" ")}
-                              key={day.toISOString()}
-                              onClick={() => handleSelectDate(day)}
-                              type="button"
-                            >
-                              {day.getDate()}
-                            </button>
-                          ))}
+                          {calendarDays.map((day) => {
+                            const disabled = isBeforeToday(day);
+                            return (
+                              <button
+                                className={[
+                                  day.getMonth() !== visibleDate.getMonth() ? "muted" : "",
+                                  selectedScheduledDate && sameDay(day, selectedScheduledDate) ? "selected" : "",
+                                  sameDay(day, new Date()) ? "today" : "",
+                                  disabled ? "disabled" : ""
+                                ].filter(Boolean).join(" ")}
+                                disabled={disabled}
+                                key={day.toISOString()}
+                                onClick={() => handleSelectDate(day)}
+                                type="button"
+                              >
+                                {day.getDate()}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                       <div className="mission-time-panel">
@@ -438,8 +465,49 @@ export function ConfigurarMisionView({
                     </div>
                   )}
                 </div>
+                ) : (
+                  <input
+                    aria-label="Hora programada"
+                    className="mission-time-only-input"
+                    onChange={(event) => handleSelectTime(event.target.value)}
+                    type="time"
+                    value={scheduledTimeInput}
+                  />
+                )}
                 {fieldErrors.scheduledAt && <FieldError message={fieldErrors.scheduledAt} />}
               </label>
+
+              {recurrenceMode === "weekly" && (
+                <label>
+                  <span>
+                    Días de la semana <small className="required-inline">*</small>
+                  </span>
+                  <div className={fieldErrors.weekDays ? "mission-weekday-picker field-invalid" : "mission-weekday-picker"}>
+                    {WEEK_DAY_NAMES.map((dayName, index) => {
+                      const dayValue = index + 1;
+                      const selected = selectedWeekDays.includes(dayValue);
+                      return (
+                        <button
+                          className={selected ? "selected" : undefined}
+                          key={dayName}
+                          onClick={() => {
+                            setSelectedWeekDays((current) =>
+                              selected
+                                ? current.filter((day) => day !== dayValue)
+                                : [...current, dayValue].sort((a, b) => a - b)
+                            );
+                            setFieldErrors((current) => ({ ...current, weekDays: undefined }));
+                          }}
+                          type="button"
+                        >
+                          {dayName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {fieldErrors.weekDays && <FieldError message={fieldErrors.weekDays} />}
+                </label>
+              )}
 
               {submitError && (
                 <p className="mission-empty">
@@ -448,18 +516,18 @@ export function ConfigurarMisionView({
               )}
 
               <div className="form-actions">
-                <button className="configure-create mission-builder-submit" disabled={isSubmitting} type="submit">
+                <button className="configure-create mission-builder-submit" disabled={isSubmitting || selectedFlightPlans.length === 0 || routeExceedsBattery} type="submit">
                   <Save size={15} aria-hidden="true" />
-                  {isSubmitting ? "Creando..." : "Crear mision"}
+                  {isSubmitting ? "Creando..." : "Crear misión"}
                 </button>
               </div>
             </article>
           </div>
         </form>
-      )}
 
       {isSuccessOpen && (
         <MissionSuccessModal
+          kind={successKind}
           onGoHome={() => {
             setIsSuccessOpen(false);
             resetForm();
@@ -476,15 +544,16 @@ export function ConfigurarMisionView({
   );
 }
 
-function MissionSuccessModal({ onGoHome, onViewMissions }: { onGoHome: () => void; onViewMissions: () => void }) {
+function MissionSuccessModal({ kind, onGoHome, onViewMissions }: { kind: "mission" | "schedule"; onGoHome: () => void; onViewMissions: () => void }) {
+  const isSchedule = kind === "schedule";
   return (
     <div className="modal-backdrop" role="presentation">
       <section aria-modal="true" className="success-modal" role="dialog">
         <div className="success-icon">
           <CheckCircle2 size={48} aria-hidden="true" />
         </div>
-        <h2>Mision creada</h2>
-        <p>La mision se creo correctamente y quedo planificada.</p>
+        <h2>{isSchedule ? "Programación creada" : "Misión creada"}</h2>
+        <p>{isSchedule ? "La rutina se creó correctamente y generará la misión un día antes del vuelo." : "La misión se creó correctamente y quedó planificada."}</p>
         <div className="modal-actions">
           <button className="ghost-button" onClick={onGoHome} type="button">
             Volver al inicio

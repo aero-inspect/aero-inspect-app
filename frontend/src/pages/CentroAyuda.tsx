@@ -73,7 +73,7 @@ export function CentroAyudaView() {
       <header className="help-header">
         <div>
           <h1>Centro de Ayuda</h1>
-          <p>Encuentra respuestas, guias y canales de soporte.</p>
+          <p>Encuentra respuestas, guías y canales de soporte.</p>
         </div>
         <AppTopActions />
       </header>

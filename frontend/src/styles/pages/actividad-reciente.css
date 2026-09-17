@@ -1,9 +1,9 @@
-﻿.activity-dashboard {
+.activity-dashboard {
   height: var(--app-canvas-height);
   overflow: hidden;
   padding: 24px 25px 30px;
   background: #f8fafc;
-  color: #0a1426;
+  color: #063b7a;
 }
 
 .activity-header {
@@ -47,7 +47,7 @@
 
 .activity-dashboard .app-weather strong {
   display: block;
-  color: #0f172a;
+  color: #063b7a;
   font-size: 13px;
   line-height: 17px;
   font-weight: 700;
@@ -96,7 +96,7 @@
 
 .activity-history-heading h2 {
   margin: 0;
-  color: #0a1426;
+  color: #063b7a;
   font-size: 16px;
   line-height: 19px;
   font-weight: 700;
@@ -177,7 +177,7 @@
 
 .activity-row-copy h3 {
   margin: 0;
-  color: #0a1426;
+  color: #063b7a;
   font-size: 12px;
   line-height: 15px;
   font-weight: 700;

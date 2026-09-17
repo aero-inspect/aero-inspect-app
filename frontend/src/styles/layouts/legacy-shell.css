@@ -1,4 +1,4 @@
-﻿.home-shell {
+.home-shell {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   grid-template-rows: 58px minmax(0, 1fr);
@@ -15,7 +15,7 @@
   padding: 0 22px 0 10px;
   border-bottom: 1px solid rgba(11, 95, 137, 0.12);
   background: rgba(251, 253, 252, 0.88);
-  color: #10253a;
+  color: #063b7a;
   backdrop-filter: blur(18px);
 }
 
@@ -225,7 +225,7 @@
 
 .plant-summary h2 {
   margin: 0 0 6px;
-  color: #10253a;
+  color: #063b7a;
   font-size: 2rem;
 }
 

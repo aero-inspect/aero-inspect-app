@@ -1,8 +1,8 @@
-﻿:root {
+:root {
   --app-scale: 0.8;
   --app-canvas-width: calc(100vw / var(--app-scale));
   --app-canvas-height: calc(100vh / var(--app-scale));
-  color: #10253a;
+  color: #063b7a;
   background: #eef6f5;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -42,4 +42,92 @@ textarea {
   font: inherit;
 }
 
+button {
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    opacity 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+button:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.mission-plan-modal-close,
+.mission-detail-close,
+.asset-detail-close,
+.drones-abm-modal-close,
+.close-modal-btn {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 999px;
+  line-height: 0;
+}
+
+.mission-plan-modal-close svg,
+.mission-detail-close svg,
+.asset-detail-close svg,
+.drones-abm-modal-close svg,
+.close-modal-btn svg {
+  display: block;
+}
+
+.mission-plan-modal-close:hover:not(:disabled),
+.mission-detail-close:hover:not(:disabled),
+.asset-detail-close:hover:not(:disabled),
+.drones-abm-modal-close:hover:not(:disabled),
+.close-modal-btn:hover:not(:disabled) {
+  background: rgba(6, 59, 122, 0.08);
+  color: #063b7a;
+  opacity: 0.92;
+}
+
+@keyframes app-loading-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.app-loading-state {
+  display: grid;
+  min-height: min(390px, calc(var(--app-canvas-height) - 250px));
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  color: #063b7a;
+}
+
+.app-loading-state.compact {
+  min-height: 124px;
+}
+
+.app-loading-state p {
+  margin: 0;
+  color: #063b7a;
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.app-loading-state span {
+  width: 38px;
+  height: 38px;
+  border: 3px solid rgba(126, 194, 255, 0.28);
+  border-top-color: #063b7a;
+  border-radius: 50%;
+  animation: app-loading-spin 0.85s linear infinite;
+}
 

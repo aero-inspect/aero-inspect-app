@@ -1,10 +1,10 @@
-﻿.register-asset-dashboard {
+.register-asset-dashboard {
   height: var(--app-canvas-height);
   overflow-y: auto;
   overflow-x: hidden;
   padding: 12px 16px 0;
   background: #f8fafc;
-  color: #0f172a;
+  color: #063b7a;
 }
 
 .register-asset-topbar {
@@ -19,7 +19,7 @@
 
 .register-title-group h1 {
   margin: 0;
-  color: #0f172a;
+  color: #063b7a;
   font-size: 1.22rem;
   line-height: 1.1;
   font-weight: 800;
@@ -40,7 +40,7 @@
   border: 0;
   border-radius: 10px;
   background: transparent;
-  color: #0f172a;
+  color: #063b7a;
   cursor: pointer;
 }
 
@@ -87,7 +87,7 @@
 .register-section-heading h2,
 .register-card h2 {
   margin: 0;
-  color: #0f172a;
+  color: #063b7a;
   font-size: 0.78rem;
   font-weight: 800;
 }
@@ -128,7 +128,7 @@
   border: 1px solid #e5eaf0;
   border-radius: 12px;
   background: #ffffff;
-  color: #334155;
+  color: #063b7a;
 }
 
 .selected-location-card.has-location {
@@ -153,7 +153,7 @@
 
 .selected-location-card strong {
   display: block;
-  color: #0f172a;
+  color: #063b7a;
   font-size: 0.66rem;
   font-weight: 800;
 }
@@ -201,7 +201,7 @@
 
 .register-preview-title strong {
   overflow: hidden;
-  color: #0f172a;
+  color: #063b7a;
   font-size: 0.7rem;
   font-weight: 800;
   text-overflow: ellipsis;
@@ -236,7 +236,7 @@
 .register-preview-item p {
   margin: 0;
   overflow: hidden;
-  color: #334155;
+  color: #063b7a;
   font-size: 0.58rem;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -253,7 +253,7 @@
 }
 
 .register-field > span {
-  color: #0f172a;
+  color: #063b7a;
   font-size: 0.58rem;
   font-weight: 800;
 }
@@ -264,7 +264,7 @@
   border: 1px solid #dbe3ea;
   border-radius: 12px;
   background: #ffffff;
-  color: #334155;
+  color: #063b7a;
   font: inherit;
   font-size: 0.6rem;
   outline: 0;
@@ -316,7 +316,7 @@
   border: 1px solid #dbe3ea;
   border-radius: 12px;
   background: #ffffff;
-  color: #334155;
+  color: #063b7a;
   cursor: pointer;
   font: inherit;
   font-size: 0.58rem;
@@ -393,7 +393,7 @@
   border: 1px dashed #cbd5e1;
   border-radius: 12px;
   background: #f8fafc;
-  color: #334155;
+  color: #063b7a;
   cursor: pointer;
   text-align: center;
   transition: border 0.16s ease, background 0.16s ease;
@@ -410,7 +410,7 @@
 
 .register-dropzone strong {
   margin-top: 5px;
-  color: #0f172a;
+  color: #063b7a;
   font-size: 0.62rem;
   font-weight: 800;
 }
@@ -466,7 +466,7 @@
   border: 0;
   border-radius: 50%;
   background: #ffffff;
-  color: #334155;
+  color: #063b7a;
   cursor: pointer;
 }
 
@@ -537,7 +537,7 @@
   min-width: 96px;
   border: 1px solid #dbe3ea;
   background: #ffffff;
-  color: #334155;
+  color: #063b7a;
 }
 
 .register-submit-button {
@@ -587,7 +587,7 @@
   border: 0;
   border-radius: 50%;
   background: #ffffff;
-  color: #0f172a;
+  color: #063b7a;
   cursor: pointer;
 }
 

@@ -1,9 +1,9 @@
-﻿.tech-dashboard {
+.tech-dashboard {
   height: var(--app-canvas-height);
   overflow: auto;
   padding: 18px 20px;
   background: #f8fafc;
-  color: #0f172a;
+  color: #063b7a;
 }
 
 .tech-topbar,
@@ -55,13 +55,13 @@
 }
 
 .weather-temp {
-  color: #0f172a;
+  color: #063b7a;
   font-size: 0.78rem;
   font-weight: 800;
 }
 
 .weather-desc {
-  color: #334155;
+  color: #063b7a;
   font-size: 0.62rem;
 }
 
@@ -72,7 +72,7 @@
   place-items: center;
   width: 34px;
   height: 34px;
-  color: #0f172a;
+  color: #063b7a;
   cursor: pointer;
 }
 
@@ -115,7 +115,7 @@
 
 .notifications-popover h2 {
   margin: 0;
-  color: #0f1a2b;
+  color: #063b7a;
   font-size: 17px;
   font-weight: 800;
 }
@@ -135,7 +135,7 @@
 
 .notification-item strong {
   display: block;
-  color: #0f1a2b;
+  color: #063b7a;
   font-size: 12px;
   font-weight: 800;
 }

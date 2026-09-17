@@ -7,39 +7,39 @@ type ReporteDetalleViewProps = {
 
 const generalData = [
   ["Activo inspeccionado", "Silo Norte"],
-  ["Ubicacion", "Area de Silos"],
-  ["Fecha de inspeccion", "28/05/2025"],
-  ["Mision", "MIS-2025-031"],
+  ["Ubicación", "Área de Silos"],
+  ["Fecha de inspección", "28/05/2025"],
+  ["Misión", "MIS-2025-031"],
   ["Inspector", "Camila Solimano"]
 ];
 
 const operationData = [
   ["Dron utilizado", "Drone 01"],
-  ["Duracion de mision", "18 min"],
+  ["Duración de misión", "18 min"],
   ["Condiciones climaticas", "Despejado - 0 C"],
-  ["Tipo de inspeccion", "Programada"],
+  ["Tipo de inspección", "Programada"],
   ["Estado del reporte", "Pendiente"]
 ];
 
 const findings = [
-  { id: "H-001", type: "Corrosion", severity: "Critico", desc: "Corrosion avanzada en union de placa inferior. Perdida de material.", place: "Cara Norte - Nivel 1", thumbs: 1 },
-  { id: "H-002", type: "Grieta", severity: "Critico", desc: "Grieta longitudinal de 15 cm en costura vertical.", place: "Cara Este - Nivel 2", thumbs: 2 },
-  { id: "H-003", type: "Corrosion", severity: "Alto", desc: "Corrosion moderada en soporte lateral.", place: "Cara Norte - Nivel 2", thumbs: 3 },
-  { id: "H-004", type: "Acumulacion", severity: "Medio", desc: "Acumulacion de polvo en respiradero superior.", place: "Tapa superior", thumbs: 2 },
-  { id: "H-005", type: "Corrosion", severity: "Bajo", desc: "Oxidacion leve en baranda de acceso.", place: "Plataforma - Nivel 3", thumbs: 2 }
+  { id: "H-001", type: "Corrosión", severity: "Crítico", desc: "Corrosión avanzada en unión de placa inferior. Pérdida de material.", place: "Cara Norte - Nivel 1", thumbs: 1 },
+  { id: "H-002", type: "Grieta", severity: "Crítico", desc: "Grieta longitudinal de 15 cm en costura vertical.", place: "Cara Este - Nivel 2", thumbs: 2 },
+  { id: "H-003", type: "Corrosión", severity: "Alto", desc: "Corrosión moderada en soporte lateral.", place: "Cara Norte - Nivel 2", thumbs: 3 },
+  { id: "H-004", type: "Acumulación", severity: "Medio", desc: "Acumulación de polvo en respiradero superior.", place: "Tapa superior", thumbs: 2 },
+  { id: "H-005", type: "Corrosión", severity: "Bajo", desc: "Oxidación leve en baranda de acceso.", place: "Plataforma - Nivel 3", thumbs: 2 }
 ];
 
 const summary = [
   { label: "Totales", value: "14", tone: "total" },
-  { label: "Criticos", value: "2", tone: "critical" },
+  { label: "Críticos", value: "2", tone: "critical" },
   { label: "Medios", value: "5", tone: "medium" },
   { label: "Bajos", value: "3", tone: "low" }
 ];
 
 const approvalSteps = [
-  { title: "Inspeccion finalizada", subtitle: "28/05 - 09:12", done: true },
+  { title: "Inspección finalizada", subtitle: "28/05 - 09:12", done: true },
   { title: "Reporte generado", subtitle: "28/05 - 09:30", done: true },
-  { title: "Validacion tecnica", subtitle: "", warning: true },
+  { title: "Validación técnica", subtitle: "", warning: true },
   { title: "Listo para exportar", subtitle: "", warning: true }
 ];
 
@@ -49,7 +49,7 @@ export function ReporteDetalleView({ onBack }: ReporteDetalleViewProps) {
       <header className="report-detail-topbar">
         <div>
           <h1>Reportes</h1>
-          <p>Visualizacion de reportes de tus misiones.</p>
+          <p>Visualización de reportes de tus misiones.</p>
         </div>
         <AppTopActions />
       </header>
@@ -59,7 +59,7 @@ export function ReporteDetalleView({ onBack }: ReporteDetalleViewProps) {
           <div className="report-hero-title">
             <span><BarChart3 size={25} /></span>
             <div>
-              <h2>Reporte de inspeccion</h2>
+              <h2>Reporte de inspección</h2>
               <p>REP-2025-024</p>
             </div>
           </div>
@@ -85,7 +85,7 @@ export function ReporteDetalleView({ onBack }: ReporteDetalleViewProps) {
         </section>
 
         <section className="report-detail-card detail-info-card">
-          <h2>Operacion y condiciones</h2>
+          <h2>Operación y condiciones</h2>
           <InfoList items={operationData} highlightLast />
         </section>
 
@@ -108,8 +108,8 @@ export function ReporteDetalleView({ onBack }: ReporteDetalleViewProps) {
               <span>ID</span>
               <span>Tipo</span>
               <span>Severidad</span>
-              <span>Descripcion</span>
-              <span>Ubicacion</span>
+              <span>Descripción</span>
+              <span>Ubicación</span>
               <span>Evidencia</span>
             </div>
             {findings.map((finding) => (
@@ -128,17 +128,17 @@ export function ReporteDetalleView({ onBack }: ReporteDetalleViewProps) {
         </section>
 
         <section className="report-detail-card validation-card">
-          <h2>Validacion tecnica</h2>
+          <h2>Validación técnica</h2>
           <label>
             <span>Comentarios del validador</span>
-            <textarea placeholder="Agregar observaciones, correcciones o aprobacion tecnica..." />
+            <textarea placeholder="Agregar observaciones, correcciones o aprobación técnica..." />
           </label>
           <div className="signature-row">
             <span>Firma digital</span>
             <div className="signature-box" />
             <button className="request-fix" type="button">
               <RotateCcw size={15} />
-              Solicitar correccion
+              Solicitar corrección
             </button>
           </div>
           <button className="validate-button" type="button">

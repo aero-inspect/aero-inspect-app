@@ -60,7 +60,7 @@
   border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 10px;
   background: #ffffff;
-  color: #172033;
+  color: #063b7a;
   text-align: left;
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -77,7 +77,7 @@
 }
 
 .plan-builder-recording-row strong {
-  color: #0f172a;
+  color: #063b7a;
   font-size: 13px;
 }
 
@@ -94,7 +94,7 @@
 }
 
 .plan-builder-sensitivity-label {
-  color: #172033;
+  color: #063b7a;
   font-size: 12px;
   font-weight: 600;
 }
@@ -142,7 +142,7 @@
 }
 
 .plan-builder-waypoint-info strong {
-  color: #172033;
+  color: #063b7a;
   font-size: 12px;
 }
 

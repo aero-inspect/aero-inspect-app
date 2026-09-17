@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ChevronDown, Plus, Search, Trash2 } from "lucide-react";
 import type { SessionUser } from "../types";
 import { AppTopActions } from "../components/AppTopActions";
+import { LoadingState } from "../components/LoadingState";
 
 type ManagedUser = {
   username: string;
@@ -240,7 +241,7 @@ export function RoleManagementView({ user }: { user: SessionUser; onBack: () => 
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr><td colSpan={6}>Cargando personal...</td></tr>
+                  <tr><td colSpan={6}><LoadingState text="Cargando personal..." compact /></td></tr>
                 ) : filteredUsers.length ? (
                   filteredUsers.map((item) => (
                     <tr key={item.username}>

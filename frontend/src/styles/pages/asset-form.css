@@ -1,4 +1,4 @@
-﻿.asset-page {
+.asset-page {
   display: grid;
   gap: 26px;
   min-width: 0;
@@ -34,7 +34,7 @@
 
 .asset-header h1 {
   margin-bottom: 10px;
-  color: #10253a;
+  color: #063b7a;
   font-size: 2.4rem;
   line-height: 1.05;
 }
@@ -127,7 +127,7 @@
   border-radius: 8px;
   outline: 0;
   background: #ffffff;
-  color: #10253a;
+  color: #063b7a;
   font-size: 0.92rem;
   font-weight: 400;
 }
@@ -175,7 +175,7 @@
   border-radius: 8px;
   outline: 0;
   background: #ffffff;
-  color: #10253a;
+  color: #063b7a;
   cursor: pointer;
   font-size: 0.92rem;
   font-weight: 400;

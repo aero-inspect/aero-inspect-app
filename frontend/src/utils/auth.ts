@@ -1,5 +1,5 @@
 const BACKEND_ROLE_LABELS: Record<string, string> = {
-  TECNICO_MANTENIMIENTO: "Tecnico de Mantenimiento",
+  TECNICO_MANTENIMIENTO: "Técnico de Mantenimiento",
   JEFE_PLANTA: "Jefe de Planta"
 };
 

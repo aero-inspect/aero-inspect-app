@@ -84,6 +84,8 @@ export type BackendFlightPlan = {
   route: BackendPlanWaypoint[];
 };
 
+export type CreateFlightPlanPayload = Omit<BackendFlightPlan, "idFlightPlan">;
+
 export type BackendMissionStatus = "PLANNED" | "UPLOADING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "FAILED";
 
 export type BackendMissionWaypoint = {
@@ -127,6 +129,35 @@ export type CreateMissionPayload = {
   objective: string;
   idDrone: string;
   scheduledAt: string;
+  selectedPlanWaypointIds: number[];
+};
+
+export type MissionScheduleFrequency = "DAILY" | "WEEKLY";
+
+export type BackendMissionSchedule = {
+  idMissionSchedule: string;
+  idFlightPlan: number;
+  name: string;
+  objective: string;
+  idDrone: string;
+  droneId: string | null;
+  frequency: MissionScheduleFrequency;
+  scheduledTime: string;
+  weekDays: number[];
+  nextRunAt: string | null;
+  active: boolean;
+  createdByUsername: string | null;
+  selectedPlanWaypointIds: number[] | null;
+};
+
+export type CreateMissionSchedulePayload = {
+  idFlightPlan: number;
+  name: string;
+  objective: string;
+  idDrone: string;
+  frequency: MissionScheduleFrequency;
+  scheduledTime: string;
+  weekDays: number[];
   selectedPlanWaypointIds: number[];
 };
 

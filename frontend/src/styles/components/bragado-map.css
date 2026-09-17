@@ -16,8 +16,28 @@
 }
 
 .bragado-map-stage { position: absolute; inset: 0; }
-.bragado-map-layers { position: absolute; top: 78px; left: 14px; display: flex; gap: 3px; padding: 4px; background: white; border-radius: 10px; z-index: 3; }
-.bragado-map-layers button { border: 0; border-radius: 8px; padding: 8px 10px; color: #295b87; background: white; cursor: pointer; font-size: 12px; }
+
+.bragado-map-hover-label {
+  position: absolute;
+  z-index: 8;
+  transform: translate(-50%, calc(-100% - 12px));
+  max-width: 190px;
+  padding: 5px 9px;
+  border: 1px solid rgba(41, 91, 135, 0.18);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 5px 14px rgba(15, 26, 43, 0.14);
+  color: #063b7a;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bragado-map-layers { position: absolute; top: 78px; left: 14px; display: flex; gap: 3px; padding: 4px; background: white; border-radius: 14px; z-index: 3; }
+.bragado-map-layers button { border: 0; border-radius: 999px; padding: 8px 10px; color: #295b87; background: white; cursor: pointer; font-size: 12px; }
 .bragado-map-layers button[aria-pressed="true"] { background: #dceeff; font-weight: 700; }
 .bragado-map-layers button:disabled { cursor: default; }
 .bragado-map-mission-point { max-width: calc(100% - 28px); flex-wrap: wrap; }
@@ -28,7 +48,7 @@
   height: auto;
   min-height: 0;
   z-index: 1200;
-  border-radius: 8px;
+  border-radius: 14px;
   box-shadow: 0 0 0 100vmax rgb(15 23 30 / 55%);
 }
 
@@ -56,7 +76,7 @@
   border: 1px solid rgba(24, 44, 62, 0.32);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.92);
-  color: #10253a;
+  color: #063b7a;
   cursor: pointer;
   font-size: 10px;
   font-weight: 800;
@@ -93,12 +113,11 @@
   box-shadow: 0 14px 34px rgba(15, 26, 43, 0.14);
 }
 
-.bragado-map-toolbar select,
 .bragado-map-toolbar label {
   height: 32px;
   min-width: 0;
   border: 1px solid #dbe7f1;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #ffffff;
   color: #295b87;
   font-size: 11px;
@@ -107,22 +126,89 @@
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
-.bragado-map-toolbar select {
-  width: 122px;
-  padding: 0 12px;
-  cursor: pointer;
-}
-
 @media(max-width:600px) {
   .bragado-map-toolbar { gap: 4px; padding: 5px; left: 8px; max-width: calc(100% - 16px); }
-  .bragado-map-toolbar select { width: 99px; padding: 0 5px; font-size: 10px; }
+  .bragado-map-select { width: 102px; }
+  .bragado-map-select > button { padding: 0 7px; font-size: 10px; }
 }
 
-.bragado-map-toolbar select:hover,
-.bragado-map-toolbar select:focus-visible {
+.bragado-map-select {
+  position: relative;
+  width: 124px;
+  flex: 0 0 auto;
+}
+
+.bragado-map-select > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #dbe7f1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #295b87;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(15, 26, 43, 0.04);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.bragado-map-select > button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bragado-map-select > button:hover,
+.bragado-map-select > button:focus-visible,
+.bragado-map-select > button[aria-expanded="true"] {
   border-color: rgba(41, 91, 135, 0.35);
+  background: #e3f2fd;
   box-shadow: 0 5px 14px rgba(41, 91, 135, 0.08);
   outline: none;
+}
+
+.bragado-map-select-menu {
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + 9px);
+  left: 0;
+  display: grid;
+  gap: 5px;
+  min-width: 100%;
+  padding: 7px;
+  border: 1px solid #dbe7f1;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 36px rgba(15, 26, 43, 0.16);
+}
+
+.bragado-map-select-menu button {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #415c76;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.bragado-map-select-menu button:hover,
+.bragado-map-select-menu button.selected {
+  background: #e3f2fd;
+  color: #063b7a;
 }
 
 .bragado-map-toolbar label {
@@ -145,7 +231,7 @@
   bottom: 14px;
   padding: 9px 13px;
   border: 1px solid rgba(227, 235, 242, 0.9);
-  border-radius: 10px;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 10px 26px rgba(15, 26, 43, 0.14);
   color: #5c708c;
@@ -163,7 +249,7 @@
   min-height: 28px;
   padding: 0 9px;
   border: 1px solid #dbe7f1;
-  border-radius: 9px;
+  border-radius: 999px;
   background: #ffffff;
   color: #295b87;
   cursor: pointer;
@@ -198,7 +284,7 @@
   width: min(260px, calc(100% - 28px));
   padding: 14px;
   border: 1px solid rgba(227, 235, 242, 0.82);
-  border-radius: 8px;
+  border-radius: 14px;
   overflow-y: auto;
   overscroll-behavior: contain;
   background: rgba(255, 255, 255, 0.94);
@@ -246,7 +332,7 @@
 .bragado-map-reset {
   min-height: 27px;
   border: 1px solid #dbe7f1;
-  border-radius: 9px;
+  border-radius: 999px;
   background: #ffffff;
   color: #4f6578;
   cursor: pointer;
@@ -317,7 +403,7 @@
   margin-top: 3px;
   padding: 0 12px;
   border: 1px solid #063b7a;
-  border-radius: 8px;
+  border-radius: 999px;
   background: rgba(126, 194, 255, 0.22);
   color: #063b7a;
   cursor: pointer;
@@ -342,7 +428,7 @@
   border: 1px solid #e3ebf2;
   border-radius: 10px;
   background: #ffffff;
-  color: #10253a;
+  color: #063b7a;
   cursor: pointer;
   font: inherit;
   text-align: left;
@@ -385,14 +471,14 @@
   }
 }
 
-.bragado-map-toolbar button, .bragado-map-panel header button {
+.bragado-map-toolbar > button, .bragado-map-panel header button {
   display: grid;
   place-items: center;
   width: 32px;
   height: 32px;
   flex: 0 0 32px;
   border: 1px solid #dbe7f1;
-  border-radius: 6px;
+  border-radius: 8px;
   background: white;
   color: #295b87;
   cursor: pointer;
@@ -401,11 +487,180 @@
 .bragado-map-detail { border: 0; border-top: 1px solid #e3ebf2; border-radius: 0; padding: 12px 0; background: transparent; }
 .bragado-map-filter-block div { flex-direction: column; }
 .bragado-map-filter-block button { text-align: left; min-height: 30px; }
-.bragado-camera-tools { position:absolute; bottom:14px; left:14px; z-index:3; display:flex; align-items:center; gap:6px; padding:4px 7px; border-radius:8px; background:rgba(255,255,255,.86); color:#587084; }
-.bragado-camera-tools button { display:grid; place-items:center; width:30px; height:30px; padding:0; border:0; border-radius:6px; background:transparent; color:inherit; cursor:pointer; }
-.bragado-camera-tools button:hover { background:#e5edf3; }
+.bragado-camera-tools { position:absolute; bottom:14px; left:14px; z-index:3; display:flex; align-items:center; gap:7px; padding:6px; border:1px solid #d7e5f2; border-radius:8px; background:rgba(255,255,255,.88); color:#587084; box-shadow:0 8px 18px rgba(15,26,43,.08); }
+.bragado-camera-tools button { display:grid; place-items:center; width:30px; height:30px; padding:0; border:1px solid transparent; border-radius:8px; background:transparent; color:inherit; cursor:pointer; }
+.bragado-camera-tools button:hover { background:#e3f2fd; color:#063b7a; }
 .bragado-compass { width:30px; height:30px; border:1px solid #a5b5c1; border-radius:50%; display:grid; place-items:center; }
 .bragado-compass > span { width:28px; height:28px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
 .bragado-compass b { font-size:9px; line-height:10px; font-weight:600; }
-.bragado-zoom { font-size:11px; font-variant-numeric:tabular-nums; min-width:65px; white-space:nowrap; }
 @media(max-width:600px) { .bragado-camera-tools { bottom:65px; left:8px; } }
+.bragado-camera-tools .bragado-follow { width:auto; padding:0 9px; font-size:11px; font-weight:700; white-space:nowrap; }
+.bragado-camera-tools .bragado-follow[aria-pressed="true"] { border-color:#cfe8fb; background:#e3f2fd; color:#063b7a; }
+.mission-asset-modal {
+  display: grid;
+  grid-template-rows: auto 1px minmax(0, 1fr) auto;
+  width: min(1120px, calc(100vw - 64px)) !important;
+  height: min(92vh, 760px);
+  min-height: 0 !important;
+  overflow: hidden;
+}
+
+.mission-asset-modal .mission-plan-modal-header {
+  height: 76px;
+  padding: 0 34px;
+}
+
+.mission-asset-modal .mission-plan-modal-close {
+  top: 20px;
+  right: 30px;
+}
+
+.mission-asset-modal .mission-asset-picker {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
+  min-height: 0;
+  padding: 18px 28px 12px;
+}
+
+.mission-asset-modal .mission-budget-meter {
+  margin-top: 0;
+}
+
+.mission-asset-modal .mission-plan-modal-footer {
+  height: 66px;
+  padding: 0 28px 16px;
+  border-top: 0;
+}
+
+@media (max-width: 760px) {
+  .mission-asset-modal {
+    width: calc(100vw - 24px) !important;
+    height: calc(100vh - 24px);
+  }
+
+  .mission-asset-modal .mission-asset-picker {
+    padding: 14px 14px 10px;
+  }
+
+  .mission-asset-modal .mission-plan-modal-header {
+    padding: 0 18px;
+  }
+
+  .mission-asset-modal .mission-plan-modal-close {
+    right: 16px;
+  }
+}
+.mission-asset-picker { min-width: 0; width: 100%; }
+.mission-asset-picker .bragado-map:not(.bragado-map-expanded) { height: min(58vh, 560px); min-height: 330px; }
+.mission-asset-modal .mission-asset-picker .bragado-map:not(.bragado-map-expanded) {
+  height: auto;
+  min-height: 0;
+}
+.mission-asset-picker .map-field-label { padding: 8px 12px; margin: 0; }
+.mission-route-budget { justify-content: space-between; }
+.mission-budget-meter {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(126, 194, 255, 0.42);
+  border-radius: 13px;
+  background: rgba(248, 251, 255, 0.96);
+  box-shadow: 0 8px 18px rgba(15, 26, 43, 0.06);
+  color: #295b87;
+}
+
+.mission-budget-meter-header,
+.mission-budget-meter-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mission-budget-meter-header span,
+.mission-budget-meter-footer span,
+.mission-budget-meter-footer small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mission-budget-meter-header span {
+  color: #4f6578;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.mission-budget-meter-header strong {
+  color: #063b7a;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.mission-budget-track {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6eef6;
+}
+
+.mission-budget-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7ec2ff, #2370c5);
+  transition: width 0.22s ease, background 0.22s ease;
+}
+
+.mission-budget-meter-footer span,
+.mission-budget-meter-footer small {
+  color: #6b7d91;
+  font-size: 10px;
+  line-height: 13px;
+  font-weight: 800;
+}
+
+.mission-budget-meter.exceeded {
+  border-color: rgba(180, 35, 24, 0.42);
+  background: #fff7f6;
+  color: #b42318;
+}
+
+.mission-budget-meter.exceeded .mission-budget-track i {
+  background: linear-gradient(90deg, #ff9b8f, #d92d20);
+}
+
+.mission-budget-meter.exceeded .mission-budget-meter-header span,
+.mission-budget-meter.exceeded .mission-budget-meter-header strong,
+.mission-budget-meter.exceeded .mission-budget-meter-footer span {
+  color: #b42318;
+}
+
+.mission-route-budget.exceeded {
+  border-color: rgba(169, 68, 66, 0.34) !important;
+  background: #fff5f5 !important;
+  color: #a94442 !important;
+}
+.mission-route-budget-error {
+  display: block;
+  margin: 6px 0 0;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #b42318;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 700;
+}
+
+.mission-route-budget-error svg {
+  display: none;
+}
+.missions-dashboard .mission-builder-map.mission-builder-map-3d { display: block; height: auto; overflow: visible; }
+.missions-dashboard .mission-builder-map.mission-builder-map-3d .map-field-label { min-height: 32px; margin-top: 6px; padding: 8px 12px; }

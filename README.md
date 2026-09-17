@@ -40,5 +40,5 @@ npm run build --workspace frontend
 
 ## Usuarios de prueba
 
-- Usuario: `tecnico` / Contraseña: `Tecnico#123` / Rol: `Tecnico de Mantenimiento`
+- Usuario: `tecnico` / Contraseña: `Tecnico#123` / Rol: `Técnico de Mantenimiento`
 - Usuario: `jefe` / Contraseña: `Jefe#123` / Rol: `Jefe de Planta`

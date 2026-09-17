@@ -3,7 +3,7 @@
   overflow: hidden;
   padding: 20px 22px 24px 24px;
   background: #f4f7fb;
-  color: #0a1426;
+  color: #063b7a;
 }
 
 .personnel-topbar {
@@ -55,7 +55,7 @@
 .personnel-create-card header h2,
 .personnel-table-card header h2 {
   margin: 0;
-  color: #16243a;
+  color: #063b7a;
   font-size: 13px;
   line-height: 17px;
   font-weight: 750;
@@ -99,7 +99,7 @@
   border-bottom: 1px solid #d9e2ef;
   border-radius: 0;
   background: transparent;
-  color: #1f2f46;
+  color: #063b7a;
   font: inherit;
   font-size: 10px;
   line-height: 14px;
@@ -194,7 +194,7 @@
   width: 100%;
   border: 0;
   background: transparent;
-  color: #26384f;
+  color: #063b7a;
   font: inherit;
   font-size: 10px;
   outline: 0;
@@ -230,7 +230,7 @@
 .personnel-table td {
   height: 46px;
   border-top: 1px solid #edf2f7;
-  color: #21324a;
+  color: #063b7a;
   font-size: 10px;
   line-height: 13px;
   vertical-align: middle;
@@ -299,7 +299,7 @@
 
 .personnel-user-cell strong {
   overflow: hidden;
-  color: #17263c;
+  color: #063b7a;
   font-size: 10px;
   font-weight: 750;
   text-overflow: ellipsis;
@@ -411,7 +411,7 @@
 .personnel-page .personnel-dropdown-menu button:hover,
 .personnel-page .personnel-dropdown-menu button.selected {
   background: rgba(15, 26, 43, 0.05);
-  color: #26384f;
+  color: #063b7a;
 }
 
 .personnel-status {
