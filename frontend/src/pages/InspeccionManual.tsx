@@ -161,10 +161,7 @@ export function InspeccionManualView({
           </button>
           <div>
             <h1>Inspección manual</h1>
-            <p>
-              Volá el dron con la transmisora y el módulo graba el recorrido. Al aterrizar lo sube
-              solo, y con eso se genera un plan de vuelo reproducible.
-            </p>
+            <p>Volá con la transmisora y el dron graba el recorrido para repetirlo después.</p>
           </div>
         </div>
         <AppTopActions />

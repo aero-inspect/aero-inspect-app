@@ -276,6 +276,11 @@ export function Home({
         ) : user.role === "Jefe de Planta" || user.role === "Técnico de Mantenimiento" ? (
           <InspectionHomeView
             navigateTo={navigateTo}
+            onStartManualInspection={
+              DRONE_OPERATION_ROLES.includes(user.role)
+                ? () => navigateTo("/inspeccion-manual")
+                : undefined
+            }
             onViewAsset={(idAsset) => {
               setSelectedAssetId(idAsset);
               navigateTo("/mis-activos");
@@ -434,6 +439,8 @@ export function Home({
 }
 
 type InspectionHomeViewProps = {
+  /** Sólo viene para los roles que operan el dron; sin esto el botón no se muestra. */
+  onStartManualInspection?: () => void;
   navigateTo: (path: string) => void;
   onViewAsset: (idAsset: number) => void;
   onViewMission: (idMission: string) => void;
@@ -474,7 +481,13 @@ function missionSortTime(mission: BackendMission) {
   return date ? new Date(date).getTime() : 0;
 }
 
-function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: InspectionHomeViewProps) {
+function InspectionHomeView({
+  navigateTo,
+  onViewAsset,
+  onViewMission,
+  plant,
+  onStartManualInspection
+}: InspectionHomeViewProps) {
   const [assets, setAssets] = useState<BackendAsset[]>([]);
   const [missions, setMissions] = useState<BackendMission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -521,7 +534,15 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
           <h1>Inicio</h1>
           <p>Resumen de misiones y activos de la planta.</p>
         </div>
-        <AppTopActions />
+        <div className="inspection-home-actions">
+          {onStartManualInspection && (
+            <button className="inspection-manual-button" onClick={onStartManualInspection} type="button">
+              <Radio size={16} aria-hidden="true" />
+              <span>Inspección manual</span>
+            </button>
+          )}
+          <AppTopActions />
+        </div>
       </div>
 
       <div className="inspection-home-layout">

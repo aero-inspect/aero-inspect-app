@@ -3,6 +3,9 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* Sin esto la tarjeta se estira a lo alto de la fila del grid y el botón queda al fondo de
+     una pantalla de blanco, que es lo mismo que no estar. */
+  align-self: start;
 }
 
 .manual-recording-dot {
@@ -46,7 +49,6 @@
 .manual-recording-actions {
   display: flex;
   gap: 10px;
-  margin-top: auto;
 }
 
 .manual-recording-actions button {
@@ -88,4 +90,32 @@
   align-items: center;
   gap: 8px;
   margin-top: 4px;
+}
+
+/* Entrada a la inspección manual desde el Inicio del técnico, que es el dashboard que ese rol
+   ve de verdad (el de "Acciones Rápidas" es de los otros roles). */
+.inspection-home-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.inspection-manual-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: 1px solid #063b7a;
+  border-radius: 999px;
+  background: #063b7a;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.inspection-manual-button:hover {
+  background: #0a4e9e;
+  border-color: #0a4e9e;
 }
