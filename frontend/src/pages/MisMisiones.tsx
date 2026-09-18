@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertCircle, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, Play, Plus, RefreshCw, Search, Trash2, X, XCircle } from "lucide-react";
+import { AlertCircle, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, Play, Plus, Radio, RefreshCw, Search, Trash2, X, XCircle } from "lucide-react";
 import type { BackendFlightPlan, BackendMission, BackendMissionSchedule, BackendMissionStatus, ManagedUser } from "../api/types";
 import type { SessionUser } from "../types";
 import { deleteMission, deleteMissionSchedule, getFlightPlans, getManagedUsers, getMission, getMissions, getMissionSchedules, startMission, updateMissionPilot, updateMissionSchedule } from "../api/client";
@@ -124,11 +124,14 @@ function formatScheduleDays(schedule: BackendMissionSchedule) {
 export function MisMisionesView({
   user,
   onCreateMission,
-  onViewMission
+  onViewMission,
+  onStartManualInspection
 }: {
   user: SessionUser;
   onCreateMission: (idFlightPlans: number[]) => void;
   onViewMission: (idMission: string) => void;
+  /** Sólo viene para los roles que operan el dron; sin esto el botón no se muestra. */
+  onStartManualInspection?: () => void;
 }) {
   const [missions, setMissions] = useState<BackendMission[] | null>(null);
   const [missionSchedules, setMissionSchedules] = useState<BackendMissionSchedule[] | null>(null);
@@ -421,10 +424,18 @@ export function MisMisionesView({
         <MissionSummaryCard icon={<Clock3 size={22} />} label="Pendientes" tone="amber" value={totals.pending} />
         <MissionSummaryCard icon={<Play size={22} />} label="En progreso" tone="blue" value={totals.active} />
         <MissionSummaryCard icon={<CheckCircle2 size={22} />} label="Completadas" tone="green" value={totals.completed} />
-        <button className="missions-new-button" onClick={() => onCreateMission([])} type="button">
-          <Plus size={18} />
-          Nueva Misión
-        </button>
+        <div className="missions-actions-cell">
+          <button className="missions-new-button" onClick={() => onCreateMission([])} type="button">
+            <Plus size={18} />
+            Nueva Misión
+          </button>
+          {onStartManualInspection && (
+            <button className="missions-manual-button" onClick={onStartManualInspection} type="button">
+              <Radio size={18} />
+              Inspección Manual
+            </button>
+          )}
+        </div>
       </section>
 
       {loadError && (

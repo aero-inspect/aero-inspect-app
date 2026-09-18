@@ -92,30 +92,35 @@
   margin-top: 4px;
 }
 
-/* Entrada a la inspección manual desde el Inicio del técnico, que es el dashboard que ese rol
-   ve de verdad (el de "Acciones Rápidas" es de los otros roles). */
-.inspection-home-actions {
+/* Entrada a la inspección manual, en Misiones: comparte la celda con "Nueva Misión", que es el
+   otro camino para llegar a un plan de vuelo. La fila es un grid de 4 tarjetas + una columna de
+   166px, así que las dos acciones van apiladas dentro de esa última columna y no como un sexto
+   elemento, que se caía a una fila nueva. */
+.missions-actions-cell {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
 }
 
-.inspection-manual-button {
+.missions-manual-button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 9px 16px;
+  width: 166px;
+  height: 38px;
   border: 1px solid #063b7a;
-  border-radius: 999px;
-  background: #063b7a;
-  color: #ffffff;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #063b7a;
+  font: inherit;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }
 
-.inspection-manual-button:hover {
-  background: #0a4e9e;
-  border-color: #0a4e9e;
+.missions-manual-button:hover {
+  background: rgba(126, 194, 255, 0.16);
 }
