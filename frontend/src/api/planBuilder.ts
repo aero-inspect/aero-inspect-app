@@ -86,6 +86,9 @@ export type PlanWaypoint = {
   latitude: number;
   longitude: number;
   altitude: number;
+  // Sólo en una parada a la que se le asignó un activo al generar el plan.
+  idAsset?: number | null;
+  name?: string | null;
 };
 
 export type PlanStatus = "DRAFT" | "CONFIRMED" | "ARCHIVED";
@@ -107,6 +110,8 @@ export type GenerateFlightPlanPayload = {
   sensitivity: SensitivityLevel;
   name: string;
   objective: string;
+  // El activo de cada punto marcado, en orden (posición 0 = punto 1). null deja la parada sin activo.
+  markedPointAssetIds: Array<number | null>;
 };
 
 export function getFlightRecordings() {

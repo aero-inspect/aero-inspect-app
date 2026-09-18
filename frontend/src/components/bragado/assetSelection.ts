@@ -7,6 +7,8 @@ import { toPlantPosition } from './georeference';
 export type AssetSelectionData = {
   assets: BackendAsset[];
   selectedIds: number[];
+  // Activos que en esta pantalla no se pueden elegir: se tapan en gris y no responden al click.
+  disabledIds?: number[];
   route: MissionRoutePoint[];
   onSelect: (id: number) => void;
   onHover?: (id: number | null, position?: { x: number; y: number }) => void;
@@ -16,6 +18,7 @@ export function createAssetSelection(scene: T.Scene, camera: T.Camera, canvas: H
   const selectedMeshes = new T.Group();
   const material = new T.MeshBasicMaterial({ side: T.DoubleSide, transparent: true, opacity: 0 });
   const selectedMaterial = new T.MeshBasicMaterial({ color: '#3fbd68', transparent: true, opacity: .24, depthWrite: false, side: T.DoubleSide });
+  const disabledMaterial = new T.MeshBasicMaterial({ color: '#8b95a1', transparent: true, opacity: .72, depthWrite: false, side: T.DoubleSide });
   const line = new T.Line(new T.BufferGeometry(), new T.LineBasicMaterial({color: '#38c6e0', toneMapped: false}));
   scene.add(line, selectedMeshes);
   let data: AssetSelectionData | null = null;
@@ -55,7 +58,7 @@ export function createAssetSelection(scene: T.Scene, camera: T.Camera, canvas: H
     const start=down;down=null;
     if(!data||!start||start.id!==e.pointerId||dragged||Math.hypot(e.clientX-start.x,e.clientY-start.y)>5)return;
     const id=pick(e);
-    if(id===null)return;
+    if(id===null||data.disabledIds?.includes(id))return;
     data.onSelect(id);
   };
   const cancel = () => { down=null; };
@@ -78,8 +81,9 @@ export function createAssetSelection(scene: T.Scene, camera: T.Camera, canvas: H
         mesh.position.set(record.x,height/2,record.z);
         if(asset.type==='CELDA')mesh.rotation.y=Math.PI/4;
         mesh.userData.idAsset=asset.idAsset;proxies.add(mesh);
-        if(next.selectedIds.includes(asset.idAsset)){
-          const selected=new T.Mesh(geometry.clone(),selectedMaterial);
+        const disabled=next.disabledIds?.includes(asset.idAsset)??false;
+        if(disabled||next.selectedIds.includes(asset.idAsset)){
+          const selected=new T.Mesh(geometry.clone(),disabled?disabledMaterial:selectedMaterial);
           selected.position.copy(mesh.position);selected.rotation.copy(mesh.rotation);selected.scale.setScalar(1.06);
           selectedMeshes.add(selected);
         }
@@ -87,6 +91,6 @@ export function createAssetSelection(scene: T.Scene, camera: T.Camera, canvas: H
       line.geometry.dispose();
       line.geometry=new T.BufferGeometry().setFromPoints([...next.route].sort((a,b)=>a.sequence-b.sequence).map(toPlantPosition).filter((p):p is T.Vector3=>p!==null));
     },
-    destroy(){clear();material.dispose();selectedMaterial.dispose();line.geometry.dispose();line.material.dispose();line.removeFromParent();selectedMeshes.removeFromParent();canvas.style.cursor='';canvas.removeEventListener('pointerdown',pointerDown);canvas.removeEventListener('pointermove',pointerMove);canvas.removeEventListener('pointerup',pointerUp);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('pointerleave',pointerLeave);}
+    destroy(){clear();material.dispose();selectedMaterial.dispose();disabledMaterial.dispose();line.geometry.dispose();line.material.dispose();line.removeFromParent();selectedMeshes.removeFromParent();canvas.style.cursor='';canvas.removeEventListener('pointerdown',pointerDown);canvas.removeEventListener('pointermove',pointerMove);canvas.removeEventListener('pointerup',pointerUp);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('pointerleave',pointerLeave);}
   };
 }

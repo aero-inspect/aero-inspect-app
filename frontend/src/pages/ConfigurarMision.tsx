@@ -65,6 +65,16 @@ function isBeforeToday(date: Date) {
   return startOfDay(date).getTime() < startOfDay(new Date()).getTime();
 }
 
+// Los activos que tienen una parada en el plan, sin repetir y en el orden en que se visitan.
+function pointOfInterestAssetIds(plan: BackendFlightPlan) {
+  return [...new Set(
+    [...plan.route]
+      .sort((a, b) => a.sequence - b.sequence)
+      .filter((point) => point.pointOfInterest && point.idAsset != null)
+      .map((point) => point.idAsset as number)
+  )];
+}
+
 export function ConfigurarMisionView({
   initialFlightPlanIds,
   onBack,
@@ -83,6 +93,10 @@ export function ConfigurarMisionView({
   const [droneStatuses, setDroneStatuses] = useState<BackendDroneStatus[]>([]);
 
   const [selectedFlightPlans, setSelectedFlightPlans] = useState<BackendFlightPlan[]>([]);
+  // Sólo con un plan fijo (el que se acaba de generar desde un recorrido): los activos del plan que
+  // el usuario sacó de esta misión. Se guardan los excluidos y no los elegidos para que, sin tocar
+  // nada, queden todos elegidos sin depender de cuándo terminó de cargar el plan.
+  const [excludedAssetIds, setExcludedAssetIds] = useState<number[]>([]);
 
   const [name, setName] = useState("");
   const [objective, setObjective] = useState("");
@@ -133,10 +147,26 @@ export function ConfigurarMisionView({
     }
   }, [hasAppliedInitialPlan, initialFlightPlanIds, flightPlans, selectedFlightPlans.length]);
 
+  // Se llega con un único plan ya elegido (Generar plan -> "Ir a configurar misión"): la ruta no se
+  // cambia, se eligen los activos de ese plan en los que se para.
+  const fixedPlan = initialFlightPlanIds?.length === 1 && selectedFlightPlans.length === 1 ? selectedFlightPlans[0] : null;
+  const fixedPlanAssetIds = fixedPlan ? pointOfInterestAssetIds(fixedPlan) : [];
+  const inspectedAssetIds = fixedPlanAssetIds.filter((idAsset) => !excludedAssetIds.includes(idAsset));
+
+  const isInspectedStop = (point: BackendFlightPlan["route"][number]) =>
+    point.pointOfInterest && (!fixedPlan || (point.idAsset != null && inspectedAssetIds.includes(point.idAsset)));
+
+  const handleToggleInspectedAsset = (idAsset: number) => {
+    setExcludedAssetIds((current) =>
+      current.includes(idAsset) ? current.filter((id) => id !== idAsset) : [...current, idAsset]
+    );
+  };
+
   const totalPhotoCount = selectedFlightPlans
     .flatMap((plan) => plan.route)
-    .filter((point) => point.pointOfInterest)
+    .filter(isInspectedStop)
     .reduce((total, point) => total + photoCountForWaypoint(point), 0);
+  const inspectedAssetCount = fixedPlan ? inspectedAssetIds.length : selectedFlightPlans.length;
 
   const selectedDrone = drones?.find((drone) => drone.idDrone === idDrone) ?? null;
   const selectedDroneStatus = selectedDrone
@@ -181,7 +211,7 @@ export function ConfigurarMisionView({
 
   const resetForm = () => {
     setSelectedFlightPlans([]);
-
+    setExcludedAssetIds([]);
 
     setName("");
     setObjective("");
@@ -196,7 +226,7 @@ export function ConfigurarMisionView({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (selectedFlightPlans.length === 0) { setSubmitError("Seleccioná al menos un activo para continuar"); return; }
+    if (selectedFlightPlans.length === 0 || (fixedPlan && inspectedAssetIds.length === 0)) { setSubmitError("Seleccioná al menos un activo para continuar"); return; }
 
     setSubmitError(null);
 
@@ -225,7 +255,7 @@ export function ConfigurarMisionView({
         ? selectedFlightPlans[0]
         : await createFlightPlan(buildCombinedFlightPlan(selectedFlightPlans, name.trim()));
       const missionWaypointIds = missionPlan.route
-        .filter((point) => point.pointOfInterest)
+        .filter(isInspectedStop)
         .map((point) => point.idPlanWaypoint);
       if (recurrenceMode === "once") {
         await createMission({
@@ -282,10 +312,21 @@ export function ConfigurarMisionView({
                 onSelect={setSelectedFlightPlans}
                 locked={Boolean(initialFlightPlanIds?.length)}
                 batteryPercentage={selectedDroneStatus?.battery?.percentage}
+                planAssetSelection={fixedPlan ? {
+                  selectableIds: fixedPlanAssetIds,
+                  selectedIds: inspectedAssetIds,
+                  onToggle: handleToggleInspectedAsset
+                } : undefined}
               />
+              {fixedPlan && (
+                <p className="map-field-label">
+                  Plan "{fixedPlan.name}"{fixedPlan.sourceRecordingId != null ? `, generado desde el recorrido #${fixedPlan.sourceRecordingId}` : ""}.
+                  El dron vuela el recorrido completo y para sólo en los activos que elijas (los grises no están en el plan).
+                </p>
+              )}
               {selectedFlightPlans.length > 0 && (
                 <p className={routeExceedsBattery ? "map-field-label mission-route-budget exceeded" : "map-field-label mission-route-budget"}>
-                  {selectedFlightPlans.length} {selectedFlightPlans.length === 1 ? "activo" : "activos"} · {totalPhotoCount} fotos previstas · {formatMissionDistance(routeDistanceMeters)}
+                  {inspectedAssetCount} {inspectedAssetCount === 1 ? "activo" : "activos"} · {totalPhotoCount} fotos previstas · {formatMissionDistance(routeDistanceMeters)}
                 </p>
               )}
             </article>

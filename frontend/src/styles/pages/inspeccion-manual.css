@@ -58,6 +58,23 @@
   gap: 8px;
 }
 
+/* Mismo botón que el resto de la app (configure-create / configure-cancel), pero con el ancho del
+   texto: los 136-150px fijos de esas clases no alcanzan para "Iniciar inspección manual". */
+.manual-recording-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: auto;
+  min-width: 150px;
+  padding: 0 18px;
+  white-space: nowrap;
+}
+
+.manual-recording-result .manual-recording-button {
+  justify-self: start;
+}
+
 .manual-recording-hint {
   margin: 0;
   color: #8b9caf;

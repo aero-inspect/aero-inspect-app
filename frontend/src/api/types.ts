@@ -82,6 +82,8 @@ export type BackendFlightPlan = {
   minBatteryPct: number;
   assetIds: number[];
   route: BackendPlanWaypoint[];
+  // Recorrido manual del que se generó el plan; null en los planes armados a mano o por SQL.
+  sourceRecordingId?: number | null;
 };
 
 export type CreateFlightPlanPayload = Omit<BackendFlightPlan, "idFlightPlan">;

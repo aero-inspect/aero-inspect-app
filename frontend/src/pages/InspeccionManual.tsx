@@ -257,7 +257,7 @@ export function InspeccionManualView({
                 subido: {newRecording.pointCount} puntos, {formatDateTime(newRecording.recordedFrom)}.
               </p>
               <button
-                className="configure-submit"
+                className="configure-create mission-builder-submit manual-recording-button"
                 onClick={() => onGeneratePlan(newRecording.idFlightRecording)}
                 type="button"
               >
@@ -269,7 +269,7 @@ export function InspeccionManualView({
           <div className="manual-recording-actions">
             {!isRecording ? (
               <button
-                className="configure-submit"
+                className="configure-create mission-builder-submit manual-recording-button"
                 disabled={!selectedIdDrone || isBusy}
                 onClick={handleStart}
                 type="button"
@@ -279,7 +279,7 @@ export function InspeccionManualView({
               </button>
             ) : (
               <button
-                className="configure-cancel"
+                className="configure-cancel manual-recording-button"
                 disabled={isBusy}
                 onClick={handleStop}
                 type="button"
