@@ -236,8 +236,8 @@ export function InspeccionManualView({
             <li>Arrancá la grabación desde acá, con el dron todavía en tierra.</li>
             <li>Despegá y volá el recorrido con la transmisora, como lo harías normalmente.</li>
             <li>
-              Marcá cada punto que quieras inspeccionar con el botón del radiocontrol, o frená
-              unos segundos ahí: de las dos formas salen las paradas del plan.
+              Marcá con el botón del radiocontrol cada punto que quieras inspeccionar: el plan
+              para el dron ahí, y saca la foto. Frenar sin marcar no genera una parada.
             </li>
             <li>Aterrizá. El dron cierra la grabación y sube el recorrido solo.</li>
           </ol>
