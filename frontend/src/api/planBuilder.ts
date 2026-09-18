@@ -21,16 +21,26 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options
   });
 
+  const raw = await response.text();
+
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new Error(body?.message ?? DEFAULT_ERROR_MESSAGE);
+    let message: string | undefined;
+    try {
+      message = raw ? (JSON.parse(raw) as { message?: string }).message : undefined;
+    } catch {
+      // Un error sin cuerpo JSON (un 502 del proxy, por ejemplo) no tiene mensaje que mostrar.
+    }
+    throw new Error(message ?? DEFAULT_ERROR_MESSAGE);
   }
 
-  if (response.status === 204) {
+  // Hay respuestas sin cuerpo: el 202 de arrancar/cortar una inspección manual es una de ellas.
+  // Pasarlas por JSON.parse revienta con "Unexpected end of JSON input" — un error que parece de
+  // red y en realidad es de la llamada que sí funcionó.
+  if (!raw) {
     return undefined as T;
   }
 
-  return response.json() as Promise<T>;
+  return JSON.parse(raw) as T;
 }
 
 export type SensitivityLevel = "LOW" | "MEDIUM" | "HIGH";
@@ -51,6 +61,9 @@ export type TrackPoint = {
   longitude: number;
   altitude: number;
   headingDegree: number;
+  // El piloto apretó el botón del radiocontrol sobre este punto: la generación lo respeta
+  // como waypoint aunque la simplificación lo hubiera descartado.
+  marked?: boolean;
 };
 
 export type FlightRecordingDetail = {
@@ -120,5 +133,22 @@ export function deletePlanWaypoint(idFlightPlan: number, sequence: number) {
 export function confirmFlightPlan(idFlightPlan: number) {
   return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/confirm`, {
     method: "POST"
+  });
+}
+
+// Inspección manual: el backend le publica la orden al dron por MQTT y responde 202. No hay
+// recorrido que devolver todavía — el dron lo sube recién cuando aterriza, y aparece en
+// getFlightRecordings().
+export function startManualRecording(idDrone: string) {
+  return request<void>("/api/v1/flight-recordings/start", {
+    method: "POST",
+    body: JSON.stringify({ idDrone })
+  });
+}
+
+export function stopManualRecording(idDrone: string) {
+  return request<void>("/api/v1/flight-recordings/stop", {
+    method: "POST",
+    body: JSON.stringify({ idDrone })
   });
 }
