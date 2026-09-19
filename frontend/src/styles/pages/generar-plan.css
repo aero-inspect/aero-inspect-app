@@ -239,3 +239,43 @@
   color: #0c7a45;
   font-weight: 600;
 }
+
+.plan-builder-photos {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #d7e0e8;
+}
+
+.plan-builder-photos-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #52677a;
+}
+
+.plan-builder-photo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: #063b7a;
+}
+
+.plan-builder-photo-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plan-builder-photo-add input {
+  width: 64px;
+  font-size: 12px;
+}
+
+.plan-builder-photo-add-button {
+  font-size: 11px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}

@@ -13,10 +13,13 @@ import type {
   FlightRecordingDetail,
   FlightRecordingSummary,
   GeneratedFlightPlan,
+  PlannedPhoto,
   SensitivityLevel,
   WaypointAction
 } from "../api/planBuilder";
 import {
+  PITCH_RANGE,
+  YAW_RANGE,
   confirmFlightPlan,
   deletePlanWaypoint,
   generateFlightPlanDraft,
@@ -110,6 +113,12 @@ export function GenerarPlanVueloView({
   const [markedAssetIds, setMarkedAssetIds] = useState<Array<number | null>>([]);
   const [selectedMarkIndex, setSelectedMarkIndex] = useState<number | null>(null);
 
+  // Fotos planificadas para cada punto marcado, por posición. Sólo tiene sentido en un punto con
+  // activo asignado: al sacarle el activo se le vacía la lista.
+  const [markedPhotos, setMarkedPhotos] = useState<Array<PlannedPhoto[]>>([]);
+  const [photoDrafts, setPhotoDrafts] = useState<Record<number, { pitch: string; yaw: string }>>({});
+  const [photoErrors, setPhotoErrors] = useState<Record<number, string | null>>({});
+
   const [name, setName] = useState("");
   const [objective, setObjective] = useState("");
   const [sensitivity, setSensitivity] = useState<SensitivityLevel>("MEDIUM");
@@ -148,6 +157,9 @@ export function GenerarPlanVueloView({
   const handleSelectRecording = (idFlightRecording: number) => {
     setSelectedRecordingId(idFlightRecording);
     setMarkedAssetIds([]);
+    setMarkedPhotos([]);
+    setPhotoDrafts({});
+    setPhotoErrors({});
     setSelectedMarkIndex(null);
     setRecordingDetail(null);
     setRecordingDetailError(null);
@@ -175,7 +187,8 @@ export function GenerarPlanVueloView({
         sensitivity,
         name: name.trim(),
         objective: objective.trim(),
-        markedPointAssetIds: markedPoints.map((_, index) => markedAssetIds[index] ?? null)
+        markedPointAssetIds: markedPoints.map((_, index) => markedAssetIds[index] ?? null),
+        markedPointPhotos: markedPoints.map((_, index) => markedPhotos[index] ?? [])
       });
       setPlan(draft);
       setSelectedSequence(null);
@@ -221,6 +234,57 @@ export function GenerarPlanVueloView({
     setMarkedAssetIds((current) => {
       const next = [...current];
       next[index] = idAsset;
+      return next;
+    });
+    // Sin activo no tiene sentido planificar fotos: se le vacía la lista al punto.
+    if (idAsset === null) {
+      setMarkedPhotos((current) => {
+        if (!current[index]?.length) return current;
+        const next = [...current];
+        next[index] = [];
+        return next;
+      });
+      setPhotoErrors((current) => ({ ...current, [index]: null }));
+    }
+  };
+
+  const handleAddPhoto = (index: number) => {
+    const draft = photoDrafts[index] ?? { pitch: "", yaw: "" };
+    const pitch = Number(draft.pitch);
+    const yaw = Number(draft.yaw);
+
+    if (draft.pitch.trim() === "" || draft.yaw.trim() === "" || Number.isNaN(pitch) || Number.isNaN(yaw)) {
+      setPhotoErrors((current) => ({ ...current, [index]: "Ingresá un pitch y un yaw." }));
+      return;
+    }
+    if (pitch < PITCH_RANGE.min || pitch > PITCH_RANGE.max) {
+      setPhotoErrors((current) => ({
+        ...current,
+        [index]: `El pitch debe estar entre ${PITCH_RANGE.min} y ${PITCH_RANGE.max}.`
+      }));
+      return;
+    }
+    if (yaw < YAW_RANGE.min || yaw > YAW_RANGE.max) {
+      setPhotoErrors((current) => ({
+        ...current,
+        [index]: `El yaw debe estar entre ${YAW_RANGE.min} y ${YAW_RANGE.max}.`
+      }));
+      return;
+    }
+
+    setPhotoErrors((current) => ({ ...current, [index]: null }));
+    setMarkedPhotos((current) => {
+      const next = [...current];
+      next[index] = [...(next[index] ?? []), { pitch, yaw }];
+      return next;
+    });
+    setPhotoDrafts((current) => ({ ...current, [index]: { pitch: "", yaw: "" } }));
+  };
+
+  const handleRemovePhoto = (index: number, photoIndex: number) => {
+    setMarkedPhotos((current) => {
+      const next = [...current];
+      next[index] = (next[index] ?? []).filter((_, i) => i !== photoIndex);
       return next;
     });
   };
@@ -436,6 +500,66 @@ export function GenerarPlanVueloView({
                             </option>
                           ))}
                         </select>
+
+                        {markedAssetIds[index] != null && (
+                          <div className="plan-builder-photos" onClick={(event) => event.stopPropagation()}>
+                            <span className="plan-builder-photos-label">Fotos ({(markedPhotos[index] ?? []).length})</span>
+
+                            {(markedPhotos[index] ?? []).map((photo, photoIndex) => (
+                              <div className="plan-builder-photo-row" key={photoIndex}>
+                                <span>Pitch {photo.pitch}° · Yaw {photo.yaw}°</span>
+                                <button
+                                  aria-label={`Eliminar foto ${photoIndex + 1} del punto ${index + 1}`}
+                                  className="mission-delete-button"
+                                  onClick={() => handleRemovePhoto(index, photoIndex)}
+                                  title="Eliminar foto"
+                                  type="button"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            ))}
+
+                            <div className="plan-builder-photo-add">
+                              <input
+                                aria-label={`Pitch de la nueva foto del punto ${index + 1}`}
+                                max={PITCH_RANGE.max}
+                                min={PITCH_RANGE.min}
+                                onChange={(event) =>
+                                  setPhotoDrafts((current) => ({
+                                    ...current,
+                                    [index]: { pitch: event.target.value, yaw: current[index]?.yaw ?? "" }
+                                  }))
+                                }
+                                placeholder="Pitch"
+                                type="number"
+                                value={photoDrafts[index]?.pitch ?? ""}
+                              />
+                              <input
+                                aria-label={`Yaw de la nueva foto del punto ${index + 1}`}
+                                max={YAW_RANGE.max}
+                                min={YAW_RANGE.min}
+                                onChange={(event) =>
+                                  setPhotoDrafts((current) => ({
+                                    ...current,
+                                    [index]: { pitch: current[index]?.pitch ?? "", yaw: event.target.value }
+                                  }))
+                                }
+                                placeholder="Yaw"
+                                type="number"
+                                value={photoDrafts[index]?.yaw ?? ""}
+                              />
+                              <button
+                                className="configure-cancel plan-builder-photo-add-button"
+                                onClick={() => handleAddPhoto(index)}
+                                type="button"
+                              >
+                                Agregar foto
+                              </button>
+                            </div>
+                            {photoErrors[index] && <FieldError message={photoErrors[index]!} />}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
