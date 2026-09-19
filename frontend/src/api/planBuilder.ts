@@ -74,6 +74,16 @@ export type FlightRecordingDetail = {
   points: TrackPoint[];
 };
 
+// Una foto planificada para un punto marcado: pitch (inclinación vertical del gimbal, -135 a 45) +
+// yaw (rotación horizontal relativa al heading del dron, -160 a 160).
+export type PlannedPhoto = {
+  pitch: number;
+  yaw: number;
+};
+
+export const PITCH_RANGE = { min: -135, max: 45 };
+export const YAW_RANGE = { min: -160, max: 160 };
+
 export type PlanWaypoint = {
   idPlanWaypoint: number;
   idFlightPlan: number;
@@ -86,6 +96,10 @@ export type PlanWaypoint = {
   latitude: number;
   longitude: number;
   altitude: number;
+  // Sólo en una parada a la que se le asignó un activo al generar el plan.
+  idAsset?: number | null;
+  name?: string | null;
+  cameraAngles?: PlannedPhoto[] | null;
 };
 
 export type PlanStatus = "DRAFT" | "CONFIRMED" | "ARCHIVED";
@@ -107,6 +121,11 @@ export type GenerateFlightPlanPayload = {
   sensitivity: SensitivityLevel;
   name: string;
   objective: string;
+  // El activo de cada punto marcado, en orden (posición 0 = punto 1). null deja la parada sin activo.
+  markedPointAssetIds: Array<number | null>;
+  // Las fotos planificadas para cada punto marcado, en el mismo orden posicional. Una posición
+  // vacía deja esa parada sin fotos.
+  markedPointPhotos: Array<PlannedPhoto[]>;
 };
 
 export function getFlightRecordings() {

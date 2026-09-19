@@ -189,3 +189,93 @@
     0 6px 14px rgba(2, 18, 30, 0.4),
     0 0 0 4px rgba(6, 59, 122, 0.35);
 }
+
+/* --- Paso 2: puntos marcados y activos --- */
+.plan-builder-points-hint {
+  margin: 0;
+  color: #52677a;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.plan-builder-mark-row {
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.plan-builder-mark-row .plan-builder-waypoint-info {
+  flex: 1;
+}
+
+.plan-builder-mark-row select {
+  margin-top: 4px;
+  width: 100%;
+  font-size: 12px;
+}
+
+.plan-builder-mark-number {
+  display: inline-flex;
+  flex: 0 0 26px;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #e7b416;
+  box-shadow: 0 2px 6px rgba(2, 18, 30, 0.25);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.leaflet-marked-point-marker span {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.plan-builder-waypoint-info .plan-builder-waypoint-asset {
+  color: #0c7a45;
+  font-weight: 600;
+}
+
+.plan-builder-photos {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #d7e0e8;
+}
+
+.plan-builder-photos-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #52677a;
+}
+
+.plan-builder-photo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: #063b7a;
+}
+
+.plan-builder-photo-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plan-builder-photo-add input {
+  width: 64px;
+  font-size: 12px;
+}
+
+.plan-builder-photo-add-button {
+  font-size: 11px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}

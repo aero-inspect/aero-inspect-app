@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   AlertCircle,
   CheckCircle2,
+  MapPin,
   Radio,
   RefreshCw,
   Route,
@@ -12,29 +13,37 @@ import type {
   FlightRecordingDetail,
   FlightRecordingSummary,
   GeneratedFlightPlan,
+  PlannedPhoto,
   SensitivityLevel,
   WaypointAction
 } from "../api/planBuilder";
 import {
+  PITCH_RANGE,
+  YAW_RANGE,
   confirmFlightPlan,
   deletePlanWaypoint,
   generateFlightPlanDraft,
   getFlightRecording,
   getFlightRecordings
 } from "../api/planBuilder";
+import { getAssets } from "../api/client";
+import type { BackendAsset } from "../api/types";
+import { MarkedPointsMap } from "../components/MarkedPointsMap";
 import { MissionDetailRouteMap } from "../components/MissionDetailRouteMap";
 import { PlanDraftMap } from "../components/PlanDraftMap";
 import { AppTopActions } from "../components/AppTopActions";
 import { FieldError } from "../components/FieldError";
 import { LoadingState } from "../components/LoadingState";
+import { haversineDistanceMeters } from "../utils/geo";
 import { getNavigateMovementKind, NAVIGATE_MOVEMENT_LABELS } from "../utils/waypointMovement";
 
-type WizardStep = "recorrido" | "sensibilidad" | "revision" | "confirmado";
+type WizardStep = "recorrido" | "puntos" | "sensibilidad" | "revision" | "confirmado";
 
-const STEP_ORDER: WizardStep[] = ["recorrido", "sensibilidad", "revision", "confirmado"];
+const STEP_ORDER: WizardStep[] = ["recorrido", "puntos", "sensibilidad", "revision", "confirmado"];
 
 const STEP_LABELS: Record<WizardStep, string> = {
   recorrido: "Recorrido real",
+  puntos: "Puntos y activos",
   sensibilidad: "Sensibilidad",
   revision: "Revisión y ajuste",
   confirmado: "Confirmación"
@@ -69,6 +78,10 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
 }
 
+function formatDistance(meters: number) {
+  return meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
+}
+
 export function GenerarPlanVueloView({
   onBack,
   onPlanConfirmed,
@@ -82,7 +95,9 @@ export function GenerarPlanVueloView({
   // Recorrido recién grabado, para entrar al wizard con él ya elegido.
   initialRecordingId?: number | null;
 }) {
-  const [step, setStep] = useState<WizardStep>("recorrido");
+  // Viniendo de una inspección manual recién terminada, el recorrido ya está elegido: se entra
+  // directo a asignarle activos a los puntos marcados.
+  const [step, setStep] = useState<WizardStep>(initialRecordingId !== null ? "puntos" : "recorrido");
 
   const [recordings, setRecordings] = useState<FlightRecordingSummary[] | null>(null);
   const [recordingsError, setRecordingsError] = useState<string | null>(null);
@@ -91,6 +106,18 @@ export function GenerarPlanVueloView({
   const [recordingDetail, setRecordingDetail] = useState<FlightRecordingDetail | null>(null);
   const [recordingDetailLoading, setRecordingDetailLoading] = useState(false);
   const [recordingDetailError, setRecordingDetailError] = useState<string | null>(null);
+
+  const [assets, setAssets] = useState<BackendAsset[] | null>(null);
+  const [assetsError, setAssetsError] = useState<string | null>(null);
+  // Activo elegido para cada punto marcado, por posición (0 = punto 1). null = sin activo.
+  const [markedAssetIds, setMarkedAssetIds] = useState<Array<number | null>>([]);
+  const [selectedMarkIndex, setSelectedMarkIndex] = useState<number | null>(null);
+
+  // Fotos planificadas para cada punto marcado, por posición. Sólo tiene sentido en un punto con
+  // activo asignado: al sacarle el activo se le vacía la lista.
+  const [markedPhotos, setMarkedPhotos] = useState<Array<PlannedPhoto[]>>([]);
+  const [photoDrafts, setPhotoDrafts] = useState<Record<number, { pitch: string; yaw: string }>>({});
+  const [photoErrors, setPhotoErrors] = useState<Record<number, string | null>>({});
 
   const [name, setName] = useState("");
   const [objective, setObjective] = useState("");
@@ -108,6 +135,12 @@ export function GenerarPlanVueloView({
   const [confirmError, setConfirmError] = useState<string | null>(null);
 
   useEffect(() => {
+    getAssets()
+      .then(setAssets)
+      .catch((error: unknown) => setAssetsError(error instanceof Error ? error.message : "No se pudieron cargar los activos."));
+  }, []);
+
+  useEffect(() => {
     getFlightRecordings()
       .then(setRecordings)
       .catch((error: unknown) => setRecordingsError(error instanceof Error ? error.message : "No se pudieron cargar los recorridos."));
@@ -123,6 +156,11 @@ export function GenerarPlanVueloView({
 
   const handleSelectRecording = (idFlightRecording: number) => {
     setSelectedRecordingId(idFlightRecording);
+    setMarkedAssetIds([]);
+    setMarkedPhotos([]);
+    setPhotoDrafts({});
+    setPhotoErrors({});
+    setSelectedMarkIndex(null);
     setRecordingDetail(null);
     setRecordingDetailError(null);
     setRecordingDetailLoading(true);
@@ -148,7 +186,9 @@ export function GenerarPlanVueloView({
         sourceRecordingId: selectedRecordingId,
         sensitivity,
         name: name.trim(),
-        objective: objective.trim()
+        objective: objective.trim(),
+        markedPointAssetIds: markedPoints.map((_, index) => markedAssetIds[index] ?? null),
+        markedPointPhotos: markedPoints.map((_, index) => markedPhotos[index] ?? [])
       });
       setPlan(draft);
       setSelectedSequence(null);
@@ -189,6 +229,77 @@ export function GenerarPlanVueloView({
       setIsConfirming(false);
     }
   };
+
+  const handleAssignAsset = (index: number, idAsset: number | null) => {
+    setMarkedAssetIds((current) => {
+      const next = [...current];
+      next[index] = idAsset;
+      return next;
+    });
+    // Sin activo no tiene sentido planificar fotos: se le vacía la lista al punto.
+    if (idAsset === null) {
+      setMarkedPhotos((current) => {
+        if (!current[index]?.length) return current;
+        const next = [...current];
+        next[index] = [];
+        return next;
+      });
+      setPhotoErrors((current) => ({ ...current, [index]: null }));
+    }
+  };
+
+  const handleAddPhoto = (index: number) => {
+    const draft = photoDrafts[index] ?? { pitch: "", yaw: "" };
+    const pitch = Number(draft.pitch);
+    const yaw = Number(draft.yaw);
+
+    if (draft.pitch.trim() === "" || draft.yaw.trim() === "" || Number.isNaN(pitch) || Number.isNaN(yaw)) {
+      setPhotoErrors((current) => ({ ...current, [index]: "Ingresá un pitch y un yaw." }));
+      return;
+    }
+    if (pitch < PITCH_RANGE.min || pitch > PITCH_RANGE.max) {
+      setPhotoErrors((current) => ({
+        ...current,
+        [index]: `El pitch debe estar entre ${PITCH_RANGE.min} y ${PITCH_RANGE.max}.`
+      }));
+      return;
+    }
+    if (yaw < YAW_RANGE.min || yaw > YAW_RANGE.max) {
+      setPhotoErrors((current) => ({
+        ...current,
+        [index]: `El yaw debe estar entre ${YAW_RANGE.min} y ${YAW_RANGE.max}.`
+      }));
+      return;
+    }
+
+    setPhotoErrors((current) => ({ ...current, [index]: null }));
+    setMarkedPhotos((current) => {
+      const next = [...current];
+      next[index] = [...(next[index] ?? []), { pitch, yaw }];
+      return next;
+    });
+    setPhotoDrafts((current) => ({ ...current, [index]: { pitch: "", yaw: "" } }));
+  };
+
+  const handleRemovePhoto = (index: number, photoIndex: number) => {
+    setMarkedPhotos((current) => {
+      const next = [...current];
+      next[index] = (next[index] ?? []).filter((_, i) => i !== photoIndex);
+      return next;
+    });
+  };
+
+  const markedPoints = recordingDetail?.points.filter((point) => point.marked) ?? [];
+  const assignedAssetIds = new Set(markedAssetIds.filter((idAsset): idAsset is number => idAsset != null));
+  const assignedCount = markedPoints.filter((_, index) => markedAssetIds[index] != null).length;
+  const assetNameById = new Map((assets ?? []).map((asset) => [asset.idAsset, asset.name]));
+
+  // Los activos de cada punto, del más cercano al más lejano: el que se inspeccionó casi siempre
+  // es uno de los primeros.
+  const assetsByDistance = (point: { latitude: number; longitude: number }) =>
+    (assets ?? [])
+      .map((asset) => ({ asset, distance: haversineDistanceMeters(point, asset) }))
+      .sort((a, b) => a.distance - b.distance);
 
   const orderedRoute = plan ? [...plan.route].sort((a, b) => a.sequence - b.sequence) : [];
   const stepIndex = STEP_ORDER.indexOf(step);
@@ -263,7 +374,7 @@ export function GenerarPlanVueloView({
                 <p className="mission-empty">No hay recorridos manuales registrados todavía.</p>
                 {onStartManualInspection && (
                   <button
-                    className="configure-submit plan-builder-empty-action"
+                    className="configure-create mission-builder-submit manual-recording-button plan-builder-empty-action"
                     onClick={onStartManualInspection}
                     type="button"
                   >
@@ -294,9 +405,176 @@ export function GenerarPlanVueloView({
               <button
                 className="configure-create mission-builder-submit"
                 disabled={!recordingDetail}
-                onClick={() => setStep("sensibilidad")}
+                onClick={() => setStep("puntos")}
                 type="button"
               >
+                Continuar
+              </button>
+            </div>
+          </article>
+        </div>
+      )}
+
+      {step === "puntos" && !recordingDetail && (
+        <article className="mission-detail-card">
+          {recordingDetailError ? (
+            <p className="mission-empty">
+              <AlertCircle size={16} aria-hidden="true" /> {recordingDetailError}
+            </p>
+          ) : (
+            <LoadingState text="Cargando recorrido..." compact />
+          )}
+        </article>
+      )}
+
+      {step === "puntos" && recordingDetail && (
+        <div className="mission-builder-grid">
+          <article className="mission-detail-card mission-builder-map">
+            <div className="mission-detail-header">
+              <div>
+                <h2>Recorrido #{recordingDetail.idFlightRecording}</h2>
+                <div className="mission-detail-id">
+                  <small>
+                    {markedPoints.length === 1 ? "1 punto marcado" : `${markedPoints.length} puntos marcados`} · Dron {recordingDetail.droneId}
+                  </small>
+                </div>
+              </div>
+            </div>
+            <MarkedPointsMap
+              assets={assets ?? []}
+              assignedAssetIds={assignedAssetIds}
+              markedPoints={markedPoints}
+              onSelectPoint={setSelectedMarkIndex}
+              selectedIndex={selectedMarkIndex}
+              trackPoints={recordingDetail.points}
+            />
+            <p className="map-field-label">
+              <MapPin size={14} aria-hidden="true" /> Cada número es un punto que marcaste con el botón del radiocontrol.
+            </p>
+          </article>
+
+          <article className="mission-detail-card mission-builder-fields">
+            <h3 className="mission-quick-actions-title">Activo de cada punto</h3>
+
+            {assetsError && (
+              <p className="mission-empty">
+                <AlertCircle size={16} aria-hidden="true" /> {assetsError}
+              </p>
+            )}
+            {assets === null && !assetsError && <LoadingState text="Cargando activos..." compact />}
+
+            {markedPoints.length === 0 ? (
+              <p className="mission-empty">
+                En este recorrido no se marcó ningún punto: el plan no va a tener paradas para inspeccionar.
+              </p>
+            ) : (
+              <>
+                <p className="plan-builder-points-hint">
+                  Elegí qué activo se inspecciona en cada punto. En la misión vas a poder elegir cuáles de
+                  esos activos inspeccionar; en un punto sin activo el dron pasa sin parar.
+                </p>
+                <div className="plan-builder-waypoint-list">
+                  {markedPoints.map((point, index) => (
+                    <div
+                      className={selectedMarkIndex === index ? "plan-builder-waypoint-row plan-builder-mark-row selected" : "plan-builder-waypoint-row plan-builder-mark-row"}
+                      key={`${point.timestamp}-${index}`}
+                      onClick={() => setSelectedMarkIndex(index)}
+                    >
+                      <span className="plan-builder-mark-number">{index + 1}</span>
+                      <div className="plan-builder-waypoint-info">
+                        <strong>Punto {index + 1}</strong>
+                        <span>
+                          {point.latitude.toFixed(6)}, {point.longitude.toFixed(6)} · {point.altitude.toFixed(1)} m
+                        </span>
+                        <select
+                          aria-label={`Activo del punto ${index + 1}`}
+                          disabled={assets === null}
+                          onChange={(event) => handleAssignAsset(index, event.target.value ? Number(event.target.value) : null)}
+                          onClick={(event) => event.stopPropagation()}
+                          value={markedAssetIds[index] ?? ""}
+                        >
+                          <option value="">Sin activo</option>
+                          {assetsByDistance(point).map(({ asset, distance }) => (
+                            <option key={asset.idAsset} value={asset.idAsset}>
+                              {asset.name} ({asset.code}) · a {formatDistance(distance)}
+                            </option>
+                          ))}
+                        </select>
+
+                        {markedAssetIds[index] != null && (
+                          <div className="plan-builder-photos" onClick={(event) => event.stopPropagation()}>
+                            <span className="plan-builder-photos-label">Fotos ({(markedPhotos[index] ?? []).length})</span>
+
+                            {(markedPhotos[index] ?? []).map((photo, photoIndex) => (
+                              <div className="plan-builder-photo-row" key={photoIndex}>
+                                <span>Pitch {photo.pitch}° · Yaw {photo.yaw}°</span>
+                                <button
+                                  aria-label={`Eliminar foto ${photoIndex + 1} del punto ${index + 1}`}
+                                  className="mission-delete-button"
+                                  onClick={() => handleRemovePhoto(index, photoIndex)}
+                                  title="Eliminar foto"
+                                  type="button"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            ))}
+
+                            <div className="plan-builder-photo-add">
+                              <input
+                                aria-label={`Pitch de la nueva foto del punto ${index + 1}`}
+                                max={PITCH_RANGE.max}
+                                min={PITCH_RANGE.min}
+                                onChange={(event) =>
+                                  setPhotoDrafts((current) => ({
+                                    ...current,
+                                    [index]: { pitch: event.target.value, yaw: current[index]?.yaw ?? "" }
+                                  }))
+                                }
+                                placeholder="Pitch"
+                                type="number"
+                                value={photoDrafts[index]?.pitch ?? ""}
+                              />
+                              <input
+                                aria-label={`Yaw de la nueva foto del punto ${index + 1}`}
+                                max={YAW_RANGE.max}
+                                min={YAW_RANGE.min}
+                                onChange={(event) =>
+                                  setPhotoDrafts((current) => ({
+                                    ...current,
+                                    [index]: { pitch: current[index]?.pitch ?? "", yaw: event.target.value }
+                                  }))
+                                }
+                                placeholder="Yaw"
+                                type="number"
+                                value={photoDrafts[index]?.yaw ?? ""}
+                              />
+                              <button
+                                className="configure-cancel plan-builder-photo-add-button"
+                                onClick={() => handleAddPhoto(index)}
+                                type="button"
+                              >
+                                Agregar foto
+                              </button>
+                            </div>
+                            {photoErrors[index] && <FieldError message={photoErrors[index]!} />}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="map-field-label">
+                  {assignedCount} de {markedPoints.length} puntos con activo asignado.
+                </p>
+              </>
+            )}
+
+            <div className="form-actions plan-builder-actions-row">
+              <button className="configure-cancel" onClick={() => setStep("recorrido")} type="button">
+                Atrás
+              </button>
+              <button className="configure-create mission-builder-submit" onClick={() => setStep("sensibilidad")} type="button">
                 Continuar
               </button>
             </div>
@@ -371,7 +649,7 @@ export function GenerarPlanVueloView({
             )}
 
             <div className="form-actions plan-builder-actions-row">
-              <button className="configure-cancel" onClick={() => setStep("recorrido")} type="button">
+              <button className="configure-cancel" onClick={() => setStep("puntos")} type="button">
                 Atrás
               </button>
               <button className="configure-create mission-builder-submit" disabled={isGenerating} type="submit">
@@ -425,6 +703,11 @@ export function GenerarPlanVueloView({
                       {waypoint.latitude.toFixed(6)}, {waypoint.longitude.toFixed(6)}
                       {waypoint.stopSeconds > 0 ? ` · ${waypoint.stopSeconds}s de espera` : ""}
                     </span>
+                    {waypoint.idAsset != null && (
+                      <span className="plan-builder-waypoint-asset">
+                        {waypoint.name ? `${waypoint.name} · ` : ""}{assetNameById.get(waypoint.idAsset) ?? `Activo #${waypoint.idAsset}`}
+                      </span>
+                    )}
                     {deleteError?.sequence === waypoint.sequence && <FieldError message={deleteError.message} />}
                   </div>
                   <button

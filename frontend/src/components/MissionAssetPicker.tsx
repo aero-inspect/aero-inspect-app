@@ -24,13 +24,22 @@ export function resolveInspectionPlan(asset: BackendAsset, plans: BackendFlightP
   return matches.length === 1 && matches[0].route.length > 1 ? matches[0] : null;
 }
 
+// Misión sobre un plan ya elegido (el que se acaba de generar desde un recorrido): la ruta es fija
+// y lo único que se elige es en cuáles de los activos del plan se para a inspeccionar.
+export type PlanAssetSelection = {
+  selectableIds: number[];
+  selectedIds: number[];
+  onToggle: (idAsset: number) => void;
+};
+
 export function MissionAssetPicker({
   plans,
   selectedPlanIds,
   onSelect,
   locked = false,
   distanceLimitMeters,
-  batteryPercentage
+  batteryPercentage,
+  planAssetSelection
 }: {
   plans: BackendFlightPlan[];
   selectedPlanIds: number[];
@@ -38,6 +47,7 @@ export function MissionAssetPicker({
   locked?: boolean;
   distanceLimitMeters?: number;
   batteryPercentage?: number | null;
+  planAssetSelection?: PlanAssetSelection;
 }) {
   const [assets, setAssets] = useState<BackendAsset[]>([]);
   const [error, setError] = useState("");
@@ -66,7 +76,18 @@ export function MissionAssetPicker({
     () => selectedPlanIds.map((id) => plans.find((plan) => plan.idFlightPlan === id)).filter((plan): plan is BackendFlightPlan => Boolean(plan)),
     [plans, selectedPlanIds]
   );
-  const selectedAssetIds = useMemo(() => selectedPlans.flatMap((plan) => plan.assetIds), [selectedPlans]);
+  const selectedAssetIds = useMemo(
+    () => planAssetSelection?.selectedIds ?? selectedPlans.flatMap((plan) => plan.assetIds),
+    [planAssetSelection, selectedPlans]
+  );
+  const disabledAssetIds = useMemo(
+    () => planAssetSelection
+      ? assets
+        .filter((asset) => INSPECTABLE_TYPES.includes(asset.type) && !planAssetSelection.selectableIds.includes(asset.idAsset))
+        .map((asset) => asset.idAsset)
+      : undefined,
+    [assets, planAssetSelection]
+  );
   const previewRoute = useMemo(() => missionRouteForPlans(selectedPlans), [selectedPlans]);
   const routeDistanceMeters = useMemo(() => estimateMissionDistanceMeters(selectedPlans), [selectedPlans]);
   const routeLimitMeters = useMemo(
@@ -76,6 +97,10 @@ export function MissionAssetPicker({
   const exceedsLimit = selectedPlans.length > 0 && routeDistanceMeters > routeLimitMeters;
 
   const handleAssetSelect = (idAsset: number) => {
+    if (planAssetSelection) {
+      if (planAssetSelection.selectableIds.includes(idAsset)) planAssetSelection.onToggle(idAsset);
+      return;
+    }
     if (locked) return;
     const asset = assets.find((candidate) => candidate.idAsset === idAsset) ?? null;
     const resolved = asset ? resolveInspectionPlan(asset, plans) : null;
@@ -103,6 +128,8 @@ export function MissionAssetPicker({
   const displayedExceeded = displayedDistance > displayedLimit;
   const selectionLabel = blockedBudget
     ? `${blockedBudget.assetName} supera el límite`
+    : planAssetSelection
+      ? `${planAssetSelection.selectedIds.length} de ${planAssetSelection.selectableIds.length} ${planAssetSelection.selectableIds.length === 1 ? "activo" : "activos"}`
     : selectedPlans.length === 0
       ? "Seleccioná uno o más activos"
       : `${selectedPlans.length} ${selectedPlans.length === 1 ? "activo seleccionado" : "activos seleccionados"}`;
@@ -111,7 +138,7 @@ export function MissionAssetPicker({
     <div className="mission-asset-picker">
       <BragadoPlant3DMap
         assets={assets}
-        assetSelection={{ assets, selectedIds: selectedAssetIds, route: previewRoute, onSelect: handleAssetSelect }}
+        assetSelection={{ assets, selectedIds: selectedAssetIds, disabledIds: disabledAssetIds, route: previewRoute, onSelect: handleAssetSelect }}
       />
       {loading ? (
         <LoadingState text="Cargando activos..." compact />
