@@ -292,8 +292,9 @@ export function InspeccionManualView({
 
           {isRecording && (
             <p className="manual-recording-hint">
-              No hace falta cortarla a mano: el dron cierra el recorrido cuando aterriza. Usá
-              &quot;Cortar grabación&quot; sólo para descartar este vuelo.
+              No hace falta cortarla a mano: el dron cierra el recorrido y lo sube cuando aterriza.
+              &quot;Cortar grabación&quot; la cierra en el momento y también sube lo grabado, con
+              el dron en el aire o en tierra; sólo se descarta si no llegó a tener dos puntos.
             </p>
           )}
         </article>
