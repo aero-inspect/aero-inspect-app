@@ -30,29 +30,18 @@ import { AppTopActions, DroneGlyph } from "../components/AppTopActions";
 import { LoadingState } from "../components/LoadingState";
 import sidebarLogo from "../assets/aeroinspect-sidebar-logo.png";
 
-const MOCK_PLANT = {
-  id: "planta-principal",
-  name: "Planta Principal",
-  province: "Buenos Aires",
-  center: {
-    latitude: "-35.140664",
-    longitude: "-60.458214"
-  },
-  bounds: [
-    { latitude: "-35.1398", longitude: "-60.4592" },
-    { latitude: "-35.1398", longitude: "-60.4572" },
-    { latitude: "-35.1415", longitude: "-60.4572" },
-    { latitude: "-35.1415", longitude: "-60.4592" }
-  ]
-};
+import { PLANTS, LUJAN_PLANT, PLANT_STORAGE_KEY, loadSelectedPlant } from "../data/plants";
+import { PlantContext } from "../data/PlantContext";
+import { setApiPlant } from "../api/client";
+
 
 export function Home({
   currentPath,
   navigateTo,
   user,
   onLogout,
-  assets,
-  missions,
+  assets: allAssets,
+  missions: allMissions,
   users,
   droneConnected,
   battery,
@@ -79,6 +68,10 @@ export function Home({
   setUsers: Dispatch<SetStateAction<MockUser[]>>;
   setUser: Dispatch<SetStateAction<SessionUser | null>>;
 }) {
+  const [selectedPlant, setSelectedPlant] = useState(loadSelectedPlant);
+  const isLujan = selectedPlant.id === LUJAN_PLANT.id;
+  const assets = allAssets.filter(asset => asset.plantId === selectedPlant.id);
+  const missions = allMissions.filter(mission => assets.some(asset => asset.id === mission.assetId));
   const isRegisterAssetPath = currentPath === "/registro-activo";
   const isAssetsPath = currentPath === "/mis-activos";
   const isMissionPath = currentPath === "/configurar-mision";
@@ -109,6 +102,7 @@ export function Home({
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const sidebarRoleLabel = user.role === "Técnico de Mantenimiento" ? "Técnico de Mantenimiento" : user.role;
   return (
+    <PlantContext.Provider value={selectedPlant}>
     <main className={isSidebarCollapsed ? "home-shell-no-header sidebar-collapsed" : "home-shell-no-header"}>
       <aside className="sidebar-full">
         <button className="sidebar-collapse-button" onClick={() => setIsSidebarCollapsed((current) => !current)} type="button" aria-label={isSidebarCollapsed ? "Expandir menú" : "Contraer menú"}>
@@ -181,7 +175,27 @@ export function Home({
         </button>
       </aside>
 
-      <section className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isManualInspectionPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isRoleMgmtPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
+      <section key={selectedPlant.id} className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isManualInspectionPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isRoleMgmtPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
+        {currentPath === "/" && <div className="plant-switcher">
+          <label htmlFor="selected-plant">Cambiar planta
+            <select id="selected-plant" value={selectedPlant.id} onChange={(event) => {
+              const next = PLANTS.find(plant => plant.id === event.target.value);
+              if (!next) return;
+              setApiPlant(next);
+              setSelectedPlant(next);
+              try { localStorage.setItem(PLANT_STORAGE_KEY, next.id); } catch { /* Selection still works without storage. */ }
+              setSelectedBackendMissionId(null);
+              setSelectedFlightPlanIds([]);
+              setSelectedRecordingId(null);
+              setSelectedReportCode(null);
+              setSelectedAssetId(null);
+              navigateTo("/");
+            }}>
+              {PLANTS.map(plant => <option key={plant.id} value={plant.id}>{plant.name}</option>)}
+            </select>
+          </label>
+          <small>{isLujan ? "Terreno de pruebas · Luján, Buenos Aires" : "Planta de acopio · Bragado, Buenos Aires"}</small>
+        </div>}
         {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isManualInspectionPath && !isHelpPath && !isActivityPath && user.role !== "Técnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">
             <div>
@@ -208,7 +222,7 @@ export function Home({
         ) : isProfilePath ? (
           <ProfileView user={user} setUser={setUser} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onViewActivity={() => navigateTo("/actividad-reciente")} onLogout={onLogout} />
         ) : isRegisterAssetPath && (userCanConsultAssets || user.role === "Jefe de Planta") ? (
-          <RegistrarActivoView assets={assets} onBack={() => navigateTo("/mis-activos")} onCreateAsset={(asset) => setAssets((current) => [...current, { ...asset, id: Date.now(), plantId: MOCK_PLANT.id }])} onGoHome={() => navigateTo("/")} onViewAssets={() => navigateTo("/mis-activos")} plant={MOCK_PLANT} />
+          <RegistrarActivoView assets={assets} onBack={() => navigateTo("/mis-activos")} onCreateAsset={(asset) => setAssets((current) => [...current, { ...asset, id: Date.now(), plantId: selectedPlant.id }])} onGoHome={() => navigateTo("/")} onViewAssets={() => navigateTo("/mis-activos")} plant={selectedPlant} />
         ) : isRoleMgmtPath && user.role === "Jefe de Planta" ? (
           <RoleManagementView user={user} onBack={() => navigateTo("/perfil")} />
         ) : isDronesAbmPath && user.role === "Jefe de Planta" ? (
@@ -260,12 +274,12 @@ export function Home({
             battery={battery}
             setMissions={setMissions}
             onBack={() => navigateTo("/")}
-            plant={MOCK_PLANT}
+            plant={selectedPlant}
           />
         ) : isDronePath && DRONE_OPERATION_ROLES.includes(user.role) ? (
           <DroneTelemetryView />
         ) : isAssetsPath && userCanConsultAssets ? (
-          <MisActivosView assets={assets} onBack={() => navigateTo("/")} onDeleteAsset={(assetId) => setAssets((current) => current.filter((asset) => asset.id !== assetId))} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} selectedAssetId={selectedAssetId} plant={MOCK_PLANT} />
+          <MisActivosView assets={assets} onBack={() => navigateTo("/")} onDeleteAsset={(assetId) => setAssets((current) => current.filter((asset) => asset.id !== assetId))} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} selectedAssetId={selectedAssetId} plant={selectedPlant} />
         ) : isCreateReportPath ? (
           <CrearReporteView onBack={() => navigateTo("/reportes")} />
         ) : isReportDetailPath ? (
@@ -289,7 +303,7 @@ export function Home({
               setSelectedBackendMissionId(idMission);
               navigateTo("/monitorear-mision");
             }}
-            plant={MOCK_PLANT}
+            plant={selectedPlant}
           />
         ) : (
           <Fragment>
@@ -414,15 +428,15 @@ export function Home({
                 <div className="plant-info">
                   <div className="plant-detail">
                     <span className="plant-label">Nombre</span>
-                    <strong>{MOCK_PLANT.name}</strong>
+                    <strong>{selectedPlant.name}</strong>
                   </div>
                   <div className="plant-detail">
                     <span className="plant-label">Ubicación</span>
-                    <strong>{MOCK_PLANT.province}</strong>
+                    <strong>{selectedPlant.province}</strong>
                   </div>
                   <div className="plant-detail">
                     <span className="plant-label">Coordenadas</span>
-                    <strong>{MOCK_PLANT.center.latitude}, {MOCK_PLANT.center.longitude}</strong>
+                    <strong>{selectedPlant.center.latitude}, {selectedPlant.center.longitude}</strong>
                   </div>
                 </div>
               </div>
@@ -431,6 +445,7 @@ export function Home({
         )}
       </section>
     </main>
+    </PlantContext.Provider>
   );
 }
 

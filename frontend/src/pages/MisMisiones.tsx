@@ -3,7 +3,7 @@ import { AlertCircle, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, C
 import type { BackendFlightPlan, BackendMission, BackendMissionSchedule, BackendMissionStatus, ManagedUser } from "../api/types";
 import type { SessionUser } from "../types";
 import { deleteMission, deleteMissionSchedule, getFlightPlans, getManagedUsers, getMission, getMissions, getMissionSchedules, startMission, updateMissionPilot, updateMissionSchedule } from "../api/client";
-import { BragadoPlant3DMap } from "../components/BragadoPlant3DMap";
+import { SelectedPlant3DMap as BragadoPlant3DMap } from "../components/SelectedPlant3DMap";
 import { AppTopActions } from "../components/AppTopActions";
 import { LoadingState } from "../components/LoadingState";
 

@@ -42,3 +42,18 @@ npm run build --workspace frontend
 
 - Usuario: `tecnico` / Contraseña: `Tecnico#123` / Rol: `Técnico de Mantenimiento`
 - Usuario: `jefe` / Contraseña: `Jefe#123` / Rol: `Jefe de Planta`
+
+## API local en Windows
+
+Además del frontend, la app necesita `general-monolith` en el puerto 8080.
+Con el backend en la carpeta hermana y los contenedores de desarrollo existentes:
+
+```powershell
+./scripts/start-backend-local.ps1
+```
+
+El script inicia PostgreSQL, MQTT y RabbitMQ si están detenidos y ejecuta el
+backend con JDK 25, conexión local y perfil `no-auth` limitado a `127.0.0.1`.
+El clima usa el modo simulado de desarrollo. Acepta `-JavaHome` y `-BackendPath`
+para instalaciones diferentes. No borra ni recrea los contenedores o sus datos.
+Mantener esa terminal abierta, además de la del frontend.

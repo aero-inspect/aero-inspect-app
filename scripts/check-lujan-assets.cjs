@@ -1,0 +1,24 @@
+const assert=require('node:assert/strict');
+const {buildSync}=require('esbuild');
+const Module=require('node:module');
+const path=require('node:path');
+const THREE=require('three');
+function load(file){const output=buildSync({entryPoints:[file],bundle:true,platform:'node',format:'cjs',external:['three'],write:false}).outputFiles[0].text;const compiled=new Module(path.resolve(file),module);compiled.paths=module.paths;compiled._compile(output,path.resolve(file));return compiled.exports;}
+const {assetTypesForPlant}=load('frontend/src/data/assetTypes.ts');
+const {savedLujanAssets,createStool,disposeAssetGroup}=load('frontend/src/components/lujan/assets.ts');
+assert.ok(assetTypesForPlant('planta-lujan').some(t=>t.value==='BANQUETA'));
+assert.ok(!assetTypesForPlant('planta-principal').some(t=>t.value==='BANQUETA'));
+const saved={idAsset:25,type:'BANQUETA',name:'Banqueta patio',code:'LUJ-BAN-01',status:'ACTIVE',latitude:-34.550782,longitude:-59.067430};
+assert.deepEqual(savedLujanAssets([]),[]);
+assert.deepEqual(savedLujanAssets([{...saved,idAsset:0}]),[],'An unsaved form must not render a stool');
+assert.deepEqual(savedLujanAssets([saved]),[saved]);
+assert.deepEqual(savedLujanAssets([{...saved,latitude:-35.1406,longitude:-60.4581}]),[]);
+assert.deepEqual(savedLujanAssets([{...saved,type:'SILO'}]),[]);
+assert.deepEqual(savedLujanAssets([saved],{type:'Banqueta',status:'Todos',search:'patio'}),[saved]);
+assert.deepEqual(savedLujanAssets([saved],{type:'Todos',status:'En mantenimiento'}),[]);
+assert.deepEqual(savedLujanAssets([saved],{type:'Silo',status:'Todos'}),[]);
+const stool=createStool(),bounds=new THREE.Box3().setFromObject(stool),size=bounds.getSize(new THREE.Vector3());
+assert.ok(size.y>.45 && size.y<.50 && size.x<.45 && size.z<.45,'Realistic stool dimensions in meters');
+assert.ok(stool.children.length>8,'Seat, legs and stretchers');
+disposeAssetGroup(stool);assert.equal(stool.children.length,0);
+console.log('Luján stools: plant-specific options, saved-only rendering, location and filters, geometry and disposal passed.');

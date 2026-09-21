@@ -3,9 +3,12 @@ import { Bell, UserRound } from "lucide-react";
 import { emptyWeather, fetchWeather } from "../services/weather";
 import { getWeatherIcon } from "../utils/weatherIcon";
 
-const WEATHER_CITY = "Bragado";
+import { useSelectedPlant } from "../data/PlantContext";
+import { LUJAN_PLANT } from "../data/plants";
 
 export function AppTopActions() {
+  const plant = useSelectedPlant();
+  const WEATHER_CITY = plant.id === LUJAN_PLANT.id ? "Luján" : "Bragado";
   const [isOpen, setIsOpen] = useState(false);
   const [weather, setWeather] = useState(emptyWeather);
   const goToProfile = () => {
@@ -24,11 +27,11 @@ export function AppTopActions() {
     };
 
     loadWeather();
-  }, []);
+  }, [WEATHER_CITY]);
 
   const WeatherIcon = getWeatherIcon(weather.icon);
 
-  const notifications = [
+  const notifications = plant.id === LUJAN_PLANT.id ? [] : [
     { title: "Hallazgo crítico detectado", text: "Se detectó corrosión severa en Silo Norte.", time: "Hace 5 min" },
     { title: "Misión en progreso", text: "Inspección Cinta Transportadora 2 completada al 40%.", time: "Hace 12 min" },
     { title: "Reporte generado", text: "El reporte mensual de mayo está listo.", time: "Hace 1 hora" },

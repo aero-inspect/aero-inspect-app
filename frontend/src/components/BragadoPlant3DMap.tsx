@@ -1,3 +1,4 @@
+import { MapToolbarSelect } from "./MapToolbarSelect";
 import { createEnvironment } from "./bragado/environment";
 import { createAssetSelection, type AssetSelectionData } from "./bragado/assetSelection";
 import { createMissionPlayback, type MissionPlaybackData } from "./bragado/missionPlayback";
@@ -6,7 +7,7 @@ import { addMissionDrone } from "./bragado/drone";
 import { useEffect, useMemo, useRef, useState } from "react";
 import catalog from "../data/bragado-assets.json";
 import { buildPlant, GROUND_Y } from "./bragado/geometry.js";
-import { Maximize2, Minimize2, SlidersHorizontal, X, Focus, ArrowUp, ChevronDown } from "lucide-react";
+import { Maximize2, Minimize2, SlidersHorizontal, X, Focus, ArrowUp } from "lucide-react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { BackendAsset, BackendAssetStatus } from "../api/types";
@@ -47,60 +48,6 @@ type ProjectedTag = {
   y: number;
   visible: boolean;
 };
-
-function MapToolbarSelect<T extends string>({
-  ariaLabel,
-  title,
-  value,
-  options,
-  onChange
-}: {
-  ariaLabel: string;
-  title?: string;
-  value: T;
-  options: Array<{ value: T; label: string }>;
-  onChange: (value: T) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const active = options.find((option) => option.value === value) ?? options[0];
-
-  return (
-    <div className="bragado-map-select" onBlur={(event) => {
-      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
-    }}>
-      <button
-        aria-expanded={open}
-        aria-label={ariaLabel}
-        onClick={() => setOpen((current) => !current)}
-        title={title}
-        type="button"
-      >
-        <span>{active.label}</span>
-        <ChevronDown size={15} />
-      </button>
-      {open && (
-        <div className="bragado-map-select-menu" role="listbox" aria-label={ariaLabel}>
-          {options.map((option) => (
-            <button
-              aria-selected={option.value === value}
-              className={option.value === value ? "selected" : undefined}
-              key={option.value}
-              onClick={() => {
-                onChange(option.value);
-                setOpen(false);
-              }}
-              role="option"
-              type="button"
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
   silo: "Silo",
