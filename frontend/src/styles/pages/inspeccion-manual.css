@@ -141,3 +141,19 @@
 .missions-manual-button:hover {
   background: rgba(126, 194, 255, 0.16);
 }
+
+/* "Nueva Misión" desde un plan ya generado de un recorrido: mismo ancho que las otras dos acciones. */
+.missions-plan-select {
+  width: 166px;
+  height: 38px;
+  padding: 0 8px;
+  border: 1px solid #063b7a;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #063b7a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}

@@ -199,6 +199,14 @@ export function MisMisionesView({
       .forEach((mission) => pollMissionStatus(mission.idMission));
   }, [missions]);
 
+  // Los planes generados desde un recorrido manual: son los únicos que no se pueden elegir por activo
+  // en "Nueva Misión" (ese camino sólo resuelve los planes de inspección de la planta). Los borradores
+  // quedan afuera: hasta que no se confirman no se puede armar una misión con ellos.
+  const recordingPlans = useMemo(
+    () => flightPlans.filter((plan) => plan.sourceRecordingId != null && plan.status === "CONFIRMED"),
+    [flightPlans]
+  );
+
   const missionRows = useMemo<MissionRow[]>(
     () =>
       (missions ?? []).map((mission) => ({
@@ -429,6 +437,24 @@ export function MisMisionesView({
             <Plus size={18} />
             Nueva Misión
           </button>
+          {recordingPlans.length > 0 && (
+            <select
+              aria-label="Nueva misión desde un plan de recorrido"
+              className="missions-plan-select"
+              onChange={(event) => {
+                const idFlightPlan = Number(event.target.value);
+                if (idFlightPlan) onCreateMission([idFlightPlan]);
+              }}
+              value=""
+            >
+              <option value="">Desde un recorrido…</option>
+              {recordingPlans.map((plan) => (
+                <option key={plan.idFlightPlan} value={plan.idFlightPlan}>
+                  {plan.name}
+                </option>
+              ))}
+            </select>
+          )}
           {onStartManualInspection && (
             <button className="missions-manual-button" onClick={onStartManualInspection} type="button">
               <Radio size={18} />
