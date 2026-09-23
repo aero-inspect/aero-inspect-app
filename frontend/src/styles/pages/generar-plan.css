@@ -46,6 +46,7 @@
 /* --- Paso 1: elegir recorrido --- */
 .plan-builder-recording-list {
   display: grid;
+  align-content: start;
   gap: 8px;
   margin-top: 10px;
   max-height: 320px;
@@ -192,6 +193,7 @@
   display: flex;
   flex-direction: column;
   flex: 0 0 auto;
+  align-self: center;
   gap: 2px;
 }
 
@@ -343,6 +345,7 @@
 /* --- Paso "plan": waypoints generados --- */
 .plan-builder-waypoint-list {
   display: grid;
+  align-content: start;
   gap: 8px;
   margin-top: 10px;
   max-height: 380px;
