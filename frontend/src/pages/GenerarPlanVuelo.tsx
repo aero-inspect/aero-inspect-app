@@ -683,7 +683,7 @@ export function GenerarPlanVueloView({
       )}
 
       {step === "plan" && plan && (
-        <div className="mission-builder-grid">
+        <div className="mission-builder-grid plan-builder-ajustar-grid">
           <article className="mission-detail-card mission-builder-map">
             <div className="mission-detail-header">
               <div>

@@ -115,6 +115,37 @@
   min-height: 120px;
 }
 
+/* --- Paso "plan": mismo criterio — el grid ocupa toda la altura del canvas, las dos tarjetas se
+   estiran a esa altura, y la lista de waypoints crece con el espacio libre en vez de taparlos a
+   los 380px de siempre. --- */
+.plan-builder-ajustar-grid.mission-builder-grid {
+  align-items: stretch;
+  height: calc(var(--app-canvas-height) - 116px);
+}
+
+.plan-builder-ajustar-grid .mission-builder-map,
+.plan-builder-ajustar-grid .mission-builder-fields {
+  height: 100%;
+  min-height: 0;
+}
+
+.plan-builder-ajustar-grid .mission-builder-fields {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.plan-builder-ajustar-grid .plan-builder-waypoint-list {
+  flex: 1;
+  max-height: none;
+  min-height: 120px;
+}
+
+.plan-builder-ajustar-grid .plan-builder-actions-row {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
 .plan-builder-recorrido-grid .plan-builder-actions-row {
   margin-top: auto;
   padding-top: 16px;
