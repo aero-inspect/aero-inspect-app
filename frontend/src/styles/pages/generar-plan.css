@@ -87,16 +87,32 @@
 }
 
 /* --- Paso "recorrido": la columna del formulario va más ancha que la del mapa (quedaba chica), y
-   estirada a la misma altura (si no, quedaba espacio vacío abajo con pocos recorridos). --- */
+   el propio grid ocupa toda la altura disponible del canvas (no sólo lo que ocupe su contenido) —
+   así ninguna de las dos tarjetas deja espacio vacío abajo con pocos recorridos. --- */
 .plan-builder-recorrido-grid.mission-builder-grid {
   grid-template-columns: minmax(0, 1fr) minmax(360px, 1.05fr);
   align-items: stretch;
+  height: calc(var(--app-canvas-height) - 116px);
+}
+
+.plan-builder-recorrido-grid .mission-builder-map,
+.plan-builder-recorrido-grid .mission-builder-fields {
+  height: 100%;
+  min-height: 0;
 }
 
 .plan-builder-recorrido-grid .mission-builder-fields {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  overflow-y: auto;
+}
+
+/* La lista de recorridos crece con el espacio que le sobre a la columna, en vez de quedar
+   siempre a los mismos 320px de alto tapando recorridos de más. */
+.plan-builder-recorrido-grid .plan-builder-recording-list {
+  flex: 1;
+  max-height: none;
+  min-height: 120px;
 }
 
 .plan-builder-recorrido-grid .plan-builder-actions-row {
