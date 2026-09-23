@@ -631,18 +631,7 @@ export function GenerarPlanVueloView({
               )}
               {recordings === null && !recordingsError && <LoadingState text="Cargando recorridos..." compact />}
               {recordings !== null && recordings.length === 0 && (
-                <>
-                  <p className="mission-empty">No hay recorridos manuales registrados todavía.</p>
-                  {onStartManualInspection && (
-                    <button
-                      className="configure-create mission-builder-submit manual-recording-button plan-builder-empty-action"
-                      onClick={onStartManualInspection}
-                      type="button"
-                    >
-                      <Radio size={16} aria-hidden="true" /> Iniciar inspección manual
-                    </button>
-                  )}
-                </>
+                <p className="mission-empty">No hay recorridos manuales registrados todavía.</p>
               )}
 
               <div className="plan-builder-recording-list" role="radiogroup" aria-label="Recorridos">
@@ -669,6 +658,11 @@ export function GenerarPlanVueloView({
               )}
 
               <div className="form-actions plan-builder-actions-row">
+                {onStartManualInspection && (
+                  <button className="configure-cancel" onClick={onStartManualInspection} type="button">
+                    <Radio size={16} aria-hidden="true" /> Nuevo recorrido manual
+                  </button>
+                )}
                 <button
                   className="configure-create mission-builder-submit"
                   disabled={!recordingDetail || isGenerating}
