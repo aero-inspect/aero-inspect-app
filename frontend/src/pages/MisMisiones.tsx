@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertCircle, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, Play, Plus, Radio, RefreshCw, Search, Trash2, X, XCircle } from "lucide-react";
+import { AlertCircle, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, Play, Plus, RefreshCw, Route, Search, Trash2, X, XCircle } from "lucide-react";
 import type { BackendFlightPlan, BackendMission, BackendMissionSchedule, BackendMissionStatus, ManagedUser } from "../api/types";
 import type { SessionUser } from "../types";
 import { deleteMission, deleteMissionSchedule, getFlightPlans, getManagedUsers, getMission, getMissions, getMissionSchedules, startMission, updateMissionPilot, updateMissionSchedule } from "../api/client";
@@ -125,13 +125,13 @@ export function MisMisionesView({
   user,
   onCreateMission,
   onViewMission,
-  onStartManualInspection
+  onGeneratePlan
 }: {
   user: SessionUser;
   onCreateMission: (idFlightPlans: number[]) => void;
   onViewMission: (idMission: string) => void;
   /** Sólo viene para los roles que operan el dron; sin esto el botón no se muestra. */
-  onStartManualInspection?: () => void;
+  onGeneratePlan?: () => void;
 }) {
   const [missions, setMissions] = useState<BackendMission[] | null>(null);
   const [missionSchedules, setMissionSchedules] = useState<BackendMissionSchedule[] | null>(null);
@@ -455,10 +455,10 @@ export function MisMisionesView({
               ))}
             </select>
           )}
-          {onStartManualInspection && (
-            <button className="missions-manual-button" onClick={onStartManualInspection} type="button">
-              <Radio size={18} />
-              Inspección Manual
+          {onGeneratePlan && (
+            <button className="missions-manual-button" onClick={onGeneratePlan} type="button">
+              <Route size={18} />
+              Generar plan
             </button>
           )}
         </div>

@@ -33,6 +33,20 @@ export function totalRouteDistanceMeters(points: { latitude: number; longitude: 
   return total;
 }
 
+// Estimación simple de cuánto tarda un plan: distancia total sobre la velocidad de crucero, más
+// el tiempo de espera de cada parada. No contempla aceleración/desaceleración ni el tiempo de
+// despegue/aterrizaje: es una cota optimista para que el usuario juzgue si el plan es razonable,
+// no un cálculo preciso de misión.
+export function estimateFlightDurationSeconds(
+  points: { latitude: number; longitude: number; stopSeconds: number }[],
+  cruiseSpeedMs: number
+): number {
+  if (cruiseSpeedMs <= 0) return 0;
+  const travelSeconds = totalRouteDistanceMeters(points) / cruiseSpeedMs;
+  const stopSeconds = points.reduce((sum, point) => sum + point.stopSeconds, 0);
+  return travelSeconds + stopSeconds;
+}
+
 type SequencedPoint = { sequence: number; latitude: number; longitude: number };
 
 // Distancia restante en metros desde la posicion actual del dron hasta el final

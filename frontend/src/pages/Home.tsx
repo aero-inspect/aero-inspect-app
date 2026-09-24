@@ -234,9 +234,14 @@ export function Home({
         ) : isMissionsPath ? (
           <MisMisionesView
             user={user}
-            onStartManualInspection={
+            onGeneratePlan={
               DRONE_OPERATION_ROLES.includes(user.role)
-                ? () => navigateTo("/inspeccion-manual")
+                ? () => {
+                    // Entrando acá (no desde una inspección manual recién grabada), no hay
+                    // ningún recorrido preelegido: si quedó uno de una vuelta anterior, se pisa.
+                    setSelectedRecordingId(null);
+                    navigateTo("/generar-plan");
+                  }
                 : undefined
             }
             onCreateMission={(idFlightPlans) => {
