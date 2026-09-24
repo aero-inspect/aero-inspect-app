@@ -1,4 +1,5 @@
 import type { Plant } from "../types";
+import type { ActivityFeed } from "../data/ActivityContext";
 import { loadSelectedPlant } from "../data/plants";
 import { assetBelongsToPlant, planBelongsToPlant, locationPlantId } from "../data/plantScope";
 let apiPlant = loadSelectedPlant();
@@ -33,12 +34,12 @@ export function setApiAuthToken(token: string) {
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, {
+    ...options,
     headers: {
       "Content-Type": "application/json",
       ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       ...options?.headers
-    },
-    ...options
+    }
   });
 
   if (!response.ok) {
@@ -52,6 +53,16 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   const body = await response.text();
   return body.trim() ? JSON.parse(body) as T : undefined as T;
+}
+
+export type ActivityUpdate={activity:ActivityFeed['activity'][number]|null;notification:ActivityFeed['notifications'][number]|null};
+export function subscribeActivityUpdates(token: string, onChange:(update:ActivityUpdate)=>void) {
+  const stream=new EventSource(`/api/v1/users/me/activity/stream?token=${encodeURIComponent(token)}`);
+  stream.addEventListener('changed',(event)=>{
+    try {onChange(JSON.parse((event as MessageEvent<string>).data) as ActivityUpdate);}
+    catch {/* Ignore malformed transient events; the stream remains connected. */}
+  });
+  return ()=>stream.close();
 }
 
 export async function getAssets(plant: Plant = apiPlant) {

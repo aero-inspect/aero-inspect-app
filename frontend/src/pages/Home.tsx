@@ -32,6 +32,7 @@ import sidebarLogo from "../assets/aeroinspect-sidebar-logo.png";
 
 import { PLANTS, LUJAN_PLANT, PLANT_STORAGE_KEY, loadSelectedPlant } from "../data/plants";
 import { PlantContext } from "../data/PlantContext";
+import { ActivityProvider } from "../data/ActivityContext";
 import { setApiPlant } from "../api/client";
 
 
@@ -103,6 +104,7 @@ export function Home({
   const sidebarRoleLabel = user.role === "Técnico de Mantenimiento" ? "Técnico de Mantenimiento" : user.role;
   return (
     <PlantContext.Provider value={selectedPlant}>
+    <ActivityProvider key={`${user.username}:${selectedPlant.id}`} username={user.username} plantId={selectedPlant.id} token={user.token}>
     <main className={isSidebarCollapsed ? "home-shell-no-header sidebar-collapsed" : "home-shell-no-header"}>
       <aside className="sidebar-full">
         <button className="sidebar-collapse-button" onClick={() => setIsSidebarCollapsed((current) => !current)} type="button" aria-label={isSidebarCollapsed ? "Expandir menú" : "Contraer menú"}>
@@ -450,6 +452,7 @@ export function Home({
         )}
       </section>
     </main>
+    </ActivityProvider>
     </PlantContext.Provider>
   );
 }

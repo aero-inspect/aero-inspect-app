@@ -149,6 +149,15 @@
   border-bottom: 0;
 }
 
+.activity-empty-message {
+  margin: 0;
+  padding: 24px 18px;
+  border-bottom: 1px solid #e0e8f0;
+  color: #596e8a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .activity-row {
   display: flex;
   align-items: center;
