@@ -64,6 +64,7 @@ button:active:not(:disabled) {
 .mission-detail-close,
 .asset-detail-close,
 .drones-abm-modal-close,
+.notification-dismiss,
 .close-modal-btn {
   display: grid;
   place-items: center;
@@ -76,6 +77,7 @@ button:active:not(:disabled) {
 .mission-detail-close svg,
 .asset-detail-close svg,
 .drones-abm-modal-close svg,
+.notification-dismiss svg,
 .close-modal-btn svg {
   display: block;
 }
@@ -84,6 +86,8 @@ button:active:not(:disabled) {
 .mission-detail-close:hover:not(:disabled),
 .asset-detail-close:hover:not(:disabled),
 .drones-abm-modal-close:hover:not(:disabled),
+.notification-dismiss:hover:not(:disabled),
+.notification-dismiss:focus-visible,
 .close-modal-btn:hover:not(:disabled) {
   background: rgba(6, 59, 122, 0.08);
   color: #063b7a;

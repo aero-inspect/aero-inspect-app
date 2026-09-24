@@ -11,11 +11,14 @@ import type { BackendAsset } from "../api/types";
 import type { MapFilters } from "./BragadoPlant3DMap";
 import type { AssetSelectionData } from "./bragado/assetSelection";
 import { createStool, disposeAssetGroup, savedLujanAssets } from "./lujan/assets";
+import { addMissionDrone } from "./bragado/drone";
+import { createMissionPlayback, type MissionPlaybackData } from "./bragado/missionPlayback";
+import { LUJAN_DRONE_BASE, LUJAN_DRONE_SCALE, lujanPlaybackReference } from "./lujan/drone";
 
 type View = "perspective" | "top" | "patio" | "entrance" | "service";
 
 type Location = { latitude: string; longitude: string };
-export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters, onViewAsset, focusedAssetCode, assetSelection}: {
+export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters, onViewAsset, focusedAssetCode, assetSelection, playback}: {
   onSelect?: (location: Location) => void;
   selectedLocation?: Location;
   assets?: BackendAsset[];
@@ -23,7 +26,13 @@ export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters,
   onViewAsset?: (id:number) => void;
   focusedAssetCode?: string | null;
   assetSelection?: AssetSelectionData;
+  playback?: MissionPlaybackData;
 } = {}) {
+  const playbackRef=useRef(playback);playbackRef.current=playback;
+  const playbackController=useRef<ReturnType<typeof createMissionPlayback>|null>(null);
+  const [following,setFollowing]=useState(false);
+  useEffect(()=>{if(playback)playbackController.current?.update(playback);},[playback]);
+  useEffect(()=>{setFollowing(false);playbackController.current?.setFollowing(false);},[playback?.id]);
   const assetProps=useRef({assets,filters,onViewAsset,focusedAssetCode,assetSelection});
   assetProps.current={assets,filters,onViewAsset,focusedAssetCode,assetSelection};
   const updateAssets=useRef<() => void>(()=>{});
@@ -73,6 +82,7 @@ export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters,
     controls.enableDamping = true; controls.minDistance = 3.5; controls.maxDistance = 150;
     controls.maxPolarAngle = Math.PI/2-0.03;
     actions.current = (next: View) => {
+      setFollowing(false);playbackController.current?.setFollowing(false);
       setView(next);
       if (next === "top") {
         controls.target.set(1,0,0);camera.position.set(1,91,.01);
@@ -95,6 +105,7 @@ export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters,
     sun.shadow.mapSize.set(2048,2048);
     Object.assign(sun.shadow.camera,{left:-55,right:55,top:55,bottom:-55,far:180});
     sun.shadow.bias=-0.0003; sun.shadow.normalBias=.035; scene.add(sun);
+    let setArchitecturalLighting=(_level:number)=>{};
     updateEnvironment.current = mode => {
       const lighting = resolveEnvironment(mode);
       hemisphere.color.copy(lighting.ambientColor);hemisphere.intensity=lighting.ambient;
@@ -103,12 +114,22 @@ export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters,
       scene.background = lighting.horizon.clone();
       if(scene.fog instanceof THREE.Fog) scene.fog.color.copy(lighting.horizon);
       renderer.toneMappingExposure=lighting.exposure;
+      setArchitecturalLighting(lighting.artificial);
     };
     updateEnvironment.current(getEnvironmentMode());
     const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(350,350),new THREE.MeshStandardMaterial({color:"#99a27a",roughness:1}));
     backdrop.rotation.x=-Math.PI/2; backdrop.position.y=-0.08; backdrop.receiveShadow=true; scene.add(backdrop);
-    const {root,landmarks} = buildLujan(); scene.add(root);
+    const {root,landmarks,setLighting} = buildLujan(); scene.add(root);
+    setArchitecturalLighting=setLighting;
+    setLighting(resolveEnvironment(getEnvironmentMode()).artificial);
     root.updateMatrixWorld(true);
+    const dock=addMissionDrone(scene);
+    dock.scale.setScalar(LUJAN_DRONE_SCALE);
+    const [dockX,dockZ]=lujanToLocal(LUJAN_DRONE_BASE.latitude,LUJAN_DRONE_BASE.longitude);
+    dock.position.set(dockX,0,dockZ);
+    const missionPlayback=createMissionPlayback(scene,dock,camera,controls,lujanPlaybackReference);
+    playbackController.current=missionPlayback;
+    if(playbackRef.current)missionPlayback.update(playbackRef.current);
     const marker = new THREE.Mesh(new THREE.SphereGeometry(.38,16,12), new THREE.MeshBasicMaterial({color:"#e94832",depthTest:false,depthWrite:false,transparent:true}));
     marker.renderOrder=100;marker.visible=false;scene.add(marker);
     const pickable: THREE.Object3D[]=[];
@@ -231,7 +252,7 @@ export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters,
     const observer=new ResizeObserver(resize); observer.observe(host); resize();
     let frame=0;
     const animate=() => {
-      frame=requestAnimationFrame(animate); controls.update();
+      frame=requestAnimationFrame(animate);missionPlayback.animate(); controls.update();
       if(hoverPointer && !selectRef.current) {
         camera.updateMatrixWorld();assetLayer.updateMatrixWorld(true);raycaster.setFromCamera(hoverPointer,camera);
         let object:THREE.Object3D|undefined=raycaster.intersectObjects([...pickable,assetLayer],true)[0]?.object;
@@ -247,6 +268,7 @@ export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters,
       });
     }; animate();
     return () => {
+      missionPlayback.destroy();playbackController.current=null;
       cancelAnimationFrame(frame); observer.disconnect(); controls.dispose(); actions.current=()=>{};updateEnvironment.current=()=>{};
       updateMarker.current=()=>{};
       updateAssets.current=()=>{};assetLabels.forEach(l=>l.element.remove());
@@ -281,6 +303,9 @@ export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters,
     <div className="bragado-camera-tools">
       <span className="bragado-compass" title="Norte" aria-label="Norte"><span ref={compass}><b>N</b><ArrowUp size={16}/></span></span>
       <button type="button" title="Centrar planta" aria-label="Centrar planta" onClick={()=>actions.current(view)}><Focus size={17}/></button>
+      {playback && <button className="bragado-follow" type="button" title="Seguir dron" aria-pressed={following} onClick={()=>{
+        const next=!following;setFollowing(next);playbackController.current?.setFollowing(next);
+      }}>Seguir dron</button>}
     </div>
     {panelOpen && <aside className="bragado-map-panel">
       <header><span>{savedLujanAssets(assets,filters).length} activos</span><strong>Mapa 3D Luján</strong><button type="button" title="Minimizar panel" aria-label="Minimizar panel" onClick={()=>setPanelOpen(false)}><X size={16}/></button></header>

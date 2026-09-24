@@ -1,15 +1,17 @@
-﻿import { useEffect, useState } from "react";
-import { Bell, UserRound } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bell, UserRound, X } from "lucide-react";
 import { emptyWeather, fetchWeather } from "../services/weather";
 import { getWeatherIcon } from "../utils/weatherIcon";
 
 import { useSelectedPlant } from "../data/PlantContext";
 import { LUJAN_PLANT } from "../data/plants";
+import { useActivity, noticeTitles, eventDate } from "../data/ActivityContext";
 
 export function AppTopActions() {
   const plant = useSelectedPlant();
   const WEATHER_CITY = plant.id === LUJAN_PLANT.id ? "Luján" : "Bragado";
   const [isOpen, setIsOpen] = useState(false);
+  const {notifications,unread,markRead,dismiss,loading,error}=useActivity();
   const [weather, setWeather] = useState(emptyWeather);
   const goToProfile = () => {
     window.history.pushState({}, "", "/perfil");
@@ -31,12 +33,6 @@ export function AppTopActions() {
 
   const WeatherIcon = getWeatherIcon(weather.icon);
 
-  const notifications = plant.id === LUJAN_PLANT.id ? [] : [
-    { title: "Hallazgo crítico detectado", text: "Se detectó corrosión severa en Silo Norte.", time: "Hace 5 min" },
-    { title: "Misión en progreso", text: "Inspección Cinta Transportadora 2 completada al 40%.", time: "Hace 12 min" },
-    { title: "Reporte generado", text: "El reporte mensual de mayo está listo.", time: "Hace 1 hora" },
-    { title: "Mantenimiento programado", text: "Mantenimiento del dron programado.", time: "Hace 3 horas" }
-  ];
 
   return (
     <div className="app-top-actions">
@@ -49,9 +45,9 @@ export function AppTopActions() {
       </div>
 
       <div className="notifications-menu-wrap">
-        <button className="tech-notification-button" onClick={() => setIsOpen((current) => !current)} type="button" aria-label="Notificaciones">
+        <button className="tech-notification-button" onClick={() => {if(!isOpen)markRead();setIsOpen((current) => !current);}} type="button" aria-label={`Notificaciones${unread ? ` (${unread} sin leer)` : ''}`} aria-expanded={isOpen}>
           <Bell size={20} />
-          <span aria-hidden="true" />
+          {unread>0 && <span aria-hidden="true" />}
         </button>
 
         {isOpen && (
@@ -60,14 +56,16 @@ export function AppTopActions() {
               <h2>Notificaciones</h2>
             </header>
             <div className="notifications-list">
+              {error && <p className="notifications-message" role="status">{error}</p>}
+              {!notifications.length && !error && <p className="notifications-message">{loading?'Cargando notificaciones…':'No hay ninguna notificación.'}</p>}
               {notifications.map((item) => (
-                <article className="notification-item" key={item.title}>
+                <article className="notification-item" key={item.id}>
                   <div>
-                    <strong>{item.title}</strong>
-                    <p>{item.text}</p>
-                    <small>{item.time}</small>
+                    <strong>{noticeTitles[item.kind] ?? item.kind}</strong>
+                    <p>{item.name}</p>
+                    <small>{eventDate(item.occurredAt)}</small>
                   </div>
-                  <button aria-label={`Cerrar ${item.title}`} type="button">x</button>
+                  <button className="notification-dismiss" aria-label={`Eliminar notificación: ${item.name}`} title="Eliminar notificación" onClick={()=>dismiss(item.id)} type="button"><X size={16} aria-hidden="true" /></button>
                 </article>
               ))}
             </div>

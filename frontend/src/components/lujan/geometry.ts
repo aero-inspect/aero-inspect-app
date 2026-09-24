@@ -33,7 +33,7 @@ function texture(kind: "grass" | "soil" | "stucco" | "stone" | "roof" | "water")
   for (let y=0;y<512;y++) for (let x=0;x<512;x++) {
     const i=(y*512+x)*4;
     const wave=noiseAt(x,y,noiseGrids[0])*20+noiseAt(x,y,noiseGrids[1])*14+noiseAt(x,y,noiseGrids[2])*9;
-    const noise=(random()-.5)*(kind === "stucco" ? 15 : 35) + (kind === "grass" || kind === "soil" ? wave : 0);
+    const noise=(random()-.5)*(kind === "stucco" ? 15 : 35) + (kind === "soil" ? wave : 0);
     pixels.data[i]=base[0]+noise; pixels.data[i+1]=base[1]+noise; pixels.data[i+2]=base[2]+noise;
     pixels.data[i+3]=255;
   }
@@ -92,6 +92,18 @@ export function buildLujan() {
     mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
   }
   function localBox(u:number,y:number,v:number,w:number,h:number,d:number,m:THREE.Material) {return box(site,u,y,v,w,h,d,m);}
+  const architecturalLights:Array<{light:THREE.PointLight;power:number}>=[];
+  const lampMaterial=new THREE.MeshStandardMaterial({color:"#fff0ce",emissive:"#ffd598",emissiveIntensity:0,roughness:.4});
+  function illuminate(parent:THREE.Group,u:number,y:number,v:number,power:number,range:number) {
+    const light=new THREE.PointLight("#ffdfaf",0,range,2);
+    light.position.set(u,y,v);light.name="lujan-architectural-light";parent.add(light);
+    architecturalLights.push({light,power});
+  }
+  function bollard(parent:THREE.Group,u:number,v:number) {
+    box(parent,u,.36,v,.12,.72,.12,black);
+    box(parent,u,.67,v,.14,.12,.14,lampMaterial);
+    illuminate(parent,u,.8,v,18,7);
+  }
   function rod(parent:THREE.Group,a:THREE.Vector3,b:THREE.Vector3,r:number,m:THREE.Material) {
     const delta=b.clone().sub(a);
     const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,delta.length(),6),m);
@@ -116,28 +128,6 @@ export function buildLujan() {
   const soil=mat("#e0d3bd",1,texture("soil"));
   // Bare earth around the recently completed house, as shown in the photographs.
   groundPolygon([[-7,-7.6],[12,-7.6],[12,10],[5,10],[5,14.8],[-3,14.8],[-4,8.1],[-3,4.8],[-4,-3.7],[-7,-3.7]],.012,soil);
-  const patchCanvas=document.createElement("canvas");patchCanvas.width=patchCanvas.height=128;
-  const patchContext=patchCanvas.getContext("2d")!;
-  const patchPixels=patchContext.createImageData(128,128);const patchRandom=seeded(415);
-  for(let y=0;y<128;y++) for(let x=0;x<128;x++) {
-    const edge=Math.max(0,1-Math.hypot((x-64)/64,(y-64)/64));
-    const shade=Math.max(0,Math.min(255,(edge*1.8-.18+Math.sin(x*.19)*Math.cos(y*.17)*.14)*255))*(.35+patchRandom()*.65);
-    const i=(y*128+x)*4;patchPixels.data[i]=patchPixels.data[i+1]=patchPixels.data[i+2]=shade;patchPixels.data[i+3]=255;
-  }
-  patchContext.putImageData(patchPixels,0,0);
-  const patchAlpha=new THREE.CanvasTexture(patchCanvas);
-  const patchMaterial=new THREE.MeshStandardMaterial({color:"#b0b486",map:grassTexture,alphaMap:patchAlpha,transparent:true,depthWrite:false,roughness:1});
-  const patchGeometry=new THREE.PlaneGeometry(1,1);
-  const rng=seeded(981);
-  for(let i=0;i<85;i++) {
-    const u=-14+rng()*20,v=-4+rng()*18;
-    // Uneven grass islands in the unfinished courtyard, avoiding pool and building.
-    if((u>-3 && u<3 && v>-5 && v<5) || (u>0 && v>8)) continue;
-    const radius=.4+rng()*1.6;
-    const patch=new THREE.Mesh(patchGeometry,patchMaterial);
-    patch.rotation.x=-Math.PI/2;patch.rotation.z=rng()*Math.PI;
-    patch.scale.set(radius*2,radius*1.3,1);patch.position.set(u,.035,v);patch.receiveShadow=true;site.add(patch);
-  }
   type Opening={at:number;width:number;height:number;bottom?:number;door?:boolean;metal?:boolean;curtains?:boolean};
   // Each facade is built around actual holes. Frames, glass, recessed curtain folds
   // and entrance door sit inside the opening rather than painted onto a solid wall.
@@ -230,11 +220,22 @@ export function buildLujan() {
     }
     if(!isOpenGallery && !isEntrancePorch && length>2) {
       const light=localBox(u+du*.16,.8,v+dv*.16,.15,.22,.26,black);light.rotation.y=angle;
+      const glow=localBox(u+du*.16,.69,v+dv*.16,.12,.025,.28,lampMaterial);glow.rotation.y=angle;
+      if([3,5,6,15,17,21].includes(i)) {
+        // Place the light just outside the wall, using the polygon winding.
+        const area=house.reduce((sum,a,j)=>{const b=house[(j+1)%house.length];return sum+a[0]*b[1]-b[0]*a[1];},0);
+        const side=area>0?1:-1;
+        illuminate(site,u+du*.16+side*dv/length*.35,.85,v+dv*.16-side*du/length*.35,32,9);
+      }
     }
   });
   // Furnish the open gallery within its newly traced footprint.
   const galleryOutline=[house[19],house[20],house[21],house[0],house[1]];
   const [gu,gv]=polygonCenter(galleryOutline);
+  for(const offset of [-1.2,1.2]) {
+    localBox(gu+offset,3.19,gv,.25,.035,.25,lampMaterial);
+    illuminate(site,gu+offset,2.95,gv,42,10);
+  }
   const timber=mat("#aea28d");
   const galleryBox=(u:number,y:number,v:number,w:number,h:number,d:number,m:THREE.Material)=>box(gallery,u,y,v,w,h,d,m);
   galleryBox(gu,.85,gv,2.8,.11,1.25,timber);
@@ -280,6 +281,8 @@ export function buildLujan() {
   }
   // Long rectangular slabs with white gravel joints, at garden level.
   const walkLength=20,walkWidth=1.85;
+  for(const z of [3,10,17]) bollard(entranceFrame,-1.25,z);
+  illuminate(entranceFrame,0,2.5,.7,38,8);
   box(entranceFrame,0,.025,walkLength/2+1,walkWidth+.16,.05,walkLength,gravel);
   for(let z=2.1;z<walkLength;z+=1.55) {
     box(entranceFrame,0,.09,z,walkWidth,.12,1.15,concrete);
@@ -320,6 +323,11 @@ export function buildLujan() {
     }
   });
   const [poolU,poolV]=polygonCenter(pool);
+  // Low garden lights set beyond the coping, leaving the pool and paths clear.
+  for(const [u,v] of [pool[0],pool[2]]) {
+    const delta=new THREE.Vector2(u-poolU,v-poolV).normalize().multiplyScalar(1.1);
+    bollard(site,u+delta.x,v+delta.y);
+  }
   localBox(poolU-4.4,.28,poolV+3.7,1.25,.56,.95,gray);
   localBox(poolU-4.4,.58,poolV+3.7,1.3,.05,1,black);
   // Parking deliberately extends beyond the parcel, exactly as the submitted KML.
@@ -363,7 +371,11 @@ export function buildLujan() {
     }
   }
   const [px,pz]=lujanToLocal(LUJAN_PATIO.latitude,LUJAN_PATIO.longitude);
-  return {root,landmarks:[
+  return {root,setLighting:(level:number)=>{
+    const intensity=THREE.MathUtils.clamp(level,0,1);
+    architecturalLights.forEach(({light,power})=>{light.intensity=power*intensity;});
+    lampMaterial.emissiveIntensity=intensity*2.5;
+  },landmarks:[
     {name:"Casa",position:houseToWorld(12,1,4.0)},
     {name:"Pileta",position:houseToWorld(poolU,poolV,.4)},
     {name:"Patio",position:new THREE.Vector3(px,.2,pz)},

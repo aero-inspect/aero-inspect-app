@@ -408,6 +408,20 @@
   border-bottom: 1px solid #e2e8f0;
 }
 
+.profile-activity-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 244px;
+}
+
+.profile-activity-message {
+  margin: 0;
+  padding: 14px 0 20px;
+  color: #596e8a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .profile-activity-row div {
   flex: 1;
   min-width: 0;
@@ -439,7 +453,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-top: 12px;
+  margin-top: auto;
+  padding: 16px 0 2px;
+  align-self: flex-start;
   border: 0;
   background: transparent;
   color: #063b7a;
