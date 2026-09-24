@@ -632,7 +632,7 @@
 
 .assets-list-filters {
   display: grid;
-  grid-template-columns: 66px minmax(116px, 1fr) minmax(116px, 1fr) minmax(120px, 1fr);
+  grid-template-columns: 66px minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
   margin-bottom: 10px;
   overflow: visible;
@@ -804,12 +804,6 @@
 
 .asset-form-select .assets-filter-menu {
   top: calc(100% + 6px);
-}
-
-.assets-list-search {
-  width: 100%;
-  min-width: 0;
-  height: 34px;
 }
 
 .assets-list-table-wrap {

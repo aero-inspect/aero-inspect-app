@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, Camera, Gauge, Play, Route, Satellite, X } from "lucide-react";
 import type { BackendAsset, BackendFlightPlan, BackendMission, BackendMissionStatus, BackendMissionWaypoint, BackendPlanWaypoint } from "../api/types";
 import { getAssets, getFlightPlan, getMission, getMissions, startMission, cancelMission } from "../api/client";
-import { BragadoPlant3DMap } from "../components/BragadoPlant3DMap";
+import { SelectedPlant3DMap as BragadoPlant3DMap } from "../components/SelectedPlant3DMap";
 import { photoCountForWaypoint } from "../utils/missionPhotos";
 import { AppTopActions } from "../components/AppTopActions";
 import { Compass } from "../components/Compass";

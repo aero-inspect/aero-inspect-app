@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import {
   AlertTriangle,
   CalendarClock,
@@ -20,9 +20,10 @@ import type { Asset, Plant } from "../types";
 import type { BackendAsset, BackendAssetStatus, BackendAssetType } from "../api/types";
 import { createAsset as createBackendAsset, deleteAsset as deleteBackendAsset, getAssets, updateAsset as updateBackendAsset } from "../api/client";
 import { AssetsOverviewMap } from "../components/AssetsOverviewMap";
-import { BragadoPlant3DMap } from "../components/BragadoPlant3DMap";
+import { SelectedPlant3DMap as BragadoPlant3DMap } from "../components/SelectedPlant3DMap";
 import { AppTopActions } from "../components/AppTopActions";
 import { LoadingState } from "../components/LoadingState";
+import { ASSET_TYPE_OPTIONS, assetTypesForPlant } from "../data/assetTypes";
 
 type AssetStatus = "Activo" | "En mantenimiento" | "Fuera de servicio" | "Sin confirmar";
 type AssetDetailRow = Asset & { displayName: string; displayType: string; displayStatus: AssetStatus; tone: "warning" | "ok" | "danger" };
@@ -103,13 +104,6 @@ const EMPTY_FORM: AssetFormState = {
   imageData: null
 };
 
-const ASSET_TYPE_OPTIONS: Array<{ value: BackendAssetType; label: Asset["type"] }> = [
-  { value: "SILO", label: "Silo" },
-  { value: "NORIA", label: "Noria" },
-  { value: "SILO_FLOTANTE", label: "Silo flotante" },
-  { value: "CELDA", label: "Celda" },
-  { value: "SECADORA", label: "Secadora" }
-];
 
 const ASSET_STATUS_OPTIONS: Array<{ value: BackendAssetStatus; label: AssetStatus }> = [
   { value: "MAINTENANCE", label: "En mantenimiento" },
@@ -132,7 +126,7 @@ function statusTone(status: AssetStatus): "warning" | "ok" | "danger" {
   return "ok";
 }
 
-function backendAssetToAsset(asset: BackendAsset): AssetDetailRow {
+function backendAssetToAsset(asset: BackendAsset, plantId: string): AssetDetailRow {
   const displayStatus = backendStatusToDisplay(asset.status);
   const displayType = backendTypeToDisplay(asset.type);
   return {
@@ -149,7 +143,7 @@ function backendAssetToAsset(asset: BackendAsset): AssetDetailRow {
     lastMaintenanceAt: asset.lastMaintenanceAt ?? undefined,
     imageName: asset.imageName ?? undefined,
     imagePreview: asset.imageData ?? undefined,
-    plantId: "planta-principal",
+    plantId,
     displayName: asset.name,
     displayType,
     displayStatus,
@@ -176,6 +170,7 @@ export function MisActivosView({
   selectedAssetId?: number | null;
   plant: Plant;
 }) {
+  const assetTypeOptions = assetTypesForPlant(plant.id);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("Todos");
   const [statusFilter, setStatusFilter] = useState<string>("Todos");
@@ -212,7 +207,7 @@ export function MisActivosView({
   }, []);
 
   const plantAssets = useMemo<AssetDetailRow[]>(() => {
-    if (backendAssets) return backendAssets.map(backendAssetToAsset);
+    if (backendAssets) return backendAssets.map(asset => backendAssetToAsset(asset, plant.id));
     return fallbackAssets
       .filter((asset) => asset.plantId === plant.id)
       .map((asset) => {
@@ -308,7 +303,6 @@ export function MisActivosView({
       code: !form.code.trim(),
       type: !form.type,
       status: !form.status,
-      locationDetail: !form.locationDetail.trim(),
       latitude: !form.latitude.trim(),
       longitude: !form.longitude.trim()
     };
@@ -327,7 +321,7 @@ export function MisActivosView({
         code: form.code.trim(),
         type: form.type,
         status: form.status,
-        locationDetail: form.locationDetail.trim(),
+        locationDetail: plant.name,
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
         lastMaintenanceAt: form.lastMaintenanceAt ? new Date(form.lastMaintenanceAt).toISOString() : null,
@@ -335,7 +329,8 @@ export function MisActivosView({
         imageData: form.imageData,
         description: form.description.trim() || null
       };
-      await createBackendAsset(payload);
+      const savedAsset = await createBackendAsset(payload);
+      setBackendAssets(current => [...(current ?? []), savedAsset]);
       setForm(EMPTY_FORM);
       setFormErrors({});
       setCreateAsset(false);
@@ -419,7 +414,7 @@ export function MisActivosView({
         imageData: detailEditForm.imageData,
         description: detailEditForm.description.trim() || null
       });
-      const nextDetail = backendAssetToAsset(updated);
+      const nextDetail = backendAssetToAsset(updated, plant.id);
       setBackendAssets((current) => current?.map((asset) => asset.idAsset === updated.idAsset ? updated : asset) ?? [updated]);
       setDetailAsset(nextDetail);
       setIsEditingDetail(false);
@@ -461,7 +456,7 @@ export function MisActivosView({
                 <div className="asset-detail-inline-fields">
                   <label className="asset-edit-field"><span>Nombre *</span><input value={detailEditForm.name} onChange={(event) => updateDetailEditForm("name", event.target.value)} /></label>
                   <label className="asset-edit-field"><span>Código *</span><input value={detailEditForm.code} onChange={(event) => updateDetailEditForm("code", event.target.value)} /></label>
-                  <label className="asset-edit-field"><span>Tipo *</span><select value={detailEditForm.type} onChange={(event) => updateDetailEditForm("type", event.target.value)}>{ASSET_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                  <label className="asset-edit-field"><span>Tipo *</span><select value={detailEditForm.type} onChange={(event) => updateDetailEditForm("type", event.target.value)}>{assetTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
                   <label className="asset-edit-field"><span>Estado *</span><select value={detailEditForm.status} onChange={(event) => updateDetailEditForm("status", event.target.value)}>{ASSET_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
                   <label className="asset-edit-field full"><span>Ubicación *</span><input value={detailEditForm.locationDetail} onChange={(event) => updateDetailEditForm("locationDetail", event.target.value)} /></label>
                   <label className="asset-edit-field"><span>Latitud *</span><input value={detailEditForm.latitude} onChange={(event) => updateDetailEditForm("latitude", event.target.value)} /></label>
@@ -591,7 +586,7 @@ export function MisActivosView({
               <ChevronDown size={14} aria-hidden="true" />
               {openFilter === "type" && (
                 <div className="assets-filter-menu">
-                  {ASSET_TYPE_OPTIONS.map((option) => (
+                  {assetTypeOptions.map((option) => (
                     <button
                       className={typeFilter === option.label ? "selected" : undefined}
                       key={option.value}
@@ -630,10 +625,6 @@ export function MisActivosView({
                 </div>
               )}
             </div>
-            <label className="assets-search assets-list-search">
-              <Search size={14} aria-hidden="true" />
-              <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar activo..." value={searchTerm} />
-            </label>
           </div>
 
           <div className="assets-list-table-wrap">
@@ -727,7 +718,7 @@ export function MisActivosView({
                     <ChevronDown size={14} aria-hidden="true" />
                     {openAssetFormSelect === "create-type" && (
                       <div className="assets-filter-menu">
-                        {ASSET_TYPE_OPTIONS.map((option) => (
+                        {assetTypeOptions.map((option) => (
                           <button
                             className={form.type === option.value ? "selected" : undefined}
                             key={option.value}
@@ -744,11 +735,6 @@ export function MisActivosView({
                     )}
                   </div>
                 </div>
-
-                <label className="asset-edit-field full">
-                  <span>Ubicación *</span>
-                  <input aria-label="Ubicación" className={formErrors.locationDetail ? "field-invalid" : undefined} onChange={(event) => updateForm("locationDetail", event.target.value)} value={form.locationDetail} />
-                </label>
 
                 <div className="asset-edit-field full">
                   <span>Estado *</span>
@@ -1007,16 +993,3 @@ function AssetStatCard({ icon, label, tone, value }: { icon: ReactNode; label: s
     </article>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

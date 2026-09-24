@@ -43,8 +43,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return JSON.parse(raw) as T;
 }
 
-export type SensitivityLevel = "LOW" | "MEDIUM" | "HIGH";
-
 export type WaypointAction = "TAKEOFF" | "NAVIGATE" | "STOP" | "LAND";
 
 export type FlightRecordingSummary = {
@@ -113,12 +111,10 @@ export type GeneratedFlightPlan = {
   route: PlanWaypoint[];
   status: PlanStatus;
   sourceRecordingId: number;
-  sensitivity: SensitivityLevel;
 };
 
 export type GenerateFlightPlanPayload = {
   sourceRecordingId: number;
-  sensitivity: SensitivityLevel;
   name: string;
   objective: string;
   // El activo de cada punto marcado, en orden (posición 0 = punto 1). null deja la parada sin activo.
@@ -127,6 +123,26 @@ export type GenerateFlightPlanPayload = {
   // vacía deja esa parada sin fotos.
   markedPointPhotos: Array<PlannedPhoto[]>;
 };
+
+// Edición manual de la posición de un waypoint ya generado. altitude puede mandarse negativa: el
+// borrador la deja ver así (nunca se oculta), sólo confirmFlightPlan la rechaza.
+export type UpdateWaypointPayload = {
+  latitude: number;
+  longitude: number;
+  altitude: number;
+};
+
+// Un waypoint nuevo, insertado justo después de afterSequence. idAsset ausente = punto de paso;
+// presente = punto de interés (con el tiempo de espera fijo por default).
+export type InsertWaypointPayload = {
+  afterSequence: number;
+  latitude: number;
+  longitude: number;
+  altitude: number;
+  idAsset: number | null;
+};
+
+export type MoveDirection = "UP" | "DOWN";
 
 export function getFlightRecordings() {
   return request<FlightRecordingSummary[]>("/api/v1/flight-recordings");
@@ -146,6 +162,51 @@ export function generateFlightPlanDraft(payload: GenerateFlightPlanPayload) {
 export function deletePlanWaypoint(idFlightPlan: number, sequence: number) {
   return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/waypoints/${sequence}`, {
     method: "DELETE"
+  });
+}
+
+export function updatePlanWaypoint(idFlightPlan: number, sequence: number, payload: UpdateWaypointPayload) {
+  return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/waypoints/${sequence}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function insertPlanWaypoint(idFlightPlan: number, payload: InsertWaypointPayload) {
+  return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/waypoints`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function movePlanWaypoint(idFlightPlan: number, sequence: number, direction: MoveDirection) {
+  return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/waypoints/${sequence}/order`, {
+    method: "PATCH",
+    body: JSON.stringify({ direction })
+  });
+}
+
+export function updatePlanWaypointStopSeconds(idFlightPlan: number, sequence: number, stopSeconds: number) {
+  return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/waypoints/${sequence}/stop-seconds`, {
+    method: "PATCH",
+    body: JSON.stringify({ stopSeconds })
+  });
+}
+
+// Cambia el tipo de un waypoint intermedio: idAsset null = punto de paso, idAsset presente =
+// punto de interés con ese activo. No aplica a TAKEOFF/LAND.
+export function updatePlanWaypointType(idFlightPlan: number, sequence: number, idAsset: number | null) {
+  return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/waypoints/${sequence}/type`, {
+    method: "PATCH",
+    body: JSON.stringify({ idAsset })
+  });
+}
+
+// Reemplaza por completo las fotos planificadas de un punto de interés (ABM entero de una).
+export function updatePlanWaypointCameraAngles(idFlightPlan: number, sequence: number, cameraAngles: PlannedPhoto[]) {
+  return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/waypoints/${sequence}/photos`, {
+    method: "PUT",
+    body: JSON.stringify({ cameraAngles })
   });
 }
 

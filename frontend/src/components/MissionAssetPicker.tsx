@@ -8,7 +8,7 @@ import {
   missionReservePct,
   missionRouteForPlans
 } from "../utils/missionAutonomy";
-import { BragadoPlant3DMap } from "./BragadoPlant3DMap";
+import { SelectedPlant3DMap as BragadoPlant3DMap } from "./SelectedPlant3DMap";
 import { LoadingState } from "./LoadingState";
 
 const INSPECTABLE_TYPES = ["SILO", "SILO_FLOTANTE", "CELDA", "NORIA", "SECADORA"];

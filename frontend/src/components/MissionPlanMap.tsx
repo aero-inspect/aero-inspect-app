@@ -1,7 +1,7 @@
 ﻿import L from "leaflet";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
-import { Camera, Cylinder, MoveHorizontal, RotateCw, Waves, Wind, Building2, X } from "lucide-react";
+import { Camera, Cylinder, MoveHorizontal, RotateCw, Waves, Wind, Building2, Armchair, X } from "lucide-react";
 import type { BackendAsset, BackendAssetType, BackendFlightPlan, BackendPlanWaypoint } from "../api/types";
 import { BACKEND_ASSET_TYPE_LABELS } from "../api/constants";
 import { SATELLITE_LAYER } from "../constants";
@@ -19,7 +19,8 @@ export const ASSET_TYPE_ICONS: Record<BackendAssetType, typeof Cylinder> = {
   TECHO: Building2,
   SILO_FLOTANTE: Cylinder,
   CELDA: Building2,
-  SECADORA: Wind
+  SECADORA: Wind,
+  BANQUETA: Armchair
 };
 
 // Marcador grande y clickeable para elegir activos en el mapa de armado de misión.

@@ -1,3 +1,9 @@
+import type { Plant } from "../types";
+import { loadSelectedPlant } from "../data/plants";
+import { assetBelongsToPlant, planBelongsToPlant, locationPlantId } from "../data/plantScope";
+let apiPlant = loadSelectedPlant();
+export function setApiPlant(plant: Plant) { apiPlant = plant; }
+
 import type {
   BackendAsset,
   BackendDrone,
@@ -48,8 +54,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return body.trim() ? JSON.parse(body) as T : undefined as T;
 }
 
-export function getAssets() {
-  return request<BackendAsset[]>("/api/v1/assets");
+export async function getAssets(plant: Plant = apiPlant) {
+  const assets = await request<BackendAsset[]>("/api/v1/assets");
+  return assets.filter(asset => assetBelongsToPlant(asset,plant));
 }
 
 export function getAsset(idAsset: number) {
@@ -69,8 +76,11 @@ export function deleteAsset(idAsset: number) {
   });
 }
 
-export function getFlightPlans() {
-  return request<BackendFlightPlan[]>("/api/v1/flight-plans");
+export async function getFlightPlans(plant: Plant = apiPlant) {
+  const plans = await request<BackendFlightPlan[]>("/api/v1/flight-plans");
+  const needsAssets = plans.some(plan => !plan.route.length && plan.assetIds.length);
+  const assets = needsAssets ? await request<BackendAsset[]>("/api/v1/assets") : [];
+  return plans.filter(plan => planBelongsToPlant(plan,assets,plant));
 }
 
 export function getFlightPlan(idFlightPlan: number) {
@@ -91,8 +101,14 @@ export function createFlightPlan(payload: CreateFlightPlanPayload) {
   });
 }
 
-export function getMissions() {
-  return request<BackendMission[]>("/api/v1/missions");
+export async function getMissions(plant: Plant = apiPlant) {
+  const [missions, plans] = await Promise.all([
+    request<BackendMission[]>("/api/v1/missions"), getFlightPlans(plant)
+  ]);
+  const ids = new Set(plans.map(plan => plan.idFlightPlan));
+  return missions.filter(mission => mission.missionWaypoints?.length
+    ? mission.missionWaypoints.some(point => locationPlantId(point.latitude,point.longitude) === plant.id)
+    : ids.has(mission.idFlightPlan));
 }
 
 export function getMission(idMission: string) {
@@ -106,8 +122,12 @@ export function createMission(payload: CreateMissionPayload) {
   });
 }
 
-export function getMissionSchedules() {
-  return request<BackendMissionSchedule[]>("/api/v1/mission-schedules");
+export async function getMissionSchedules(plant: Plant = apiPlant) {
+  const [schedules, plans] = await Promise.all([
+    request<BackendMissionSchedule[]>("/api/v1/mission-schedules"), getFlightPlans(plant)
+  ]);
+  const ids = new Set(plans.map(plan => plan.idFlightPlan));
+  return schedules.filter(schedule => ids.has(schedule.idFlightPlan));
 }
 
 export function createMissionSchedule(payload: CreateMissionSchedulePayload) {
@@ -215,7 +235,11 @@ export function getInspectionPhoto(idInspectionPhoto: string) {
   return request<BackendInspectionPhoto>(`/api/v1/inspection-photos/${idInspectionPhoto}`);
 }
 
-export function getReports() { return request<BackendReport[]>("/api/v1/reports"); }
+export async function getReports(plant: Plant = apiPlant) {
+  const [reports, assets] = await Promise.all([request<BackendReport[]>("/api/v1/reports"),getAssets(plant)]);
+  const ids = new Set(assets.map(asset => asset.idAsset));
+  return reports.filter(report => ids.has(report.idAsset));
+}
 export function getReport(code: string) { return request<BackendReport>(`/api/v1/reports/${code}`); }
 export function deleteReport(code: string) { return request<void>(`/api/v1/reports/${code}`, { method: "DELETE" }); }
 export function createReport(idMission: string, idAsset: number, title?: string) {

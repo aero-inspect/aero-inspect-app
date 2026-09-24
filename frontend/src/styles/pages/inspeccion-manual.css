@@ -101,14 +101,6 @@
   font-weight: 600;
 }
 
-/* El empujón desde el estado vacío del wizard: si no hay recorridos, el camino es volar uno. */
-.plan-builder-empty-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-}
-
 /* Entrada a la inspección manual, en Misiones: comparte la celda con "Nueva Misión", que es el
    otro camino para llegar a un plan de vuelo. La fila es un grid de 4 tarjetas + una columna de
    166px, así que las dos acciones van apiladas dentro de esa última columna y no como un sexto
@@ -140,4 +132,20 @@
 
 .missions-manual-button:hover {
   background: rgba(126, 194, 255, 0.16);
+}
+
+/* "Nueva Misión" desde un plan ya generado de un recorrido: mismo ancho que las otras dos acciones. */
+.missions-plan-select {
+  width: 166px;
+  height: 38px;
+  padding: 0 8px;
+  border: 1px solid #063b7a;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #063b7a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-overflow: ellipsis;
 }

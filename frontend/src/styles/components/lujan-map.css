@@ -1,0 +1,16 @@
+.plant-switcher { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 18px; margin-bottom:18px; border:1px solid #dbe3e8; border-radius:12px; background:#fff; color:#31536b; }
+.plant-switcher label { font-weight:600; display:flex; align-items:center; gap:12px; }
+.plant-switcher select { padding:9px 30px 9px 12px; border:1px solid #ccd9e1; border-radius:8px; color:#123b58; background:#f6f9fb; font:inherit; }
+.plant-switcher small { color:#647886; }
+.lujan-landmark { position:absolute; transform:translate(-50%,-100%); pointer-events:none; padding:4px 8px; border-radius:5px; background:#fffffff0; color:#294c5c; font-size:11px; box-shadow:0 2px 8px #203c4220; }
+.lujan-map-error { position:absolute; top:40%; margin:20px; background:#fff; padding:20px; border-radius:10px; }
+.lujan-hide-labels .lujan-landmark { visibility:hidden; }
+.asset-coordinate-map-frame .bragado-map:not(.bragado-map-expanded) { min-height:0; }
+.bragado-map.lujan-map { display:flex; flex-direction:column; }
+.lujan-map-viewport { position:relative; flex:1; min-height:0; }
+.lujan-coordinate-hint { flex:none; margin:0; padding:10px 12px; border-top:1px solid #e3ebf2; background:#fff; color:#294c5c; font-size:12px; }
+.lujan-asset-label { position:absolute; transform:translate(-50%,-100%); z-index:2; border:1px solid #adb9c0; border-radius:5px; padding:3px 7px; background:#fffffff0; color:#243e50; font-family:inherit; font-weight:600; font-size:11px; cursor:pointer; white-space:nowrap; }
+.lujan-asset-label:disabled { pointer-events:none; }
+@media(max-width:650px) { .plant-switcher { align-items:flex-start; flex-direction:column; } }
+
+.lujan-asset-label { pointer-events:none; }

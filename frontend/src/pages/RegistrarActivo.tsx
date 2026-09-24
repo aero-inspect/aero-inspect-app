@@ -34,7 +34,8 @@ const MISSION_SUGGESTIONS: Record<AssetType, string[]> = {
   Techo: ["Fisuras", "Deformaciones", "Acumulación de polvo"],
   "Silo flotante": ["Inspección visual", "Corrosión estructural"],
   Celda: ["Inspección visual", "Corrosión estructural"],
-  Secadora: ["Revisión mecánica", "Termografía"]
+  Secadora: ["Revisión mecánica", "Termografía"],
+  Banqueta: ["Inspección visual"]
 };
 
 export function RegistrarActivoView({

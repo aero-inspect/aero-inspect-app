@@ -28,7 +28,7 @@ export async function fetchWeather(city = "Bragado"): Promise<WeatherData> {
 
   return {
     temp: Math.round(data.temp),
-    desc: data.description,
+    desc: data.description.replace(/\s*\(simulado\)/gi, "").trim(),
     icon: data.icon,
     wind: Math.round(data.windKmh),
     humidity: Math.round(data.humidity),

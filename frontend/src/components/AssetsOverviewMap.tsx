@@ -1,3 +1,5 @@
+import { LUJAN_PLANT } from "../data/plants";
+import { LujanPlant3DMap } from "./LujanPlant3DMap";
 import type { BackendAsset } from "../api/types";
 import type { Plant } from "../types";
 import { BragadoPlant3DMap, type MapFilters } from "./BragadoPlant3DMap";
@@ -20,6 +22,7 @@ export function AssetsOverviewMap({
   filters?: MapFilters;
   focusedAssetCode?: string | null;
 }) {
+  if (plant.id === LUJAN_PLANT.id) return <LujanPlant3DMap assets={assets} filters={filters} onViewAsset={onViewAsset} focusedAssetCode={focusedAssetCode} onSelect={onSelect} selectedLocation={selectedLocation} />;
   if (onSelect || selectedLocation) {
     return (
       <LeafletAssetsOverviewMap
@@ -31,6 +34,7 @@ export function AssetsOverviewMap({
       />
     );
   }
+
 
   // Fallback preservado: LeafletAssetsOverviewMap contiene el mapa satelital anterior.
   // Para volver temporalmente al mapa viejo en estas vistas, reemplazar la linea de abajo por:

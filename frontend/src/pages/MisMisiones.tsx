@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertCircle, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, Play, Plus, Radio, RefreshCw, Search, Trash2, X, XCircle } from "lucide-react";
+import { AlertCircle, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, Play, Plus, RefreshCw, Route, Search, Trash2, X, XCircle } from "lucide-react";
 import type { BackendFlightPlan, BackendMission, BackendMissionSchedule, BackendMissionStatus, ManagedUser } from "../api/types";
 import type { SessionUser } from "../types";
 import { deleteMission, deleteMissionSchedule, getFlightPlans, getManagedUsers, getMission, getMissions, getMissionSchedules, startMission, updateMissionPilot, updateMissionSchedule } from "../api/client";
-import { BragadoPlant3DMap } from "../components/BragadoPlant3DMap";
+import { SelectedPlant3DMap as BragadoPlant3DMap } from "../components/SelectedPlant3DMap";
 import { AppTopActions } from "../components/AppTopActions";
 import { LoadingState } from "../components/LoadingState";
 
@@ -125,13 +125,13 @@ export function MisMisionesView({
   user,
   onCreateMission,
   onViewMission,
-  onStartManualInspection
+  onGeneratePlan
 }: {
   user: SessionUser;
   onCreateMission: (idFlightPlans: number[]) => void;
   onViewMission: (idMission: string) => void;
   /** Sólo viene para los roles que operan el dron; sin esto el botón no se muestra. */
-  onStartManualInspection?: () => void;
+  onGeneratePlan?: () => void;
 }) {
   const [missions, setMissions] = useState<BackendMission[] | null>(null);
   const [missionSchedules, setMissionSchedules] = useState<BackendMissionSchedule[] | null>(null);
@@ -198,6 +198,14 @@ export function MisMisionesView({
       .filter((mission) => mission.status === "UPLOADING" || mission.status === "IN_PROGRESS")
       .forEach((mission) => pollMissionStatus(mission.idMission));
   }, [missions]);
+
+  // Los planes generados desde un recorrido manual: son los únicos que no se pueden elegir por activo
+  // en "Nueva Misión" (ese camino sólo resuelve los planes de inspección de la planta). Los borradores
+  // quedan afuera: hasta que no se confirman no se puede armar una misión con ellos.
+  const recordingPlans = useMemo(
+    () => flightPlans.filter((plan) => plan.sourceRecordingId != null && plan.status === "CONFIRMED"),
+    [flightPlans]
+  );
 
   const missionRows = useMemo<MissionRow[]>(
     () =>
@@ -429,10 +437,28 @@ export function MisMisionesView({
             <Plus size={18} />
             Nueva Misión
           </button>
-          {onStartManualInspection && (
-            <button className="missions-manual-button" onClick={onStartManualInspection} type="button">
-              <Radio size={18} />
-              Inspección Manual
+          {recordingPlans.length > 0 && (
+            <select
+              aria-label="Nueva misión desde un plan de recorrido"
+              className="missions-plan-select"
+              onChange={(event) => {
+                const idFlightPlan = Number(event.target.value);
+                if (idFlightPlan) onCreateMission([idFlightPlan]);
+              }}
+              value=""
+            >
+              <option value="">Desde un recorrido…</option>
+              {recordingPlans.map((plan) => (
+                <option key={plan.idFlightPlan} value={plan.idFlightPlan}>
+                  {plan.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {onGeneratePlan && (
+            <button className="missions-manual-button" onClick={onGeneratePlan} type="button">
+              <Route size={18} />
+              Generar plan
             </button>
           )}
         </div>
