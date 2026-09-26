@@ -38,7 +38,6 @@ import { PlanDraftMap } from "../components/PlanDraftMap";
 import { AppTopActions } from "../components/AppTopActions";
 import { FieldError } from "../components/FieldError";
 import { LoadingState } from "../components/LoadingState";
-import { violatesAxisConstraint } from "../utils/axisConstraint";
 import { estimateFlightDurationSeconds, haversineDistanceMeters, totalRouteDistanceMeters } from "../utils/geo";
 import { getNavigateMovementKind, NAVIGATE_MOVEMENT_LABELS } from "../utils/waypointMovement";
 
@@ -256,23 +255,14 @@ export function GenerarPlanVueloView({
     }
   };
 
-  // Mover el marker en el mapa (drag) sólo cambia x/y: la altitud viaja tal cual estaba. Antes de
-  // mandarlo al backend se chequea localmente contra los vecinos: si va a quedar en diagonal, se
-  // avisa al toque (sin ida y vuelta al server) y el marker vuelve solo a su lugar, porque el
-  // `position` que ve el mapa sigue siendo el del plan sin cambios.
+  // Mover el marker en el mapa (drag) sólo cambia x/y: la altitud viaja tal cual estaba. Puede
+  // dejar un tramo en diagonal con un vecino: el borrador lo admite y recién el backend lo rechaza
+  // al confirmar el plan.
   const handleMoveWaypoint = async (sequence: number, latitude: number, longitude: number) => {
     if (!plan) return;
-    const index = orderedRoute.findIndex((item) => item.sequence === sequence);
-    if (index < 0) return;
-    const waypoint = orderedRoute[index];
+    const waypoint = orderedRoute.find((item) => item.sequence === sequence);
+    if (!waypoint) return;
     const moved = { latitude, longitude, altitude: waypoint.altitude };
-    const previous = orderedRoute[index - 1];
-    const next = orderedRoute[index + 1];
-
-    if ((previous && violatesAxisConstraint(previous, moved)) || (next && violatesAxisConstraint(moved, next))) {
-      setCoordError("Ese punto quedaría conectado en diagonal con un vecino: no se puede mover ahí.");
-      return;
-    }
 
     setCoordError(null);
     try {
