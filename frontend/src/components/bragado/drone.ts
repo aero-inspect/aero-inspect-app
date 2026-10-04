@@ -31,6 +31,7 @@ export function addMissionDrone(scene: T.Scene, includeDock = true) {
   box(.006,.018,.036,1.575,.16,.47,led);tube([1.48,.2,.64],[1.48,.36,.64],.008,black);
   }
   const drone=new T.Group();drone.name='Reference quadcopter';drone.position.y=surface;dock.add(drone);
+  if(includeDock)drone.scale.multiplyScalar(1.3);
   // Carbon weave gives the tubes and shell the subdued composite finish in the photos.
   const c=document.createElement('canvas');c.width=c.height=64;const ctx=c.getContext('2d')!;
   ctx.fillStyle='#202526';ctx.fillRect(0,0,64,64);for(let x=0;x<64;x+=4)for(let y=0;y<64;y+=4){ctx.fillStyle=(x+y)%8?'#303636':'#1a1f20';ctx.fillRect(x,y,3,2);}

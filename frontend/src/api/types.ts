@@ -2,7 +2,7 @@
 // No confundir con los tipos de src/types/index.ts, que son del modelo mock/local
 // que todavía usan RegistrarActivo/MisActivos/ConfigurarMision.
 
-export type BackendAssetType = "SILO" | "NORIA" | "CINTA_TRANSPORTADORA" | "TUBERIA" | "TECHO" | "SILO_FLOTANTE" | "CELDA" | "SECADORA";
+export type BackendAssetType = "SILO" | "NORIA" | "CINTA_TRANSPORTADORA" | "TUBERIA" | "TECHO" | "SILO_FLOTANTE" | "CELDA" | "SECADORA" | "BANQUETA";
 export type BackendAssetStatus = "ACTIVE" | "MAINTENANCE" | "OUT_OF_SERVICE" | "UNCONFIRMED";
 
 export type BackendAsset = {
@@ -82,7 +82,13 @@ export type BackendFlightPlan = {
   minBatteryPct: number;
   assetIds: number[];
   route: BackendPlanWaypoint[];
+  // Recorrido manual del que se generó el plan; null en los planes armados a mano o por SQL.
+  sourceRecordingId?: number | null;
+  // DRAFT mientras se revisa el plan generado, CONFIRMED una vez confirmado.
+  status?: "DRAFT" | "CONFIRMED";
 };
+
+export type CreateFlightPlanPayload = Omit<BackendFlightPlan, "idFlightPlan">;
 
 export type BackendMissionStatus = "PLANNED" | "UPLOADING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "FAILED";
 
@@ -127,6 +133,35 @@ export type CreateMissionPayload = {
   objective: string;
   idDrone: string;
   scheduledAt: string;
+  selectedPlanWaypointIds: number[];
+};
+
+export type MissionScheduleFrequency = "DAILY" | "WEEKLY";
+
+export type BackendMissionSchedule = {
+  idMissionSchedule: string;
+  idFlightPlan: number;
+  name: string;
+  objective: string;
+  idDrone: string;
+  droneId: string | null;
+  frequency: MissionScheduleFrequency;
+  scheduledTime: string;
+  weekDays: number[];
+  nextRunAt: string | null;
+  active: boolean;
+  createdByUsername: string | null;
+  selectedPlanWaypointIds: number[] | null;
+};
+
+export type CreateMissionSchedulePayload = {
+  idFlightPlan: number;
+  name: string;
+  objective: string;
+  idDrone: string;
+  frequency: MissionScheduleFrequency;
+  scheduledTime: string;
+  weekDays: number[];
   selectedPlanWaypointIds: number[];
 };
 

@@ -2,7 +2,7 @@ import type { PlanWaypoint } from "../api/planBuilder";
 
 // Umbral por debajo del cual un cambio de altitud entre dos waypoints consecutivos se considera
 // "sin cambio" (ruido de generación) en vez de una subida o bajada real. Coincide con el epsilon
-// vertical mas chico que usa el backend (SensitivityLevel.HIGH).
+// vertical fijo que usa el backend (AxisDecomposer.VERTICAL_EPSILON_METERS).
 const LEVEL_EPSILON_METERS = 0.5;
 
 export type NavigateMovementKind = "CLIMB" | "DESCEND" | "HORIZONTAL";

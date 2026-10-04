@@ -21,19 +21,27 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options
   });
 
+  const raw = await response.text();
+
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new Error(body?.message ?? DEFAULT_ERROR_MESSAGE);
+    let message: string | undefined;
+    try {
+      message = raw ? (JSON.parse(raw) as { message?: string }).message : undefined;
+    } catch {
+      // Un error sin cuerpo JSON (un 502 del proxy, por ejemplo) no tiene mensaje que mostrar.
+    }
+    throw new Error(message ?? DEFAULT_ERROR_MESSAGE);
   }
 
-  if (response.status === 204) {
+  // Hay respuestas sin cuerpo: el 202 de arrancar/cortar una inspección manual es una de ellas.
+  // Pasarlas por JSON.parse revienta con "Unexpected end of JSON input" — un error que parece de
+  // red y en realidad es de la llamada que sí funcionó.
+  if (!raw) {
     return undefined as T;
   }
 
-  return response.json() as Promise<T>;
+  return JSON.parse(raw) as T;
 }
-
-export type SensitivityLevel = "LOW" | "MEDIUM" | "HIGH";
 
 export type WaypointAction = "TAKEOFF" | "NAVIGATE" | "STOP" | "LAND";
 
@@ -51,6 +59,9 @@ export type TrackPoint = {
   longitude: number;
   altitude: number;
   headingDegree: number;
+  // El piloto apretó el botón del radiocontrol sobre este punto: la generación lo respeta
+  // como waypoint aunque la simplificación lo hubiera descartado.
+  marked?: boolean;
 };
 
 export type FlightRecordingDetail = {
@@ -60,6 +71,16 @@ export type FlightRecordingDetail = {
   recordedTo: string;
   points: TrackPoint[];
 };
+
+// Una foto planificada para un punto marcado: pitch (inclinación vertical del gimbal, -135 a 45) +
+// yaw (rotación horizontal relativa al heading del dron, -160 a 160).
+export type PlannedPhoto = {
+  pitch: number;
+  yaw: number;
+};
+
+export const PITCH_RANGE = { min: -135, max: 45 };
+export const YAW_RANGE = { min: -160, max: 160 };
 
 export type PlanWaypoint = {
   idPlanWaypoint: number;
@@ -73,6 +94,10 @@ export type PlanWaypoint = {
   latitude: number;
   longitude: number;
   altitude: number;
+  // Sólo en una parada a la que se le asignó un activo al generar el plan.
+  idAsset?: number | null;
+  name?: string | null;
+  cameraAngles?: PlannedPhoto[] | null;
 };
 
 export type PlanStatus = "DRAFT" | "CONFIRMED" | "ARCHIVED";
@@ -86,15 +111,38 @@ export type GeneratedFlightPlan = {
   route: PlanWaypoint[];
   status: PlanStatus;
   sourceRecordingId: number;
-  sensitivity: SensitivityLevel;
 };
 
 export type GenerateFlightPlanPayload = {
   sourceRecordingId: number;
-  sensitivity: SensitivityLevel;
   name: string;
   objective: string;
+  // El activo de cada punto marcado, en orden (posición 0 = punto 1). null deja la parada sin activo.
+  markedPointAssetIds: Array<number | null>;
+  // Las fotos planificadas para cada punto marcado, en el mismo orden posicional. Una posición
+  // vacía deja esa parada sin fotos.
+  markedPointPhotos: Array<PlannedPhoto[]>;
 };
+
+// Edición manual de la posición de un waypoint ya generado. altitude puede mandarse negativa: el
+// borrador la deja ver así (nunca se oculta), sólo confirmFlightPlan la rechaza.
+export type UpdateWaypointPayload = {
+  latitude: number;
+  longitude: number;
+  altitude: number;
+};
+
+// Un waypoint nuevo, insertado justo después de afterSequence. idAsset ausente = punto de paso;
+// presente = punto de interés (con el tiempo de espera fijo por default).
+export type InsertWaypointPayload = {
+  afterSequence: number;
+  latitude: number;
+  longitude: number;
+  altitude: number;
+  idAsset: number | null;
+};
+
+export type MoveDirection = "UP" | "DOWN";
 
 export function getFlightRecordings() {
   return request<FlightRecordingSummary[]>("/api/v1/flight-recordings");
@@ -117,8 +165,70 @@ export function deletePlanWaypoint(idFlightPlan: number, sequence: number) {
   });
 }
 
+export function updatePlanWaypoint(idFlightPlan: number, sequence: number, payload: UpdateWaypointPayload) {
+  return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/waypoints/${sequence}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function insertPlanWaypoint(idFlightPlan: number, payload: InsertWaypointPayload) {
+  return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/waypoints`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function movePlanWaypoint(idFlightPlan: number, sequence: number, direction: MoveDirection) {
+  return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/waypoints/${sequence}/order`, {
+    method: "PATCH",
+    body: JSON.stringify({ direction })
+  });
+}
+
+export function updatePlanWaypointStopSeconds(idFlightPlan: number, sequence: number, stopSeconds: number) {
+  return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/waypoints/${sequence}/stop-seconds`, {
+    method: "PATCH",
+    body: JSON.stringify({ stopSeconds })
+  });
+}
+
+// Cambia el tipo de un waypoint intermedio: idAsset null = punto de paso, idAsset presente =
+// punto de interés con ese activo. No aplica a TAKEOFF/LAND.
+export function updatePlanWaypointType(idFlightPlan: number, sequence: number, idAsset: number | null) {
+  return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/waypoints/${sequence}/type`, {
+    method: "PATCH",
+    body: JSON.stringify({ idAsset })
+  });
+}
+
+// Reemplaza por completo las fotos planificadas de un punto de interés (ABM entero de una).
+export function updatePlanWaypointCameraAngles(idFlightPlan: number, sequence: number, cameraAngles: PlannedPhoto[]) {
+  return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/waypoints/${sequence}/photos`, {
+    method: "PUT",
+    body: JSON.stringify({ cameraAngles })
+  });
+}
+
 export function confirmFlightPlan(idFlightPlan: number) {
   return request<GeneratedFlightPlan>(`/api/v1/flight-plans/${idFlightPlan}/confirm`, {
     method: "POST"
+  });
+}
+
+// Inspección manual: el backend le publica la orden al dron por MQTT y responde 202. No hay
+// recorrido que devolver todavía — el dron lo sube recién cuando aterriza, y aparece en
+// getFlightRecordings().
+export function startManualRecording(idDrone: string) {
+  return request<void>("/api/v1/flight-recordings/start", {
+    method: "POST",
+    body: JSON.stringify({ idDrone })
+  });
+}
+
+export function stopManualRecording(idDrone: string) {
+  return request<void>("/api/v1/flight-recordings/stop", {
+    method: "POST",
+    body: JSON.stringify({ idDrone })
   });
 }

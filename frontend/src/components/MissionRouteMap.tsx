@@ -69,7 +69,7 @@ export function MissionRouteMap({
             icon={missionRoutePointIcon}
             key={point.id}
             position={[Number(point.latitude), Number(point.longitude)]}
-            title="Punto de inspeccion"
+            title="Punto de inspección"
           />
         ))}
 

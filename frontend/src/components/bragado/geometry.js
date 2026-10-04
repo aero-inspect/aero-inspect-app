@@ -1,6 +1,9 @@
 // Geometry ported from the approved bragado-silos-3d prototype.
 import * as T from 'three';
+import assetCatalog from '../../data/bragado-assets.json';
+import {transferTubePath} from './transferTubes.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+export const GROUND_Y = -0.06;
 // One triangulated pavement surface: closed circulation loop and two access branches.
 function buildRoad(mesh,concrete){
 const roadWidth=7;
@@ -105,7 +108,7 @@ function addOutlets({bins,numbers,mesh,box,beam,frame,rust,dark,parent,scale}){
   beam([-1,29*scale,0],b,.025,frame,parent);
 }
 
-export function buildPlant(scene,heightScale,siloNumbers,tubeConnections){
+export function buildPlant(scene,heightScale,siloNumbers,tubeConnections,inspectionVolumes){
 const material=(color,metalness=0,roughness=.8)=>new T.MeshStandardMaterial({color,metalness,roughness});
 const steel=material('#a6afb0',.6,.55),frame=material('#505f43',.4),rust=material('#8a6956',.35),yellow=material('#c0aa54'),concrete=material('#97978f'),dark=material('#343b37');
 const fixed=new T.Group(),dynamic=new T.Group();scene.add(fixed,dynamic);const labels=[];
@@ -117,21 +120,22 @@ function label(text,x,y,z,parent=fixed){const c=document.createElement('canvas')
 const tile=document.createElement('canvas');tile.width=tile.height=256;const ctx=tile.getContext('2d');let seed=17;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};ctx.fillStyle='#6d8052';ctx.fillRect(0,0,256,256);
 for(let i=0;i<22000;i++){const v=Math.floor(rand()*40);ctx.fillStyle=`rgb(${75+v},${91+v},${47+v})`;ctx.fillRect(rand()*256,rand()*256,1+rand()*3,1);}
 const grassMap=new T.CanvasTexture(tile);grassMap.wrapS=grassMap.wrapT=T.RepeatWrapping;grassMap.repeat.set(90,90);grassMap.colorSpace=T.SRGBColorSpace;
-const ground=mesh(new T.PlaneGeometry(900,900),new T.MeshStandardMaterial({map:grassMap,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=-.06;ground.castShadow=false;
+const ground=mesh(new T.PlaneGeometry(900,900),new T.MeshStandardMaterial({map:grassMap,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=GROUND_Y;ground.castShadow=false;
 buildRoad(mesh,concrete);
 function gabled(w,d,h,rise,x,z,open=false){const g=new T.Group();g.position.set(x,0,z);g.rotation.y=-Math.PI/4;fixed.add(g);if(!open)box(w,h,d,0,0,0,steel,g);const angle=Math.atan2(rise,w/2),slope=Math.hypot(w/2,rise);
 for(const side of [-1,1]){const panel=box(slope+.4,.16,d+.7,side*w/4,h+rise/2,0,steel,g);panel.rotation.z=-side*angle;for(let zz=-d/2;zz<=d/2;zz+=3){beam([side*w/2,0,zz],[side*w/2,h,zz],.13,frame,g);if(!open)beam([side*(w/2+1.7),0,zz],[side*w/2,h*.65,zz],.1,frame,g);beam([side*w/2,h,zz],[0,h+rise,zz],.09,frame,g);}if(!open)for(let y=1;y<h;y+=1.6)box(.12,.12,d,side*(w/2+.08),y,0,frame,g);}
 if(!open)for(const end of [-1,1]){const shape=new T.Shape();shape.moveTo(-w/2,0);shape.lineTo(w/2,0);shape.lineTo(0,rise);shape.closePath();const wall=mesh(new T.ShapeGeometry(shape),steel,g);wall.material.side=T.DoubleSide;wall.position.set(0,h,end*d/2);for(let xx=-w/2;xx<=w/2;xx+=.5)box(.035,h,.03,xx,0,end*(d/2+.02),frame,g);}return g;}
 gabled(27,43,8,6,-51,-77).rotation.y+=Math.PI/2;
-const canopy=gabled(18,13,9,1.5,14,-18,true);
+const canopy=gabled(18,13,9,1.5,10,-32,true);
 box(.12,4,13,-9,5,0,steel,canopy);box(.12,3,13,9,6,0,steel,canopy);
 for(const z of [-6.5,6.5])box(18,2.3,.12,0,6.7,z,steel,canopy);
 box(8,.12,12,0,.05,0,concrete,canopy);for(let z=-2;z<2;z+=.2)box(5,.05,.08,0,.19,z,dark,canopy);
-const lamp=new T.PointLight('#ffc36c',45,15,2);lamp.position.set(0,7,0);canopy.add(lamp);label('Descarga',14,12,-18);
+const lamp=new T.PointLight('#ffc36c',45,15,2);lamp.position.set(0,7,0);canopy.add(lamp);label('Descarga',10,12,-32);
 addPerimeter({beam,frame,dark});
-// Preserve the approved satellite centers and footprints. Heights remain estimates.
+// Shared centers keep rendered assets and inspection coordinates aligned.
 const addFan=addEquipment({mesh,box,beam,fixed,canopy,steel,frame,rust,yellow,concrete,dark});
-const bins=[['G1',179,64,112,19],['G2',93,168,112,19],['G3',460,465,108,17],['M1',242,145,72,14],['M2',298,195,66,13],['M3',181,218,74,14],['M4',242,254,64,12],['M5',363,266,62,12],['M6',316,326,68,14],['M7',437,331,76,15],['M8',373,395,78,15],['P1',252,390,36,8],['P2',294,374,29,10],['P3',285,431,29,7]].map(([id,u,v,d,h])=>({id,x:(u-292)*.16,z:(v-277)*.16,r:d*.08,h}));
+const binIds={G1:'silo-10',G2:'silo-11',G3:'silo-9',M1:'silo-5',M2:'silo-3',M3:'silo-6',M4:'silo-4',M5:'silo-2',M6:'silo-1',M7:'silo-8',M8:'silo-7',P1:'F1',P2:'F2',P3:'F3'};
+const bins=Object.entries(binIds).map(([id,assetId])=>({...assetCatalog.find(a=>a.id===assetId),id}));
 function rebuild(){for(const child of [...dynamic.children]){dynamic.remove(child);child.traverse(o=>{o.geometry?.dispose();if(o.isSprite){o.material.map.dispose();o.material.dispose();}});}labels.splice(2);const scale=heightScale;
 for(const b of bins){const h=b.h*scale,small=b.id[0]==='P',base=small?3:.35,profile=[];
 for(let y=0;y<=h-base;y+=.055)profile.push(new T.Vector2(b.r+Math.sin(y*Math.PI*2/.16)*.027,y+base));const silo=mesh(new T.LatheGeometry(profile,80),steel,dynamic);silo.position.set(b.x,0,b.z);
@@ -141,14 +145,15 @@ for(let i=0;i<16;i++){const a=i*Math.PI/8;beam([b.x,h+rise,b.z],[b.x+Math.cos(a)
 for(let i=0;i<12;i++){const a=i*Math.PI/6;beam([b.x+Math.cos(a)*(b.r+.04),base,b.z+Math.sin(a)*(b.r+.04)],[b.x+Math.cos(a)*(b.r+.04),h,b.z+Math.sin(a)*(b.r+.04)],.014,dark,dynamic);}
 if(small){const hopper=mesh(new T.CylinderGeometry(b.r,.3,2.6,40),frame,dynamic);hopper.position.set(b.x,1.9,b.z);for(const dx of [-1,1])for(const dz of [-1,1])beam([b.x+dx*b.r*.7,0,b.z+dz*b.r*.7],[b.x+dx*b.r*.7,base+1,b.z+dz*b.r*.7],.08,frame,dynamic);}else{for(const dx of [-.35,.35])beam([b.x+dx,.5,b.z+b.r+.2],[b.x+dx,h,b.z+b.r+.2],.035,yellow,dynamic);for(let y=.6;y<h;y+=.35)beam([b.x-.35,y,b.z+b.r+.2],[b.x+.35,y,b.z+b.r+.2],.025,yellow,dynamic);box(.65,.9,.3,b.x,.5,b.z+b.r,frame,dynamic);addFan(b,dynamic);}}
 const towers=[[-1,0,31],[12,5,25]];towers.forEach(([x,z,height])=>{const h=height*scale;for(const dx of [-.45,.45]){box(.38,h,.35,x+dx,0,z,frame,dynamic);for(let y=0;y<h;y+=2)box(.48,.08,.45,x+dx,y,z,rust,dynamic);}box(3.4,.15,3.4,x,h-1.3,z,dark,dynamic);for(const side of [-1,1]){beam([x-1.7,h,z+side*1.7],[x+1.7,h,z+side*1.7],.04,frame,dynamic);beam([x+side*1.7,h,z-1.7],[x+side*1.7,h,z+1.7],.04,frame,dynamic);}for(let y=1;y<h;y+=2){const ring=mesh(new T.TorusGeometry(.45,.025,6,20),frame,dynamic);ring.rotation.x=Math.PI/2;ring.position.set(x+1.2,y,z);}for(const dx of [-.8,.8])for(const dz of [-.8,.8])beam([x+dx,0,z+dz],[x+dx,h,z+dz],.1,frame,dynamic);for(let y=1;y<h-2;y+=2)for(const side of [-1,1]){beam([x-.8,y,z+side*.8],[x+.8,y+2,z+side*.8],.045,frame,dynamic);beam([x+side*.8,y,z-.8],[x+side*.8,y+2,z+.8],.045,frame,dynamic);}box(2.6,1.6,2.6,x,h-1,z,frame,dynamic);});
-for(const tube of tubeConnections){const {a,b}=tubeEnds(tube,scale);beam(a,b,.16,frame,dynamic);beam([a[0],a[1]+1,a[2]],[b[0],b[1]+.4,b[2]],.018,dark,dynamic);}
+for(const tube of tubeConnections){const {a,b,target}=tubeEnds(tube,scale);const path=transferTubePath(a,b,bins,target,scale);for(let i=1;i<path.length;i++){const start=path[i-1],end=path[i];beam(start,end,.16,frame,dynamic);beam([start[0],start[1]+.4,start[2]],[end[0],end[1]+.4,end[2]],.018,dark,dynamic);}}
 addOutlets({bins,numbers:siloNumbers,mesh,box,beam,frame,rust,dark,parent:dynamic,scale});
 updateLabels();}
 function tubeEnds(tube,scale){
   const find=id=>bins.find(b=>String(siloNumbers[b.id]||('F'+b.id.slice(1)))===String(id));
   const roof=b=>[b.x,b.h*scale+b.r*.3,b.z];
   const towers=[[-1,30*scale,0],[12,24*scale,5]];
-  return {a:tube.from?roof(find(tube.from)):towers[tube.noria-1],b:roof(find(tube.to))};
+  const target=find(tube.to);
+  return {a:tube.from?roof(find(tube.from)):towers[tube.noria-1],b:roof(target),target};
 }
 const collisionBounds=[];
 function batch(group){
@@ -163,9 +168,21 @@ function batch(group){
         const left=-radius+i*radius/8,right=left+radius/8;
         const closest=left<=0&&right>=0?0:Math.min(Math.abs(left),Math.abs(right));
         const halfDepth=Math.sqrt(Math.max(0,radius*radius-closest*closest));
-        collisionBounds.push(new T.Box3(new T.Vector3(center.x+left,bounds.min.y,center.z-halfDepth),new T.Vector3(center.x+right,bounds.max.y,center.z+halfDepth)));
+        const strip=new T.Box3(new T.Vector3(center.x+left,bounds.min.y,center.z-halfDepth),new T.Vector3(center.x+right,bounds.max.y,center.z+halfDepth));
+        collisionBounds.push(strip);
       }
-    } else collisionBounds.push(bounds);
+      inspectionVolumes?.push({box:o.geometry.boundingBox.clone(),matrix:o.matrixWorld.clone(),radius});
+    } else if(o.geometry.type==='ConeGeometry'&&inspectionVolumes){
+      collisionBounds.push(bounds);
+      const {radius,height}=o.geometry.parameters;
+      for(let i=0;i<16;i++){
+        const r=radius*(1-i/16),bottom=-height/2+i*height/16;
+        inspectionVolumes.push({box:new T.Box3(new T.Vector3(-r,bottom,-r),new T.Vector3(r,bottom+height/16,r)),matrix:o.matrixWorld.clone(),radius:r});
+      }
+    } else {
+      collisionBounds.push(bounds);
+      if(inspectionVolumes){o.geometry.computeBoundingBox();inspectionVolumes.push({box:o.geometry.boundingBox.clone(),matrix:o.matrixWorld.clone()});}
+    }
   });
   const batches=new Map(),originals=[];
   group.traverse(o=>{if(!o.isMesh)return;const g=(o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone()).applyMatrix4(o.matrixWorld);if(!g.getAttribute('uv'))g.setAttribute('uv',new T.Float32BufferAttribute(new Float32Array(g.getAttribute('position').count*2),2));if(!batches.has(o.material))batches.set(o.material,[]);batches.get(o.material).push(g);originals.push(o);});

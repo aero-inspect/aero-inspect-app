@@ -2,8 +2,17 @@
   height: var(--app-canvas-height);
   overflow: hidden;
   padding: 16px 22px 14px;
-  color: #0a1a38;
+  color: #063b7a;
   background: #f6fafd;
+}
+
+.mission-configure-dashboard {
+  overflow-y: auto;
+  padding-bottom: 28px;
+}
+
+.mission-configure-dashboard form {
+  padding-bottom: 28px;
 }
 
 .configure-topbar,
@@ -84,7 +93,7 @@
   border: 0;
   outline: 0;
   background: transparent;
-  color: #0a1a38;
+  color: #063b7a;
   font: inherit;
   font-size: 14px;
   line-height: 18px;
@@ -215,7 +224,7 @@
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 10px 26px rgba(20, 41, 77, 0.12);
-  color: #0a1a38;
+  color: #063b7a;
   font-size: 12px;
   line-height: 15px;
   font-weight: 700;
@@ -411,7 +420,7 @@
 
 .mission-quick-actions-title {
   margin: 0 0 4px;
-  color: #172033;
+  color: #063b7a;
   font-size: 13px;
   line-height: 17px;
   font-weight: 700;
@@ -443,7 +452,7 @@
 }
 
 .flight-plan-option strong {
-  color: #0f172a;
+  color: #063b7a;
   font-size: 14px;
 }
 
@@ -535,7 +544,7 @@
 .mission-builder-fields label > span {
   display: block;
   margin-bottom: 6px;
-  color: #172033;
+  color: #063b7a;
   font-size: 12px;
   font-weight: 600;
 }
@@ -549,7 +558,7 @@
   border-radius: 8px;
   outline: 0;
   background: #ffffff;
-  color: #10253a;
+  color: #063b7a;
   font: inherit;
   font-size: 13px;
 }
@@ -654,6 +663,86 @@
   color: #295b87;
 }
 
+.mission-battery-check {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #dbe6f2;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.mission-battery-check span {
+  color: #5c6e8a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.mission-battery-check strong {
+  color: #063b7a;
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.mission-battery-check small {
+  color: #6b7d91;
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.mission-battery-check.exceeded {
+  border-color: rgba(169, 68, 66, 0.34);
+  background: #fff5f5;
+}
+
+.mission-battery-check.exceeded strong,
+.mission-battery-check.exceeded small {
+  color: #a94442;
+}
+
+.mission-recurrence-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mission-recurrence-control button,
+.mission-weekday-picker button {
+  height: 34px;
+  border: 1px solid #d7e0ea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #4f6578;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mission-recurrence-control button.selected,
+.mission-weekday-picker button.selected {
+  border-color: #cfe8fb;
+  background: #e3f2fd;
+  color: #063b7a;
+}
+
+.mission-time-only-input {
+  max-width: 180px;
+}
+
+.mission-weekday-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.mission-weekday-picker.field-invalid {
+  border-color: #da1e28;
+}
+
 .mission-date-input {
   position: relative;
   display: inline-flex;
@@ -743,7 +832,7 @@
 }
 
 .mission-calendar-header strong {
-  color: #10253a;
+  color: #063b7a;
   font-size: 13px;
   font-weight: 700;
   text-align: center;
@@ -802,6 +891,16 @@
 }
 
 .mission-calendar-grid button.muted {
+  color: #b6c1cc;
+}
+
+.mission-calendar-grid button.disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.mission-calendar-grid button.disabled:hover {
+  background: transparent;
   color: #b6c1cc;
 }
 
@@ -1001,7 +1100,7 @@
 
 .poi-popup h3 {
   margin: 0;
-  color: #0f172a;
+  color: #063b7a;
   font-size: 13px;
 }
 
@@ -1041,7 +1140,7 @@
 }
 
 .poi-popup-item label strong {
-  color: #172033;
+  color: #063b7a;
   font-size: 12px;
 }
 

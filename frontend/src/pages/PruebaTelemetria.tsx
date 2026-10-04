@@ -46,7 +46,7 @@ export function PruebaTelemetriaView({ token, onBack }: { token: string; onBack:
         setTelemetry(JSON.parse((event as MessageEvent).data));
         setUpdatedAt(new Date().toLocaleTimeString());
       } catch {
-        setLastError("No se pudo parsear el evento de telemetria");
+        setLastError("No se pudo parsear el evento de telemetría");
       }
     });
 
@@ -85,9 +85,9 @@ export function PruebaTelemetriaView({ token, onBack }: { token: string; onBack:
           Volver
         </button>
         <div>
-          <h1 style={{ margin: 0 }}>Prueba de telemetria (SSE)</h1>
+          <h1 style={{ margin: 0 }}>Prueba de telemetría (SSE)</h1>
           <p style={{ margin: 0, color: "#666" }}>
-            Conecta directamente al endpoint SSE de general-monolith y muestra el ultimo valor recibido.
+            Conecta directamente al endpoint SSE de general-monolith y muestra el último valor recibido.
           </p>
         </div>
       </header>
@@ -95,7 +95,7 @@ export function PruebaTelemetriaView({ token, onBack }: { token: string; onBack:
       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
         <input
           type="text"
-          placeholder="ID de la mision (UUID)"
+          placeholder="ID de la misión (UUID)"
           value={missionId}
           onChange={(event) => setMissionId(event.target.value)}
           disabled={connected}
@@ -111,18 +111,18 @@ export function PruebaTelemetriaView({ token, onBack }: { token: string; onBack:
           </button>
         )}
         <span>Estado: {connected ? "Conectado" : "Desconectado"}</span>
-        {updatedAt && <span style={{ color: "#666" }}>Ultima actualizacion: {updatedAt}</span>}
+        {updatedAt && <span style={{ color: "#666" }}>Última actualización: {updatedAt}</span>}
       </div>
 
       {lastError && <p style={{ color: "crimson" }}>{lastError}</p>}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "12px" }}>
-        <DashboardCard title="Bateria">
+        <DashboardCard title="Batería">
           <BigValue value={telemetry?.battery ? `${telemetry.battery.percentage}%` : "--"} />
           <SmallValue label="Voltaje" value={telemetry?.battery ? `${telemetry.battery.voltageV.toFixed(2)} V` : "--"} />
         </DashboardCard>
 
-        <DashboardCard title="Posicion">
+        <DashboardCard title="Posición">
           <SmallValue label="Latitud" value={telemetry?.position ? telemetry.position.latitude.toFixed(6) : "--"} />
           <SmallValue label="Longitud" value={telemetry?.position ? telemetry.position.longitude.toFixed(6) : "--"} />
           <SmallValue label="Altitud relativa" value={telemetry?.position ? `${telemetry.position.relativeAltitude.toFixed(1)} m` : "--"} />
@@ -148,10 +148,10 @@ export function PruebaTelemetriaView({ token, onBack }: { token: string; onBack:
           <SmallValue label="Timestamp" value={telemetry ? new Date(telemetry.timestamp).toLocaleTimeString() : "--"} />
         </DashboardCard>
 
-        <DashboardCard title="Ultimo evento de estado">
+        <DashboardCard title="Último evento de estado">
           <SmallValue label="Evento" value={status?.event ?? "--"} />
-          <SmallValue label="Accion" value={status?.action ?? "--"} />
-          <SmallValue label="Bateria" value={status ? `${status.batteryPercentage}%` : "--"} />
+          <SmallValue label="Acción" value={status?.action ?? "--"} />
+          <SmallValue label="Batería" value={status ? `${status.batteryPercentage}%` : "--"} />
           <SmallValue label="Timestamp" value={status ? new Date(status.timestamp).toLocaleTimeString() : "--"} />
         </DashboardCard>
       </div>

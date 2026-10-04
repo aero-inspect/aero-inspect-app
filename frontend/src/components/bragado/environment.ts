@@ -1,10 +1,11 @@
 import * as T from 'three';
+import assetCatalog from '../../data/bragado-assets.json';
 import {blendEnvironment,getEnvironmentMode,resolveEnvironment,subscribeEnvironment} from './timeOfDay';
 
 export function createEnvironment(scene:T.Scene,renderer:T.WebGLRenderer,heightScale=1) {
   const rig=new T.Group();rig.name='Shared plant environment';scene.add(rig);
   const ambient=new T.HemisphereLight('#dcecff','#354338',1.6);rig.add(ambient);
-  const sun=new T.DirectionalLight('#fff7ed',2.7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.normalBias=.07;sun.shadow.bias=-.0001;
+  const sun=new T.DirectionalLight('#fff7ed',2.7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.normalBias=.07;sun.shadow.bias=-.0001;sun.shadow.autoUpdate=false;
   Object.assign(sun.shadow.camera,{left:-125,right:125,top:125,bottom:-125,near:.5,far:400});sun.target.position.set(-20,0,-35);rig.add(sun,sun.target);
   const skyMaterial=new T.ShaderMaterial({side:T.BackSide,depthWrite:false,uniforms:{top:{value:new T.Color()},horizon:{value:new T.Color()}},vertexShader:'varying vec3 direction; void main(){direction=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:'uniform vec3 top;uniform vec3 horizon;varying vec3 direction;void main(){float h=max(normalize(direction).y,0.0);gl_FragColor=vec4(mix(horizon,top,smoothstep(0.0,0.65,h)),1.0);\n #include <tonemapping_fragment>\n #include <colorspace_fragment>\n }'});
   const sky=new T.Mesh(new T.SphereGeometry(850,40,24),skyMaterial);sky.position.set(-20,0,-35);rig.add(sky);
@@ -67,11 +68,11 @@ scene.traverse(o=>{if(o instanceof T.PointLight){lamps.push({light:o,power:o.int
     fixture(x,7.8,z,x+side*3,z-side*3,along===15?240:0);
   }
   // Shell-mounted lamps sit above the silo rim, with a short physical bracket.
-  for(const [x,z,r,h] of [[-18.08,-34.08,8.96,19],[-31.84,-17.44,8.96,19],[26.88,30.08,8.64,17],[-8, -21.12,5.76,14],[.96,-13.12,5.28,13],[-17.76,-9.44,5.92,14],[-8,-3.68,5.12,12],[11.36,-1.76,4.96,12],[3.84,7.84,5.44,14],[23.2,8.64,6.08,15],[12.96,18.88,6.24,15]]){
+  for(const {x,z,r,h} of assetCatalog.filter(a=>a.type==='SILO')){
     const support=new T.Mesh(new T.CylinderGeometry(.045,.045,.9,6),metal);support.position.set(x,h+.3,z+r);rig.add(support);fixture(x,h+.75,z+r,x,z+r+3,0);
   }
   fixture(12,24,6.6,16,12,300);
-  for(const side of [-1,1]){const x=14+(side*7-6.6)*Math.SQRT1_2,z=-18+(side*7+6.6)*Math.SQRT1_2;fixture(x,8.8,z,x,z+2,0);}
+  for(const side of [-1,1]){const x=10+(side*7-6.6)*Math.SQRT1_2,z=-32+(side*7+6.6)*Math.SQRT1_2;fixture(x,8.8,z,x,z+2,0);}
   let current=resolveEnvironment(getEnvironmentMode()),from=current,target=current,started=performance.now();
   function retarget(){from=current;target=resolveEnvironment(getEnvironmentMode());started=performance.now();}
   const unsubscribe=subscribeEnvironment(retarget),timer=window.setInterval(retarget,30000);
@@ -79,6 +80,9 @@ scene.traverse(o=>{if(o instanceof T.PointLight){lamps.push({light:o,power:o.int
   function update(now=performance.now()){
     const t=Math.min(1,(now-started)/2200),smooth=t*t*(3-2*t);current=blendEnvironment(from,target,smooth);
     ambient.intensity=current.ambient;ambient.color.copy(current.ambientColor);sun.intensity=current.sun;sun.color.copy(current.sunColor);sun.position.copy(current.sunPosition);renderer.toneMappingExposure=current.exposure;
+    // El sol solo se mueve durante una transicion de ambiente (~2.2s); fuera de eso su sombra de
+    // 2048x2048 no cambia, asi que recalcularla en cada frame (60/s) era puro desperdicio de GPU.
+    if(t<1)sun.shadow.needsUpdate=true;
     skyMaterial.uniforms.top.value.copy(current.top);skyMaterial.uniforms.horizon.value.copy(current.horizon);fog.color.copy(current.horizon);
     stars.forEach((s,i)=>{s.material.opacity=current.stars*(.45+i*.23);s.visible=current.stars>.001;});moonMaterial.opacity=current.moon;haloMaterial.uniforms.opacity.value=current.moon;
     solar.position.copy(current.sunPosition).normalize().multiplyScalar(650);solarMaterial.opacity=1-current.moon;solarMaterial.color.copy(current.sunColor);

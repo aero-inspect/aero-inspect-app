@@ -6,7 +6,7 @@
   min-height: 0;
   overflow: hidden;
   padding: 8px 18px;
-  color: #0a1a38;
+  color: #063b7a;
   background: #f8fafc;
 }
 
@@ -211,7 +211,7 @@
 
 .report-info-list dd {
   margin: 0;
-  color: #10253a;
+  color: #063b7a;
   font-size: 11px;
   font-weight: 750;
 }
@@ -322,7 +322,7 @@
 .detected-row {
   height: 34px;
   border-bottom: 1px solid #e2e8f0;
-  color: #0f172a;
+  color: #063b7a;
   font-size: 11px;
 }
 
@@ -424,7 +424,7 @@
 
 .validation-card label span,
 .signature-row > span {
-  color: #131b34;
+  color: #063b7a;
   font-size: 13px;
   font-weight: 750;
 }
@@ -546,7 +546,7 @@
 }
 
 .report-flow-steps strong {
-  color: #0f172a;
+  color: #063b7a;
   font-size: 12px;
   font-weight: 750;
 }

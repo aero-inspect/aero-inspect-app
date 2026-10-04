@@ -1,4 +1,4 @@
-﻿.login-shell {
+.login-shell {
   display: grid;
   grid-template-columns: minmax(0, 60%) minmax(360px, 40%);
   height: var(--app-canvas-height);
@@ -152,7 +152,7 @@ p {
   border: 0;
   outline: 0;
   background: transparent;
-  color: #10253a;
+  color: #063b7a;
   font-size: 16px;
   font-weight: 400;
 }

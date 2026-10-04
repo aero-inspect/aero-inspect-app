@@ -6,23 +6,23 @@ type CrearReporteViewProps = {
 };
 
 const reportSteps = [
-  { number: "1", title: "Datos base", subtitle: "Mision y activo", active: true },
+  { number: "1", title: "Datos base", subtitle: "Misión y activo", active: true },
   { number: "2", title: "Hallazgos", subtitle: "Seleccionar evidencia" },
-  { number: "3", title: "Observaciones", subtitle: "Comentarios tecnicos" },
+  { number: "3", title: "Observaciones", subtitle: "Comentarios técnicos" },
   { number: "4", title: "Generar", subtitle: "Vista previa y envio" }
 ];
 
 const selectedStats = [
   { label: "Hallazgos", value: "14", tone: "blue", icon: <Check size={18} /> },
-  { label: "Criticos", value: "2", tone: "red", icon: <span aria-hidden="true">!</span> },
-  { label: "Duracion", value: "18 min", tone: "amber", icon: <CalendarDays size={18} /> },
+  { label: "Críticos", value: "2", tone: "red", icon: <span aria-hidden="true">!</span> },
+  { label: "Duración", value: "18 min", tone: "amber", icon: <CalendarDays size={18} /> },
   { label: "Evidencias", value: "32", tone: "green", icon: <Search size={18} /> }
 ];
 
 const findings = [
-  { id: "H-001", type: "Corrosion", severity: "Critico", location: "Cara Norte - Nivel 1", evidence: "3 fotos" },
-  { id: "H-002", type: "Grieta", severity: "Critico", location: "Cara Este - Nivel 2", evidence: "2 fotos" },
-  { id: "H-003", type: "Corrosion", severity: "Alto", location: "Cara Norte - Nivel 2", evidence: "4 fotos" }
+  { id: "H-001", type: "Corrosión", severity: "Crítico", location: "Cara Norte - Nivel 1", evidence: "3 fotos" },
+  { id: "H-002", type: "Grieta", severity: "Crítico", location: "Cara Este - Nivel 2", evidence: "2 fotos" },
+  { id: "H-003", type: "Corrosión", severity: "Alto", location: "Cara Norte - Nivel 2", evidence: "4 fotos" }
 ];
 
 export function CrearReporteView({ onBack }: CrearReporteViewProps) {
@@ -31,7 +31,7 @@ export function CrearReporteView({ onBack }: CrearReporteViewProps) {
       <header className="create-report-topbar">
         <div>
           <h1>Crear Reporte</h1>
-          <p>Crear el reporte de una mision realizada</p>
+          <p>Crear el reporte de una misión realizada</p>
         </div>
         <AppTopActions />
       </header>
@@ -54,9 +54,9 @@ export function CrearReporteView({ onBack }: CrearReporteViewProps) {
           <h2>Datos del reporte</h2>
           <p>Completa los datos minimos para armar el documento.</p>
           <div className="report-data-form">
-            <Field label="Mision inspeccionada" value="MIS-2025-031  Silo Norte" select />
+            <Field label="Misión inspeccionada" value="MIS-2025-031  Silo Norte" select />
             <Field label="Activo" value="Silo Norte" select />
-            <Field label="Nombre del reporte" value="Inspeccion Silo Norte - REP-2025-025" wide />
+            <Field label="Nombre del reporte" value="Inspección Silo Norte - REP-2025-025" wide />
             <Field label="Inspector responsable" value="Camila Solimano" select />
             <Field label="Fecha del reporte" value="30/06/2026" calendar />
           </div>
@@ -64,7 +64,7 @@ export function CrearReporteView({ onBack }: CrearReporteViewProps) {
 
         <section className="create-report-card mission-selected-card">
           <header>
-            <h2>Mision seleccionada</h2>
+            <h2>Misión seleccionada</h2>
             <span>Finalizada</span>
           </header>
           <div className="selected-stat-grid">
@@ -87,7 +87,7 @@ export function CrearReporteView({ onBack }: CrearReporteViewProps) {
               <span>ID</span>
               <span>Tipo</span>
               <span>Severidad</span>
-              <span>Ubicacion</span>
+              <span>Ubicación</span>
               <span>Evidencia</span>
             </div>
             {findings.map((finding) => (
@@ -95,7 +95,7 @@ export function CrearReporteView({ onBack }: CrearReporteViewProps) {
                 <span className="finding-check"><Check size={13} /></span>
                 <strong>{finding.id}</strong>
                 <span>{finding.type}</span>
-                <span className={`finding-pill ${finding.severity === "Critico" ? "critical" : "high"}`}>{finding.severity}</span>
+                <span className={`finding-pill ${finding.severity === "Crítico" ? "critical" : "high"}`}>{finding.severity}</span>
                 <span>{finding.location}</span>
                 <button type="button">{finding.evidence}</button>
               </div>
@@ -104,13 +104,13 @@ export function CrearReporteView({ onBack }: CrearReporteViewProps) {
         </section>
 
         <section className="create-report-card report-options-card">
-          <h2>Observaciones y configuracion</h2>
+          <h2>Observaciones y configuración</h2>
           <div className="report-options-content">
             <textarea placeholder="Agregar observaciones generales para el reporte..." />
             <div className="report-check-options">
               <label>
                 <input defaultChecked type="checkbox" />
-                <span>Incluir imagenes de evidencia</span>
+                <span>Incluir imágenes de evidencia</span>
               </label>
               <label>
                 <input defaultChecked type="checkbox" />
@@ -122,7 +122,7 @@ export function CrearReporteView({ onBack }: CrearReporteViewProps) {
 
         <section className="create-report-card preview-generation-card">
           <div>
-            <h2>Vista previa y generacion</h2>
+            <h2>Vista previa y generación</h2>
             <p>El reporte quedara en estado Generado y podra validarse antes de exportar.</p>
             <div className="preview-actions">
               <button className="secondary" onClick={onBack} type="button">Guardar borrador</button>

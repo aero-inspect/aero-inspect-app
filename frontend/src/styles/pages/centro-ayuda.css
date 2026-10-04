@@ -1,9 +1,9 @@
-﻿.help-dashboard {
+.help-dashboard {
   height: var(--app-canvas-height);
   overflow: hidden;
   padding: 18px 24px 18px;
   background: #f8fafc;
-  color: #0a1426;
+  color: #063b7a;
 }
 
 .help-header {
@@ -47,7 +47,7 @@
 
 .help-dashboard .app-weather strong {
   display: block;
-  color: #0f172a;
+  color: #063b7a;
   font-size: 12px;
   line-height: 15px;
   font-weight: 700;

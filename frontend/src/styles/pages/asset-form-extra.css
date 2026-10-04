@@ -1,4 +1,4 @@
-﻿.asset-select-trigger.field-invalid:focus {
+.asset-select-trigger.field-invalid:focus {
   border-color: #da1e28;
   box-shadow: 0 0 0 3px rgba(218, 30, 40, 0.12);
 }
@@ -28,7 +28,7 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #10253a;
+  color: #063b7a;
   cursor: pointer;
   font-size: 0.92rem;
   font-weight: 400;
@@ -204,7 +204,7 @@
 
 .map-placeholder h2 {
   margin: 0;
-  color: #10253a;
+  color: #063b7a;
   font-size: 1.25rem;
 }
 

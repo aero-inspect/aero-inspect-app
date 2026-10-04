@@ -13,10 +13,10 @@ export function getRoleHomeTitle(role: string) {
     return "Vista Jefe de Planta";
   }
 
-  return "Vista Tecnico de Mantenimiento";
+  return "Vista Técnico de Mantenimiento";
 }
 
 export function canConsultAssets(role: string) {
-  return ["Jefe de Planta", "Tecnico de Mantenimiento"].includes(role);
+  return ["Jefe de Planta", "Técnico de Mantenimiento"].includes(role);
 }
 

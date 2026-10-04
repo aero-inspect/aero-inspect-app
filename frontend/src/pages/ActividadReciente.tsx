@@ -1,96 +1,35 @@
-﻿import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AppTopActions } from "../components/AppTopActions";
+import { useActivity, activityTitles, eventDate } from "../data/ActivityContext";
 
-const FILTERS = ["Todas", "Misiones", "Activos", "Reportes", "Drones", "Sesiones"];
-
-const ACTIVITY_ITEMS = [
-  {
-    moment: "Hoy · 14:32",
-    title: "Configuró la misión",
-    detail: "Inspección Silo Norte",
-    fullDate: "14/06/2026 - 14:32"
-  },
-  {
-    moment: "Hoy · 11:15",
-    title: "Generó el reporte",
-    detail: "Reporte de corrosión",
-    fullDate: "14/06/2026 - 11:15"
-  },
-  {
-    moment: "Ayer · 16:48",
-    title: "Registró un nuevo activo",
-    detail: "Silo Norte",
-    fullDate: "13/06/2026 - 16:48"
-  },
-  {
-    moment: "Ayer · 10:12",
-    title: "Completó la misión",
-    detail: "Inspección Noria Principal",
-    fullDate: "13/06/2026 - 10:12"
-  },
-  {
-    moment: "09/06/2026 · 08:30",
-    title: "Inició sesión",
-    detail: "Acceso a la plataforma",
-    fullDate: "09/06/2026 - 08:30"
-  }
-];
-
+const FILTERS=["Todas","Misiones","Activos"];
 export function ActividadRecienteView() {
-  return (
-    <section className="activity-dashboard">
-      <header className="activity-header">
-        <div>
-          <h1>Actividad reciente</h1>
-          <p>Última acciones realizadas en la plataforma.</p>
-        </div>
-        <AppTopActions />
-      </header>
-
-      <section className="activity-history-card" aria-label="Historial cronológico">
-        <div className="activity-history-heading">
-          <h2>Historial cronológico</h2>
-          <p>Registro de eventos del usuario en AeroInspect.</p>
-        </div>
-
-        <div className="activity-filter-tabs" aria-label="Filtros de actividad">
-          {FILTERS.map((filter) => (
-            <button className={filter === "Todas" ? "active" : undefined} key={filter} type="button">
-              {filter}
-            </button>
-          ))}
-        </div>
-
-        <div className="activity-table" role="table" aria-label="Eventos recientes">
-          {ACTIVITY_ITEMS.map((item) => (
-            <article className="activity-row" key={`${item.title}-${item.fullDate}`} role="row">
-              <div className="activity-row-copy">
-                <time>{item.moment}</time>
-                <h3>{item.title}</h3>
-                <p>{item.detail}</p>
-              </div>
-              <strong>{item.fullDate}</strong>
-            </article>
-          ))}
-        </div>
-
-        <footer className="activity-footer">
-          <span>Mostrando 1 a 8 de 48 actividades</span>
-          <nav className="activity-pagination" aria-label="Paginación de actividad">
-            <button aria-label="Página anterior" type="button">
-              <ChevronLeft size={15} aria-hidden="true" />
-            </button>
-            {[1, 2, 3, 4, 5].map((page) => (
-              <button className={page === 1 ? "active" : undefined} key={page} type="button">
-                {page}
-              </button>
-            ))}
-            <button aria-label="Página siguiente" type="button">
-              <ChevronRight size={15} aria-hidden="true" />
-            </button>
-          </nav>
-        </footer>
-      </section>
+  const {activity,loading,error}=useActivity();
+  const [filter,setFilter]=useState('Todas'),[page,setPage]=useState(1);
+  const items=activity.filter(item=>filter==='Todas'||(filter==='Activos'?item.kind==='ASSET_CREATED':item.kind.startsWith('MISSION_')));
+  const pages=Math.max(1,Math.ceil(items.length/8)),current=Math.min(page,pages),start=(current-1)*8;
+  return <section className="activity-dashboard">
+    <header className="activity-header"><div><h1>Actividad reciente</h1><p>Últimas acciones realizadas en la plataforma.</p></div><AppTopActions/></header>
+    <section className="activity-history-card" aria-label="Historial cronológico">
+      <div className="activity-history-heading"><h2>Historial cronológico</h2><p>Registro de eventos del usuario en AeroInspect.</p></div>
+      <div className="activity-filter-tabs" aria-label="Filtros de actividad">
+        {FILTERS.map(value=><button key={value} type="button" className={filter===value?'active':undefined} onClick={()=>{setFilter(value);setPage(1);}}>{value}</button>)}
+      </div>
+      {error && <p role="status">{error}</p>}
+      <div className="activity-table" role="table" aria-label="Eventos recientes">
+        {!items.length && !error && <p className="activity-empty-message">{loading?'Cargando actividad…':'No existe ninguna actividad reciente.'}</p>}
+        {items.slice(start,start+8).map(item=><article className="activity-row" role="row" key={item.id}>
+          <div className="activity-row-copy"><time dateTime={item.occurredAt}>{eventDate(item.occurredAt)}</time><h3>{activityTitles[item.kind]}</h3><p>{item.name}</p></div>
+        </article>)}
+      </div>
+      <footer className="activity-footer"><span>Mostrando {items.length?start+1:0} a {Math.min(start+8,items.length)} de {items.length} actividades</span>
+        {pages>1 && <nav className="activity-pagination" aria-label="Paginación de actividad">
+          <button type="button" aria-label="Página anterior" disabled={current===1} onClick={()=>setPage(current-1)}><ChevronLeft size={15}/></button>
+          <span>{current} / {pages}</span>
+          <button type="button" aria-label="Página siguiente" disabled={current===pages} onClick={()=>setPage(current+1)}><ChevronRight size={15}/></button>
+        </nav>}
+      </footer>
     </section>
-  );
+  </section>;
 }

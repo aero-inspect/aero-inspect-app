@@ -106,7 +106,7 @@ function AssetInspectionPopup({ asset, info }: { asset: BackendAsset; info: Asse
       {info?.inspected ? (
         <AssetInspectionDetails info={info} />
       ) : (
-        <p className="asset-popup-empty">Este activo no se va a inspeccionar durante esta mision.</p>
+        <p className="asset-popup-empty">Este activo no se va a inspeccionar durante esta misión.</p>
       )}
     </div>
   );
@@ -120,7 +120,7 @@ function AssetInspectionDetails({ info }: { info: AssetInspectionInfo }) {
   return (
     <>
       <span className={`asset-popup-status ${isDone ? "done" : "pending"}`}>
-        {isDone ? "Inspeccion completada" : "Inspeccion pendiente"}
+        {isDone ? "Inspección completada" : "Inspección pendiente"}
       </span>
       <div className="asset-popup-photos">
         <div className="asset-popup-photos-track">

@@ -1,3 +1,5 @@
+import { LUJAN_PLANT } from "../data/plants";
+import { LujanPlant3DMap } from "./LujanPlant3DMap";
 import type { BackendAsset } from "../api/types";
 import type { Plant } from "../types";
 import { BragadoPlant3DMap, type MapFilters } from "./BragadoPlant3DMap";
@@ -10,8 +12,7 @@ export function AssetsOverviewMap({
   onViewAsset,
   selectedLocation,
   filters,
-  focusedAssetCode,
-  missionMode = false
+  focusedAssetCode
 }: {
   assets: BackendAsset[];
   plant: Plant;
@@ -20,8 +21,8 @@ export function AssetsOverviewMap({
   selectedLocation?: { latitude: string; longitude: string };
   filters?: MapFilters;
   focusedAssetCode?: string | null;
-  missionMode?: boolean;
 }) {
+  if (plant.id === LUJAN_PLANT.id) return <LujanPlant3DMap assets={assets} filters={filters} onViewAsset={onViewAsset} focusedAssetCode={focusedAssetCode} onSelect={onSelect} selectedLocation={selectedLocation} />;
   if (onSelect || selectedLocation) {
     return (
       <LeafletAssetsOverviewMap
@@ -34,8 +35,9 @@ export function AssetsOverviewMap({
     );
   }
 
+
   // Fallback preservado: LeafletAssetsOverviewMap contiene el mapa satelital anterior.
   // Para volver temporalmente al mapa viejo en estas vistas, reemplazar la linea de abajo por:
   // return <LeafletAssetsOverviewMap assets={assets} onViewAsset={onViewAsset} plant={plant} />;
-  return <BragadoPlant3DMap assets={assets} onViewAsset={onViewAsset} filters={filters} focusedAssetCode={focusedAssetCode} missionMode={missionMode} />;
+  return <BragadoPlant3DMap assets={assets} onViewAsset={onViewAsset} filters={filters} focusedAssetCode={focusedAssetCode} />;
 }

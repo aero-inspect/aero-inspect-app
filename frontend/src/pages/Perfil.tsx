@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from
 import { AlertCircle, ArrowRight, Camera, Edit3, HelpCircle, Lock, LogOut, Trash2, UserRound } from "lucide-react";
 import type { SessionUser } from "../types";
 import { AppTopActions } from "../components/AppTopActions";
+import { LoadingState } from "../components/LoadingState";
 import { mapBackendRole } from "../utils/auth";
+import { useActivity, activityTitles, eventDate } from "../data/ActivityContext";
 
 type ProfileData = {
   username: string;
@@ -46,6 +48,7 @@ export function ProfileView({
   onLogout: () => void;
 }) {
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const {activity,loading:activityLoading,error:activityError}=useActivity();
   const [formData, setFormData] = useState<ProfileFormData>(EMPTY_PROFILE);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -313,7 +316,7 @@ export function ProfileView({
             </div>
 
             {isLoading ? (
-              <p className="profile-status-text">Cargando perfil...</p>
+              <LoadingState text="Cargando perfil..." compact />
             ) : (
               <>
                 {error && <p className="profile-error-text">{error}</p>}
@@ -388,9 +391,9 @@ export function ProfileView({
 
           <section className="profile-side-card profile-activity-card">
             <h2>Actividad reciente</h2>
-            <ProfileActivity title="Misión completada" detail="Inspección Silo Norte" time="Hoy, 08:15" />
-            <ProfileActivity title="Hallazgo validado" detail="Corrosión en unión" time="Ayer, 16:30" />
-            <ProfileActivity title="Reporte generado" detail="Reporte mensual - Mayo" time="Ayer, 10:45" />
+            {activityError && <p className="profile-activity-message" role="status">{activityError}</p>}
+            {!activity.length && !activityError && <p className="profile-activity-message">{activityLoading?'Cargando actividad…':'No existe ninguna actividad reciente.'}</p>}
+            {activity.slice(0,3).map(item=><ProfileActivity key={item.id} title={activityTitles[item.kind]} detail={item.name} time={eventDate(item.occurredAt)}/>)}
             <button className="profile-activity-link" onClick={onViewActivity} type="button">
               Ver toda la actividad
               <ArrowRight size={13} />
