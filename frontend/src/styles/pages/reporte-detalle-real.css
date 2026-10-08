@@ -492,3 +492,23 @@
     grid-template-columns: 1fr;
   }
 }
+
+.manual-photo-assignment {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  margin: 12px 0;
+  border: 1px solid #dce5f2;
+  border-radius: 10px;
+  background: #f6f9ff;
+  font-size: 12px;
+}
+.manual-photo-assignment label { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.manual-photo-assignment select { padding: 8px; border: 1px solid #dce5f2; border-radius: 7px; color: #17346d; background: white; max-width: 100%; }
+.manual-photo-assignment button, .manual-generated-reports button { padding: 9px 12px; border: 1px solid #dce5f2; border-radius: 8px; color: #17346d; background: white; cursor: pointer; }
+.manual-photo-assignment button:disabled { opacity: .5; cursor: default; }
+.manual-generated-reports { margin-bottom: 20px; }
+.manual-generated-reports > div { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid #dce5f2; }
+.manual-generated-reports > button { margin-top: 14px; }

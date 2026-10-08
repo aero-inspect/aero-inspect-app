@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { AlertTriangle, Ban, CalendarDays, CheckCircle2, Download, Eye, ImagePlus, LoaderCircle, PenLine, X } from "lucide-react";
-import { createReport, downloadReportPdf, getInspectionPhoto, getMissions, getReport, uploadInspectionPhoto, validateReport as saveValidation } from "../api/client";
-import type { AiAnalysisFindings, AiCorrosionReport, AiCrackReport, AiSeverityReport, BackendInspectionPhoto, BackendMission, BackendReport } from "../api/types";
+import { createReport, downloadInspectionPdf, downloadReportPdf, getAssets, getInspectionPhoto, getMissions, getReport, uploadInspectionPhoto, validateReport as saveValidation } from "../api/client";
+import type { BackendAsset, AiAnalysisFindings, AiCorrosionReport, AiCrackReport, AiSeverityReport, BackendInspectionPhoto, BackendMission, BackendReport } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
 import { LoadingState } from "../components/LoadingState";
 
-const MAX_IMAGES = 5;
+import { manualAssetOptions } from "../utils/manualInspection";
+
+const MAX_IMAGES = 50;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const CORROSION_AREA_THRESHOLD = 70;
 const ACCEPTED_FILE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -22,6 +24,7 @@ type PhotoDate = {
 type PhotoAnalysis = {
   id: string;
   file?: File;
+  waypointId: string;
   previewUrl: string;
   photoDate: PhotoDate;
   analysis: BackendInspectionPhoto | null;
@@ -44,6 +47,10 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
   const [selectedWaypointId, setSelectedWaypointId] = useState("");
   const [missionsError, setMissionsError] = useState("");
   const [isLoadingMissions, setIsLoadingMissions] = useState(true);
+  const [assets, setAssets] = useState<BackendAsset[]>([]);
+  const [generatedReports, setGeneratedReports] = useState<BackendReport[]>([]);
+  const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
+  const [isSavingDecision, setIsSavingDecision] = useState(false);
   const [persistedReport, setPersistedReport] = useState<BackendReport | null>(null);
   const [isLoadingReport, setIsLoadingReport] = useState(Boolean(reportCode));
 
@@ -54,16 +61,17 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
 
   useEffect(() => {
     let cancelled = false;
-    getMissions()
-      .then((availableMissions) => {
+    Promise.all([getMissions(), getAssets()])
+      .then(([availableMissions, availableAssets]) => {
         if (cancelled) return;
+        setAssets(availableAssets);
         const withWaypoints = availableMissions.filter((mission) => getInspectionWaypoints(mission).length);
         setMissions(withWaypoints);
-        if (withWaypoints[0]) {
+        if (withWaypoints[0] && !reportCode) {
           setSelectedMissionId(withWaypoints[0].idMission);
-          setSelectedWaypointId(getInspectionWaypoints(withWaypoints[0])[0]?.idMissionWaypoint ?? "");
-        } else {
-          setMissionsError("No hay una misión iniciada con puntos de inspección disponibles.");
+          setSelectedWaypointId(manualAssetOptions(withWaypoints[0], availableAssets).length === 1 ? manualAssetOptions(withWaypoints[0], availableAssets)[0].waypointId : "");
+        } else if (!withWaypoints.length && !reportCode) {
+          setMissionsError("No hay una misión con puntos de inspección disponibles.");
         }
       })
       .catch((error) => {
@@ -83,10 +91,16 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
       setPersistedReport(report); setSelectedMissionId(report.idMission);
       setReportState(report.status === "VALIDATED" ? "validated" : report.status === "REJECTED" ? "discarded" : "pending");
       setSignature(report.validatorSignature ?? ""); setValidatorComments(report.validatorComments ?? "");
-      setPhotos(report.photos.map((photo) => ({ id: photo.idInspectionPhoto, previewUrl: photo.rawImageUrl, photoDate: { value: photo.capturedAt, source: "captura" }, analysis: photo, error: "", isAnalyzing: false })));
+      setPhotos(report.photos.map((photo) => ({ id: photo.idInspectionPhoto, waypointId: photo.idMissionWaypoint, previewUrl: photo.rawImageUrl, photoDate: { value: photo.capturedAt, source: "captura" }, analysis: photo, error: "", isAnalyzing: false })));
     }).catch((error) => setSelectionError(error instanceof Error ? error.message : "No se pudo cargar el reporte")).finally(() => setIsLoadingReport(false));
   }, [reportCode]);
 
+  const activeReports = persistedReport ? [persistedReport] : generatedReports;
+  const mission = missions.find(item => item.idMission === selectedMissionId);
+  const assetOptions = manualAssetOptions(mission, assets);
+  const assignmentsComplete = photos.every(photo => assetOptions.some(option => option.waypointId === photo.waypointId));
+  const busy = isAnalyzingAll || isSavingDecision;
+  const assignmentLocked = busy || activeReports.some(report => report.status === "VALIDATED" || report.status === "REJECTED");
   const isClosed = reportState !== "pending";
 
   const resetDecision = () => {
@@ -95,9 +109,20 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
   };
 
   const handleMissionChange = (idMission: string) => {
+    if (activeReports.length || busy) return;
     setSelectedMissionId(idMission);
-    const mission = missions.find((candidate) => candidate.idMission === idMission);
-    setSelectedWaypointId(mission ? getInspectionWaypoints(mission)[0]?.idMissionWaypoint ?? "" : "");
+    const options = manualAssetOptions(missions.find(item => item.idMission === idMission), assets);
+    const automatic = options.length === 1 ? options[0].waypointId : "";
+    setSelectedWaypointId(automatic);
+    setPhotos(current => current.map(photo => ({ ...photo, waypointId: automatic })));
+    setSelectedPhotos(new Set());
+  };
+
+  const assignSelectedPhotos = () => {
+    if (!assetOptions.some(option => option.waypointId === selectedWaypointId)) return;
+    setPhotos(current => current.map(photo => selectedPhotos.has(photo.id) && !photo.analysis
+      ? { ...photo, waypointId: selectedWaypointId } : photo));
+    setSelectedPhotos(new Set());
   };
 
   const updatePhoto = (id: string, changes: Partial<PhotoAnalysis>) => {
@@ -114,7 +139,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
 
     const availableSlots = MAX_IMAGES - photos.length;
     if (availableSlots <= 0) {
-      setSelectionError("Ya se seleccionaron las 5 imágenes permitidas.");
+      setSelectionError(`Ya se alcanzó el máximo de ${MAX_IMAGES} imágenes.`);
       return;
     }
 
@@ -140,6 +165,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
       return {
         id: `${Date.now()}-${index}-${file.name}`,
         file,
+        waypointId: assetOptions.length === 1 ? assetOptions[0].waypointId : "",
         previewUrl,
         photoDate: await readPhotoDate(file),
         analysis: null,
@@ -153,6 +179,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
   };
 
   const removePhoto = (id: string) => {
+    setSelectedPhotos(current => { const next = new Set(current); next.delete(id); return next; });
     setPhotos((current) => {
       const target = current.find((photo) => photo.id === id);
       if (target) {
@@ -164,77 +191,70 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
     resetDecision();
   };
 
-  const analyzeAllPhotos = async () => {
-    if (!photos.length) {
-      setSelectionError("Seleccione al menos una imagen antes de analizar.");
-      return;
-    }
-    if (!selectedMissionId || !selectedWaypointId) {
-      setSelectionError("Seleccione una misión y un punto de inspección antes de analizar.");
-      return;
-    }
-    const selectedMission = missions.find((mission) => mission.idMission === selectedMissionId);
-    const selectedWaypoint = selectedMission && getInspectionWaypoints(selectedMission).find((waypoint) => waypoint.idMissionWaypoint === selectedWaypointId);
-    if (!selectedWaypoint?.idAsset) {
-      setSelectionError("El punto de inspección seleccionado no tiene un activo asociado.");
-      return;
-    }
+  const rememberReport = (report: BackendReport) => {
+    if (reportCode) setPersistedReport(report);
+    else setGeneratedReports(current => [...current.filter(item => item.code !== report.code), report]);
+  };
 
+  const analyzeAllPhotos = async () => {
+    if (!photos.length || !selectedMissionId || !assignmentsComplete) {
+      setSelectionError("Asigná un activo del recorrido a cada foto antes de analizar.");
+      return;
+    }
     setIsAnalyzingAll(true);
     setSelectionError("");
+    setSelectedPhotos(new Set());
     resetDecision();
-
-    let activeReport = persistedReport;
+    const reportsByAsset = new Map(activeReports.map(report => [report.idAsset, report]));
     try {
-      if (!activeReport) { activeReport = await createReport(selectedMissionId, selectedWaypoint.idAsset); setPersistedReport(activeReport); }
-    } catch (error) {
-      setSelectionError(error instanceof Error ? error.message : "No se pudo crear el reporte"); setIsAnalyzingAll(false); return;
-    }
-
-    for (const photo of photos) {
-      updatePhoto(photo.id, { analysis: null, error: "", isAnalyzing: true });
-      try {
-        if (!photo.file) continue;
-        const created = await uploadInspectionPhoto(photo.file, selectedMissionId, selectedWaypointId, activeReport.code);
-        const analysis = await waitForAnalysis(created);
-        updatePhoto(photo.id, { analysis, error: "", isAnalyzing: false });
-      } catch (error) {
-        updatePhoto(photo.id, {
-          analysis: null,
-          error: error instanceof Error ? error.message : "No se pudo analizar esta imagen.",
-          isAnalyzing: false
-        });
+      for (const photo of photos) {
+        if (photo.analysis?.status === "ANALYZED" || !photo.file) continue;
+        const option = assetOptions.find(item => item.waypointId === photo.waypointId)!;
+        updatePhoto(photo.id, { error: "", isAnalyzing: true });
+        try {
+          let report = reportsByAsset.get(option.idAsset);
+          if (!report) {
+            report = await createReport(selectedMissionId, option.idAsset);
+            reportsByAsset.set(option.idAsset, report);
+            rememberReport(report);
+          }
+          // Preserve a registered photo on retry, so polling never uploads it twice.
+          let registered = photo.analysis;
+          if (!registered) {
+            registered = await uploadInspectionPhoto(photo.file, selectedMissionId, photo.waypointId, report.code);
+            updatePhoto(photo.id, { analysis: registered });
+          }
+          if (registered.status === "ANALYSIS_FAILED") throw new Error(registered.findings || "El análisis falló. Revisá esta evidencia; podés descartar esta carga y crear una nueva.");
+          const analysis = await waitForAnalysis(registered);
+          updatePhoto(photo.id, { analysis, isAnalyzing: false });
+        } catch (error) {
+          updatePhoto(photo.id, { error: error instanceof Error ? error.message : "No se pudo analizar esta imagen.", isAnalyzing: false });
+        }
       }
-    }
+      for (const report of reportsByAsset.values()) {
+        try { rememberReport(await getReport(report.code)); }
+        catch { setSelectionError("Los resultados se guardaron, pero no se pudo actualizar el resumen. Consultá el historial."); }
+      }
+    } finally { setIsAnalyzingAll(false); }
+  };
 
+  const saveDecision = async (approved: boolean) => {
+    if (!activeReports.length || !signature.trim()) {
+      setValidationError("Primero generá los reportes e ingresá la firma."); return;
+    }
+    if (approved && (!photos.length || photos.some(photo => photo.analysis?.status !== "ANALYZED"))) {
+      setValidationError("Todas las imágenes deben analizarse correctamente antes de validar."); return;
+    }
+    setIsSavingDecision(true); setValidationError("");
     try {
-      setPersistedReport(await getReport(activeReport.code));
-    } catch {
-      // Cada resultado individual ya se muestra; el resumen se actualizará al recargar.
-    }
-
-    setIsAnalyzingAll(false);
-  };
-
-  const validateReport = async () => {
-    if (!photos.length || photos.some((photo) => !photo.analysis)) {
-      setValidationError("Todas las imágenes deben analizarse correctamente antes de validar.");
-      return;
-    }
-    if (!signature.trim()) {
-      setValidationError("Ingrese el nombre de quien firma la validación.");
-      return;
-    }
-
-    if (!persistedReport) { setValidationError("El reporte todavía no fue generado."); return; }
-    try { const updated = await saveValidation(persistedReport.code, signature, validatorComments, true); setPersistedReport(updated); setValidationError(""); setReportState("validated"); }
-    catch (error) { setValidationError(error instanceof Error ? error.message : "No se pudo validar el reporte"); }
-  };
-
-  const discardReport = async () => {
-    if (!persistedReport || !signature.trim()) { setValidationError("Ingrese la firma antes de rechazar el reporte."); return; }
-    try { const updated = await saveValidation(persistedReport.code, signature, validatorComments, false); setPersistedReport(updated); setValidationError(""); setReportState("discarded"); }
-    catch (error) { setValidationError(error instanceof Error ? error.message : "No se pudo rechazar el reporte"); }
+      for (const report of activeReports) {
+        if (report.status === (approved ? "VALIDATED" : "REJECTED")) continue;
+        rememberReport(await saveValidation(report.code, signature, validatorComments, approved));
+      }
+      setReportState(approved ? "validated" : "discarded");
+    } catch (error) {
+      setValidationError(error instanceof Error ? error.message : "No se pudo guardar la decisión. Podés reintentar; los cambios ya guardados se conservan.");
+    } finally { setIsSavingDecision(false); }
   };
 
   const status = getReportStatus(reportState);
@@ -245,12 +265,18 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
         <div>
           <button className="real-report-back" onClick={onBack} type="button">&larr; Volver a reportes</button>
           <h1>{reportCode ? "Detalle del reporte" : "Módulo de IA"}</h1>
-          <p>{reportCode ? "Visualice la información del PDF, valide y descargue el reporte." : "Carga manual temporal de evidencias para generar el reporte."}</p>
+          <p>{reportCode ? "Visualice la información del PDF, valide y descargue el reporte." : "Asigná las fotos a los activos del recorrido y analizá la inspección."}</p>
         </div>
         <AppTopActions />
       </header>
 
       {persistedReport && <div className="real-report-document-actions"><button onClick={() => void downloadReportPdf(persistedReport.code, true)} type="button"><Eye size={17} /> Visualizar PDF</button><button onClick={() => void downloadReportPdf(persistedReport.code)} type="button"><Download size={17} /> Descargar PDF</button></div>}
+      {!reportCode && generatedReports.length > 0 && <section className="real-report-card manual-generated-reports">
+        <h2>Resultados de la inspección · {generatedReports.length} activos</h2>
+        <p>La firma y los comentarios se aplicarán a todos los reportes de esta carga.</p>
+        {generatedReports.map(report => <div key={report.code}><strong>{report.assetName}</strong><span>{report.code} · {getBackendSeverityLabel(report.severity)} · {report.status === "VALIDATED" ? "Validado" : report.status === "REJECTED" ? "Descartado" : "Pendiente"}</span><button type="button" onClick={() => void downloadReportPdf(report.code)}>Descargar PDF del activo</button></div>)}
+        <button type="button" onClick={() => void downloadInspectionPdf(selectedMissionId, generatedReports.map(report => report.idAsset)).catch(error => setSelectionError(error instanceof Error ? error.message : "No se pudo descargar el PDF"))}>Descargar inspección completa</button>
+      </section>}
       {isLoadingReport && <LoadingState text="Cargando reporte..." compact />}
 
       <div className={`real-report-status ${status.tone}`} role="status">
@@ -273,47 +299,35 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
             <ImagePlus size={22} />
             <div>
               <h2>Hallazgos y evidencias</h2>
-              <p>{reportCode ? "Información procesada que integra el PDF." : "Seleccione entre una y cinco fotografías del activo inspeccionado."}</p>
+              <p>{reportCode ? "Información procesada que integra el PDF." : "Cargá hasta 50 fotografías y asigná a cada una su activo del recorrido."}</p>
             </div>
           </div>
 
           {missionsError && <p className="real-report-error" role="alert">{missionsError}</p>}
 
-          {!reportCode && !persistedReport && !!missions.length && (
+          {!reportCode && !!missions.length && (
             <div className="real-report-selectors">
-              <label>
-                Misión
-                <select
-                  disabled={isLoadingMissions || isAnalyzingAll}
-                  onChange={(event) => handleMissionChange(event.target.value)}
-                  value={selectedMissionId}
-                >
-                  {missions.map((mission) => (
-                    <option key={mission.idMission} value={mission.idMission}>{mission.name}</option>
-                  ))}
+              <label>Inspección / misión
+                <select disabled={isLoadingMissions || busy || activeReports.length > 0} onChange={event => handleMissionChange(event.target.value)} value={selectedMissionId}>
+                  {missions.map(item => <option key={item.idMission} value={item.idMission}>{item.name}</option>)}
                 </select>
               </label>
-              <label>
-                Punto de inspección (activo)
-                <select
-                  disabled={isLoadingMissions || isAnalyzingAll}
-                  onChange={(event) => setSelectedWaypointId(event.target.value)}
-                  value={selectedWaypointId}
-                >
-                  {missions
-                    .find((mission) => mission.idMission === selectedMissionId)
-                    ? getInspectionWaypoints(missions.find((mission) => mission.idMission === selectedMissionId)!).map((waypoint) => (
-                        <option key={waypoint.idMissionWaypoint} value={waypoint.idMissionWaypoint}>
-                          {waypoint.name ?? `Punto ${waypoint.sequence}`} (activo #{waypoint.idAsset})
-                        </option>
-                      ))
-                    : null}
-                </select>
-              </label>
+              <p>{assetOptions.length} activos en el recorrido. {assetOptions.length === 1 ? "Las fotos se asignan automáticamente." : "Elegí el activo de cada foto o asigná varias juntas."}</p>
             </div>
           )}
+          {!reportCode && photos.length > 0 && <div className="manual-photo-assignment">
+            <label><input type="checkbox" disabled={assignmentLocked || isClosed} checked={photos.filter(photo => !photo.analysis).length > 0 && photos.filter(photo => !photo.analysis).every(photo => selectedPhotos.has(photo.id))}
+              onChange={event => setSelectedPhotos(event.target.checked ? new Set(photos.filter(photo => !photo.analysis).map(photo => photo.id)) : new Set())}/> Seleccionar fotos sin enviar</label>
+            <label>Asignar a las seleccionadas
+              <select value={selectedWaypointId} disabled={assignmentLocked || isClosed} onChange={event => setSelectedWaypointId(event.target.value)}>
+                <option value="">Elegir activo</option>{assetOptions.map(option => <option key={option.idAsset} value={option.waypointId}>{option.label}</option>)}
+              </select>
+            </label>
+            <button type="button" disabled={!selectedPhotos.size || !selectedWaypointId || assignmentLocked || isClosed} onClick={assignSelectedPhotos}>Asignar a {selectedPhotos.size} fotos</button>
+            <span>{photos.filter(photo => !photo.waypointId).length} fotos sin activo</span>
+          </div>}
 
-          {!reportCode && photos.length < MAX_IMAGES && !isClosed && (
+          {!reportCode && photos.length < MAX_IMAGES && !isClosed && !assignmentLocked && (
             <div className="real-report-upload">
               <ImagePlus size={28} />
               <strong>Seleccione hasta {MAX_IMAGES - photos.length} {MAX_IMAGES - photos.length === 1 ? "imagen" : "imágenes"}</strong>
@@ -322,6 +336,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
                 aria-label="Seleccionar archivos de imagen"
                 className="real-report-file-input"
                 multiple
+                disabled={isLoadingMissions || !mission || busy}
                 onChange={handleFileChange}
                 ref={fileInputRef}
                 type="file"
@@ -336,7 +351,17 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
             <div className="real-report-photo-list">
               {photos.map((photo, index) => (
                 <PhotoResultCard
-                  canRemove={!reportCode && !isAnalyzingAll && !isClosed}
+                  canRemove={!reportCode && !assignmentLocked && !isClosed && !photo.analysis}
+                  assignment={!reportCode ? <div className="manual-photo-assignment">
+                    <label><input type="checkbox" aria-label={`Seleccionar foto ${index + 1}`} checked={selectedPhotos.has(photo.id)} disabled={assignmentLocked || isClosed || !!photo.analysis}
+                      onChange={event => setSelectedPhotos(current => { const next = new Set(current); if (event.target.checked) next.add(photo.id); else next.delete(photo.id); return next; })}/> Seleccionar</label>
+                    <label>Activo de la foto {index + 1}
+                      <select value={photo.waypointId} disabled={assignmentLocked || isClosed || !!photo.analysis} onChange={event => updatePhoto(photo.id, { waypointId: event.target.value })}>
+                        <option value="">Elegir activo del recorrido</option>{assetOptions.map(option => <option key={option.idAsset} value={option.waypointId}>{option.label}</option>)}
+                      </select>
+                    </label>
+                    {photo.analysis && <small>Foto enviada · {photo.analysis.reportCode}</small>}
+                  </div> : undefined}
                   index={index}
                   key={photo.id}
                   onRemove={() => removePhoto(photo.id)}
@@ -350,9 +375,10 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
             <p className="real-report-warning"><AlertTriangle size={18} /> Los resultados son preliminares y siempre requieren revisión humana.</p>
           )}
 
+          {!reportCode && photos.length > 0 && !assignmentsComplete && <p className="real-report-warning">Asigná un activo a todas las fotos para habilitar el análisis.</p>}
           {!reportCode && <button
             className="real-report-analyze"
-            disabled={!photos.length || isLoadingMissions || !selectedMissionId || !selectedWaypointId || isAnalyzingAll || isClosed}
+            disabled={!photos.length || isLoadingMissions || !selectedMissionId || !assignmentsComplete || assignmentLocked || isClosed || photos.every(photo => photo.analysis?.status === "ANALYZED")}
             onClick={analyzeAllPhotos}
             type="button"
           >
@@ -373,7 +399,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
           <label>
             <span>Comentarios del validador</span>
             <textarea
-              disabled={isClosed}
+              disabled={isClosed || busy}
               onChange={(event) => setValidatorComments(event.target.value)}
               placeholder="Agregue observaciones o correcciones..."
               rows={5}
@@ -384,7 +410,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
           <label>
             <span>Firma digital</span>
             <input
-              disabled={isClosed}
+              disabled={isClosed || busy}
               onChange={(event) => setSignature(event.target.value)}
               placeholder="Nombre y apellido"
               type="text"
@@ -395,11 +421,11 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
           {validationError && <p className="real-report-error" role="alert">{validationError}</p>}
 
           <div className="real-report-decision-actions">
-            <button className="real-report-discard" disabled={isClosed} onClick={() => void discardReport()} type="button">
+            <button className="real-report-discard" disabled={isClosed || busy} onClick={() => void saveDecision(false)} type="button">
               <Ban size={18} />
               {reportState === "discarded" ? "Reporte descartado" : "Descartar"}
             </button>
-            <button className="real-report-validate" disabled={isClosed} onClick={() => void validateReport()} type="button">
+            <button className="real-report-validate" disabled={isClosed || busy} onClick={() => void saveDecision(true)} type="button">
               <CheckCircle2 size={18} />
               {reportState === "validated" ? "Reporte validado" : "Validar"}
             </button>
@@ -410,7 +436,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
   );
 }
 
-function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boolean; index: number; onRemove: () => void; photo: PhotoAnalysis }) {
+function PhotoResultCard({ canRemove, index, onRemove, photo, assignment }: { canRemove: boolean; index: number; onRemove: () => void; photo: PhotoAnalysis; assignment?: ReactNode }) {
   const findings = parseFindings(photo.analysis?.findings);
   const report = findings?.corrosion ?? null;
   const severity = findings?.severity ?? null;
@@ -433,6 +459,7 @@ function PhotoResultCard({ canRemove, index, onRemove, photo }: { canRemove: boo
         {canRemove && <button aria-label={`Quitar imagen ${index + 1}`} onClick={onRemove} type="button"><X size={18} /></button>}
       </header>
 
+      {assignment}
       {photo.isAnalyzing && <p className="real-report-photo-progress"><LoaderCircle className="real-report-spinner" size={18} /> Procesando esta imagen...</p>}
       {photo.error && <p className="real-report-error" role="alert">{photo.error}</p>}
 
