@@ -5,6 +5,7 @@ import type { BackendAsset, AiAnalysisFindings, AiCorrosionReport, AiCrackReport
 import { AppTopActions } from "../components/AppTopActions";
 import { LoadingState } from "../components/LoadingState";
 
+import { useSelectedPlant } from "../data/PlantContext";
 import { manualAssetOptions } from "../utils/manualInspection";
 
 const MAX_IMAGES = 50;
@@ -33,6 +34,7 @@ type PhotoAnalysis = {
 };
 
 export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => void; reportCode: string | null }) {
+  const plant = useSelectedPlant();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef(new Set<string>());
   const [photos, setPhotos] = useState<PhotoAnalysis[]>([]);
@@ -61,11 +63,11 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getMissions(), getAssets()])
+    Promise.all([getMissions(plant), getAssets(plant)])
       .then(([availableMissions, availableAssets]) => {
         if (cancelled) return;
         setAssets(availableAssets);
-        const withWaypoints = availableMissions.filter((mission) => getInspectionWaypoints(mission).length);
+        const withWaypoints = availableMissions.filter(mission => manualAssetOptions(mission, availableAssets).length);
         setMissions(withWaypoints);
         if (withWaypoints[0] && !reportCode) {
           setSelectedMissionId(withWaypoints[0].idMission);
@@ -83,7 +85,7 @@ export function ReporteDetalleRealView({ onBack, reportCode }: { onBack: () => v
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [plant.id, reportCode]);
 
   useEffect(() => {
     if (!reportCode) return;

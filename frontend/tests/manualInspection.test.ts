@@ -10,12 +10,17 @@ const mission = { missionWaypoints: [
   { idMissionWaypoint: "unassigned", idAsset: null, action: "STOP", pointOfInterest: true }
 ] } as BackendMission;
 test("ofrece solo activos inspeccionables del recorrido y agrupa puntos repetidos", () => {
-  const options = manualAssetOptions(mission, [{ idAsset: 1, name: "Silo norte", code: "S1" }, { idAsset: 4, name: "Fuera del recorrido", code: "S4" }] as BackendAsset[]);
+  const options = manualAssetOptions(mission, [{ idAsset: 1, name: "Silo norte", code: "S1" }, { idAsset: 2, name: "Silo sur", code: "S2" }, { idAsset: 4, name: "Fuera del recorrido", code: "S4" }] as BackendAsset[]);
   assert.deepEqual(options, [
     { idAsset: 1, waypointId: "a", label: "Silo norte · S1" },
-    { idAsset: 2, waypointId: "c", label: "Punto 3" }
+    { idAsset: 2, waypointId: "c", label: "Silo sur · S2" }
   ]);
 });
 test("una misión sin puntos no habilita asignaciones", () => {
   assert.deepEqual(manualAssetOptions(undefined, []), []);
+});
+
+test("excluye activos de otra planta aunque aparezcan en el recorrido", () => {
+  const options = manualAssetOptions(mission, [{ idAsset: 1, name: "Silo norte", code: "S1" }] as BackendAsset[]);
+  assert.deepEqual(options.map(option => option.idAsset), [1]);
 });
