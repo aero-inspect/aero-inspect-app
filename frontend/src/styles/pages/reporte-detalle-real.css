@@ -512,3 +512,11 @@
 .manual-generated-reports { margin-bottom: 20px; }
 .manual-generated-reports > div { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid #dce5f2; }
 .manual-generated-reports > button { margin-top: 14px; }
+
+.reports-route-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.reports-route-shell > .report-workspace { flex: 1; min-height: 0; }
+.temporary-analysis-shortcut { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 24px; border-bottom: 1px solid #dce5f2; background: #eef3fb; color: #17346d; }
+.temporary-analysis-shortcut > div { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 11px; }
+.temporary-analysis-shortcut strong { font-size: 12px; }
+.temporary-analysis-shortcut span { color: #63799b; }
+@media (max-width: 650px) { .temporary-analysis-shortcut { flex-wrap: wrap; padding: 10px 15px; } }
