@@ -520,3 +520,13 @@
 .temporary-analysis-shortcut strong { font-size: 12px; }
 .temporary-analysis-shortcut span { color: #63799b; }
 @media (max-width: 650px) { .temporary-analysis-shortcut { flex-wrap: wrap; padding: 10px 15px; } }
+
+.temporary-analysis-shortcut { padding: 16px 24px; gap: 20px; flex-shrink: 0; }
+.temporary-analysis-shortcut > div { flex-direction: column; align-items: flex-start; gap: 6px; font-size: 12px; }
+.temporary-analysis-shortcut strong { font-size: 14px; }
+.temporary-analysis-button { display: inline-flex; justify-content: center; align-items: center; gap: 9px; min-height: 44px; padding: 12px 18px; border: 1px solid #294b85; border-radius: 9px; background: #294b85; color: #fff; font-size: 14px; font-weight: 700; line-height: 1.3; cursor: pointer; flex-shrink: 0; }
+.temporary-analysis-button:hover { background: #1d3c70; }
+.temporary-analysis-button:focus-visible { outline: 3px solid #8cafd9; outline-offset: 3px; }
+@media (max-width: 900px) { .temporary-analysis-shortcut { flex-wrap: wrap; }.temporary-analysis-button { min-height: 44px; } }
+.temporary-analysis-shortcut { width: 100%; max-width: 100%; min-width: 0; }
+.temporary-analysis-shortcut > div { min-width: 0; }

@@ -47,3 +47,99 @@
 .report-workspace .reports-filters-row { flex-shrink:0; }.report-workspace .reports-table-card { flex-shrink:0; min-height:220px; }.report-workspace .reports-table-wrap { overflow-x:auto; }.report-workspace .reports-table { min-width:890px; }.inspection-history-list { display:grid; gap:8px; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); }.inspection-history-list>button { display:flex; align-items:center; gap:12px; border:1px solid #e1e9f2; border-radius:9px; padding:14px; background:#fbfdff; text-align:left; cursor:pointer; }.inspection-history-list strong { display:block; font-size:12px; color:#2b4d7c; }.inspection-history-list span:not(.report-badge) { display:block; color:#8595ab; font-size:10px; margin-top:5px; }.inspection-history-list .report-badge { margin-left:auto; }.inspection-overview { display:grid; gap:18px; }.inspection-overview>.report-section-heading { margin-bottom:0; }.inspection-executive-summary h2 { font-size:20px; color:#284975; }.inspection-executive-summary p { font-size:12px; color:#7a8ba3; line-height:1.7; }.inspection-asset-reports { display:flex; flex-direction:column; gap:9px; margin-bottom:18px; }.inspection-asset-reports>div { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 @media(max-width:1050px) { .report-dashboard-layout { grid-template-columns:1fr; }.report-priority-list { max-height:480px; }.report-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }.report-dashboard-map { height:420px; }.report-workspace-toolbar { align-items:stretch; }.report-workspace .reports-filters { display:flex; flex-wrap:wrap; height:auto!important; }.report-workspace .reports-filters-row { min-height:54px; } }
 @media(max-width:650px) { .reports-dashboard.report-workspace { padding:15px; gap:15px; }.report-workspace-nav { width:100%; }.report-workspace-nav button { flex:1; font-size:11px; padding:10px 7px; }.report-metric-card { padding:13px; gap:9px; }.report-metric-icon { width:32px; height:32px; }.report-metric-card div>span { font-size:10px; }.report-metric-card strong { font-size:23px; }.captures-layout { grid-template-columns:1fr; }.captures-assets { position:static; }.captures-asset-list { max-height:180px; }.report-section-heading { flex-wrap:wrap; }.report-dashboard-map { height:330px; }.evidence-dialog footer { flex-wrap:wrap; }.evidence-dialog { padding:17px; } }
+
+/* One analytical surface: charts and priorities first; location is optional. */
+.plant-analysis { background: #fff; border: 1px solid #dfe7f0; border-radius: 13px; overflow: clip; flex-shrink: 0; color: #24436c; }
+.analysis-heading { display: flex; justify-content: space-between; gap: 24px; padding: 24px 26px 20px; align-items: center; }
+.analysis-heading h2 { margin: 0; font-size: 23px; color: #173d73; }
+.analysis-heading p { margin: 7px 0 0; font-size: 13px; color: #738399; }
+.analysis-update-note { text-align: right; font-size: 11px; color: #738399; }
+.analysis-update-note span, .analysis-update-note strong { display: block; }
+.analysis-update-note strong { margin-top: 6px; color: #4a6382; font-weight: 600; }
+.analysis-summary-line { display: grid; grid-template-columns: repeat(4, 1fr); border-block: 1px solid #e6ecf3; background: #f9fbfe; padding: 18px 26px; }
+.analysis-summary-line > div, .analysis-summary-line > button { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 0 20px; border: 0; border-right: 1px solid #dfe7f0; background: transparent; text-align: left; }
+.analysis-summary-line > :first-child { padding-left: 0; }
+.analysis-summary-line > :last-child { border-right: 0; }
+.analysis-summary-line > button { cursor: pointer; }
+.analysis-summary-line strong { font-size: 29px; color: #163d73; line-height: 1.15; font-weight: 700; }
+.analysis-summary-line span { color: #708198; font-size: 12px; }
+.analysis-plots { display: grid; grid-template-columns: 1.1fr 1.25fr 1fr; padding: 24px 26px; gap: 26px; border-bottom: 1px solid #e6ecf3; }
+.analysis-plots > section { min-width: 0; border-right: 1px solid #e6ecf3; padding-right: 26px; }
+.analysis-plots > section:last-child { border-right: 0; padding-right: 0; }
+.plant-analysis h3 { margin: 0; font-size: 15px; font-weight: 700; color: #234873; }
+.analysis-caption { font-size: 11px; line-height: 1.6; color: #7b8ba0; margin: 12px 0 0; }
+.analysis-coverage-content { display: flex; align-items: center; gap: 18px; margin-top: 14px; }
+.analysis-coverage-content figure { width: 122px; height: 122px; flex-shrink: 0; margin: 0; position: relative; }
+.analysis-coverage-content svg { width: 100%; height: 100%; }
+.analysis-coverage-content figcaption { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 2px; }
+.analysis-coverage-content figcaption strong { font-size: 25px; color: #214674; }
+.analysis-coverage-content figcaption span { font-size: 10px; color: #7b8ba0; }
+.analysis-coverage-content p { font-size: 11px; color: #76869c; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.analysis-coverage-content p i { width: 7px; height: 7px; border-radius: 50%; }
+.analysis-coverage-content p strong { color: #3c5677; }
+.analysis-bars { margin-top: 17px; display: grid; gap: 13px; }
+.analysis-bars button { display: grid; grid-template-columns: 83px minmax(40px, 1fr) 20px; align-items: center; gap: 10px; border: 0; padding: 3px 0; background: transparent; cursor: pointer; color: #677e98; font-size: 12px; text-align: left; }
+.analysis-bars button[aria-pressed=true] { color: #254a7e; font-weight: 700; }
+.analysis-bar-track { height: 9px; border-radius: 3px; background: #edf1f6; overflow: hidden; }
+.analysis-bar-track i { display: block; height: 100%; border-radius: 3px; }
+.analysis-bars strong { font-size: 13px; color: #3d5776; text-align: right; }
+.analysis-findings dl { margin: 18px 0 0; }
+.analysis-findings dl > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #edf1f6; font-size: 12px; }
+.analysis-findings dt { color: #72849a; line-height: 1.4; }
+.analysis-findings dd { margin: 0; font-weight: 700; color: #36577e; }
+.analysis-no-data { margin: 0; padding: 12px 26px; background: #f3f6fb; color: #74869e; font-size: 12px; line-height: 1.6; border-bottom: 1px solid #e6ecf3; }
+.analysis-priority { padding: 24px 26px 18px; }
+.analysis-priority > header { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.analysis-priority > header p { margin: 6px 0 0; font-size: 12px; color: #7b8ba0; }
+.analysis-priority .report-search { min-width: 190px; max-width: 250px; }
+.analysis-table-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 20px 0 14px; flex-wrap: wrap; }
+.analysis-filters { display: flex; flex-wrap: wrap; gap: 14px; }
+.analysis-filters button { padding: 8px 0; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #7a8ba2; font-size: 12px; cursor: pointer; }
+.analysis-filters button.selected { color: #284f87; border-color: #284f87; font-weight: 700; }
+.analysis-map-toggle { display: flex; align-items: center; gap: 6px; border: 0; background: #f1f5fa; border-radius: 7px; padding: 9px 11px; font-size: 11px; color: #526c8f; cursor: pointer; }
+.analysis-table-scroll { overflow-x: auto; }
+.analysis-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; min-width: 650px; }
+.analysis-table th { font-size: 10px; color: #8a99ab; font-weight: 600; padding: 12px 10px; border-block: 1px solid #e6ecf3; background: #fbfcfe; }
+.analysis-table td { padding: 14px 10px; border-bottom: 1px solid #edf1f6; color: #728399; }
+.analysis-table tr.selected td { background: #f2f6fc; }
+.analysis-table tbody tr:hover { background: #fbfcfe; }
+.analysis-asset-name { display: flex; flex-direction: column; gap: 5px; background: transparent; border: 0; padding: 0; text-align: left; cursor: pointer; }
+.analysis-asset-name strong { color: #31527d; font-size: 12px; }
+.analysis-asset-name small { color: #8b9aaf; font-size: 10px; }
+.analysis-status { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; color: #657a96; }
+.analysis-status i { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.analysis-status.red { color: #ac3c48; }.analysis-status.amber { color: #9e741e; }.analysis-status.blue { color: #376eb3; }.analysis-status.green { color: #24845e; }.analysis-status.violet { color: #8062b0; }
+.analysis-provisional { display: block; margin: 5px 0 0 13px; font-size: 9px; color: #9b8aaa; }
+.analysis-empty { padding: 26px; text-align: center; font-size: 12px; color: #7b8ba0; }
+.analysis-table-note { font-size: 10px; }
+.analysis-asset-detail, .analysis-map-section { border-top: 1px solid #e6ecf3; padding: 24px 26px; }
+.analysis-map-section .report-dashboard-map { height: 320px; }
+.analysis-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+@media (max-width: 1200px) { .analysis-plots { grid-template-columns: 1fr 1fr; }.analysis-severity { border-right: 0!important; padding-right: 0!important; }.analysis-findings { grid-column: 1 / -1; border-top: 1px solid #e6ecf3; padding-top: 20px; }.analysis-findings dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }.analysis-findings dl > div { border-bottom: 0; } }
+@media (max-width: 900px) { .analysis-heading { flex-wrap: wrap; padding: 20px; }.analysis-update-note { text-align: left; }.analysis-summary-line { padding: 18px 20px; grid-template-columns: repeat(2, 1fr); gap: 20px; }.analysis-summary-line > :nth-child(3) { padding-left: 0; }.analysis-summary-line > :nth-child(2) { border-right: 0; }.analysis-plots { grid-template-columns: 1fr; padding: 20px; gap: 20px; }.analysis-plots > section { border-right: 0; padding-right: 0; }.analysis-severity { border-top: 1px solid #e6ecf3; padding-top: 20px; }.analysis-findings dl { display: block; }.analysis-findings dl > div { border-bottom: 1px solid #edf1f6; }.analysis-priority, .analysis-asset-detail, .analysis-map-section { padding: 20px; }.analysis-priority > header { flex-wrap: wrap; }.analysis-no-data { padding-inline: 20px; } }
+.analysis-finding-bars > div { display: grid; grid-template-columns: 70px minmax(40px, 1fr) 20px; align-items: center; gap: 10px; padding: 3px 0; font-size: 12px; color: #677e98; }
+.analysis-pending-note { padding-top: 14px; margin-top: 20px; border-top: 1px solid #edf1f6; font-size: 11px; line-height: 1.6; color: #75869e; }
+.analysis-pending-note strong { font-size: 20px; color: #7351a4; margin-right: 5px; }
+.analysis-comparison { padding: 22px 26px; border-bottom: 1px solid #e6ecf3; }
+.analysis-comparison .analysis-caption { margin-top: 6px; }
+.analysis-heatmap-scroll { overflow-x: auto; margin-top: 18px; }
+.analysis-heatmap { min-width: 530px; max-width: 900px; }
+.analysis-heatmap-heading, .analysis-heatmap > button { display: grid; grid-template-columns: minmax(160px, 2fr) repeat(5, 1fr); gap: 8px; align-items: center; width: 100%; }
+.analysis-heatmap-heading { margin-bottom: 10px; color: #8a99ac; font-size: 10px; text-align: center; }
+.analysis-heatmap-heading > :first-child { text-align: left; }
+.analysis-heatmap > button { padding: 4px 0; border: 0; background: transparent; cursor: pointer; text-align: left; }
+.analysis-heatmap strong { font-size: 11px; font-weight: 600; color: #4a6488; }
+.analysis-heatmap small { display: block; font-size: 9px; color: #9d8aad; font-weight: 400; margin-top: 3px; }
+.analysis-heatmap > button > span { height: 25px; border-radius: 3px; background: #f2f5f9; color: white; display: grid; place-items: center; font-size: 8px; }
+.analysis-heatmap > button:hover strong { color: #173d73; }
+.analysis-heatmap > button:focus-visible { outline: 2px solid #779cc7; outline-offset: 2px; }
+@media (max-width: 900px) { .analysis-comparison { padding: 20px; } }
+.reports-route-shell, .reports-route-shell > .report-workspace, .plant-analysis { width: 100%; min-width: 0; max-width: 100%; }
+.report-workspace-nav { max-width: 100%; flex-wrap: wrap; }
+.analysis-table-scroll, .analysis-heatmap-scroll { min-width: 0; max-width: 100%; }
+.analysis-heading h2 { font-size: 24px; }
+.plant-analysis h3 { font-size: 16px; }
+.analysis-table { font-size: 13px; }
+.analysis-asset-name strong { font-size: 13px; }
+.analysis-bars button, .analysis-finding-bars > div { font-size: 13px; }
+.analysis-heatmap strong { font-size: 12px; }
