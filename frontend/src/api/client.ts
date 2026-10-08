@@ -270,3 +270,16 @@ export async function downloadReportPdf(code: string, inline = false) {
   else { const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${code}.pdf`; anchor.click(); }
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
+
+export function getAssetInspectionPhotos(idAsset: number) {
+  return request<BackendInspectionPhoto[]>(`/api/v1/assets/${idAsset}/inspection-photos`);
+}
+export async function downloadInspectionPdf(idMission: string, assetIds: number[], inline = false) {
+  if (!assetIds.length) throw new Error("La inspección no tiene activos para exportar");
+  const response = await fetch(`/api/v1/reports/inspections/${encodeURIComponent(idMission)}/pdf?assetIds=${assetIds.join(",")}`, { headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined, cache: "no-store" });
+  if (!response.ok) throw new Error("No se pudo generar el PDF de la inspección");
+  const url = URL.createObjectURL(await response.blob());
+  if (inline) window.open(url, "_blank", "noopener,noreferrer");
+  else { const a=document.createElement("a"); a.href=url; a.download=`inspeccion-${idMission}.pdf`; a.click(); }
+  window.setTimeout(()=>URL.revokeObjectURL(url),60_000);
+}

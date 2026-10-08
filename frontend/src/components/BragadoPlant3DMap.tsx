@@ -304,7 +304,12 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
     centerPlant,
     setView,
     highlight,
-    project(items: Equipment[]) {
+    focusAsset: (item: Equipment) => {
+      controls.target.copy(item.position);
+      camera.position.copy(item.position).add(new THREE.Vector3(35,35,45));
+      controls.update();
+    },
+    project(items: Equipment[], compactMarkers = false) {
       const rect = root.getBoundingClientRect();
       const placed: Array<{ x: number; y: number }> = [];
       onProject(items.map((item) => {
@@ -334,7 +339,7 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
         const x = (point.x + 1) * rect.width / 2;
         const y = (1 - point.y) * rect.height / 2;
         const visible = !occluded && point.z >= -1 && point.z <= 1 && x > 38 && x < rect.width - 38 && y > 70 && y < rect.height - 14 &&
-          !placed.some(tag => Math.abs(tag.x - x) < 76 && Math.abs(tag.y - y) < 26);
+          !placed.some(tag => Math.abs(tag.x - x) < (compactMarkers ? 25 : 76) && Math.abs(tag.y - y) < 26);
         if (visible) placed.push({ x, y });
         return {
           id: item.id,
@@ -367,7 +372,9 @@ function createScene(root: HTMLDivElement, heightScale: number, onProject: (proj
 }
 
 export type MapFilters = { type: string; status: string; search?: string };
-export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCode, playback, assetSelection }: { assets: BackendAsset[]; onViewAsset?: (idAsset: number) => void; filters?: MapFilters; focusedAssetCode?: string | null; playback?:MissionPlaybackData; assetSelection?:AssetSelectionData }) {
+export type InspectionMapStates = Record<number, {color:string;label:string}>;
+
+export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCode, playback, assetSelection, inspectionStates }: { assets: BackendAsset[]; onViewAsset?: (idAsset: number) => void; filters?: MapFilters; focusedAssetCode?: string | null; playback?:MissionPlaybackData; assetSelection?:AssetSelectionData; inspectionStates?:InspectionMapStates }) {
   const playbackMode=Boolean(playback);
   const selectionMode=Boolean(assetSelection);
   const [following,setFollowing]=useState(false);
@@ -469,15 +476,23 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
   }, [viewMode]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => sceneRef.current?.project(visibleEquipment), 32);
-    sceneRef.current?.project(visibleEquipment);
+    const items = inspectionStates ? visibleEquipment.filter(item => item.asset && inspectionStates[item.asset.idAsset]) : visibleEquipment;
+    const project = () => sceneRef.current?.project(items, Boolean(inspectionStates));
+    const timer = window.setInterval(project, 32);
+    project();
     return () => window.clearInterval(timer);
-  }, [visibleEquipment]);
+  }, [visibleEquipment, inspectionStates]);
 
   useEffect(() => {
     sceneRef.current?.highlight(activeHighlightId);
   }, [activeHighlightId, sceneVersion]);
 
+
+  useEffect(() => {
+    if (!inspectionStates || !focusedId) return;
+    const item=equipment.find(e=>e.id===focusedId);
+    if(item)sceneRef.current?.focusAsset(item);
+  },[focusedId,sceneVersion]);
 
   const toggleType = (type: EquipmentType) => setTypes((current) => {
     const next = new Set(current);
@@ -498,6 +513,10 @@ export function BragadoPlant3DMap({ assets, onViewAsset, filters, focusedAssetCo
   return (
     <div className={`bragado-map${expanded ? " bragado-map-expanded" : ""}`}>
       <div className="bragado-map-stage" ref={rootRef} />
+      {inspectionStates && visibleEquipment.map(item=>{
+        const tag=projectedById.get(item.id), state=item.asset ? inspectionStates[item.asset.idAsset] : null;
+        return tag?.visible && state && item.asset ? <button key={item.id} type="button" className="report-map-marker" style={{left:tag.x,top:tag.y,backgroundColor:state.color}} title={`${item.name}: ${state.label}`} aria-label={`${item.name}: ${state.label}`} onClick={()=>onViewAsset?.(item.asset!.idAsset)}>!</button> : null;
+      })}
       {hoveredAsset && (
         <span
           className="bragado-map-hover-label"
