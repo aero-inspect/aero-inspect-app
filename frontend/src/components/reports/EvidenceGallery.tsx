@@ -10,9 +10,9 @@ function EvidenceImage({ src, alt }: {src:string;alt:string}) {
 }
 function PhotoDialog({photo,onClose,onReport}: {photo:BackendInspectionPhoto;onClose:()=>void;onReport?:(code:string)=>void}) {
   const dialog=useRef<HTMLDialogElement>(null);
-  useEffect(()=>{dialog.current?.showModal();return ()=>dialog.current?.close();},[]);
+  useEffect(()=>{if (!dialog.current?.open) dialog.current?.showModal();},[]);
   const f=evidenceFinding(photo);
-  return <dialog ref={dialog} className="evidence-dialog" onCancel={onClose} onClose={onClose} aria-label="Detalle de captura">
+  return <dialog ref={dialog} className="evidence-dialog" onCancel={onClose} aria-label="Detalle de captura">
     <header><div><span className="reports-eyebrow">EVIDENCIA DE INSPECCIÓN</span><h2>Captura · {formatReportDate(photo.capturedAt)}</h2></div><button className="report-icon-button" onClick={onClose} aria-label="Cerrar captura"><X size={20}/></button></header>
     <div className="evidence-dialog-images"><figure><EvidenceImage src={photo.rawImageUrl} alt="Captura original del activo"/><figcaption>Original</figcaption></figure>{photo.analyzedImageUrl && <figure><EvidenceImage src={photo.analyzedImageUrl} alt="Resultado del análisis de corrosión"/><figcaption>Análisis de corrosión</figcaption></figure>}{f.crackOverlay && <figure><EvidenceImage src={f.crackOverlay} alt="Resultado del análisis de grietas"/><figcaption>Análisis de grietas</figcaption></figure>}</div>
     <div className="evidence-result"><strong>{photo.status==="PENDING_ANALYSIS" ? "Análisis pendiente" : photo.status==="ANALYSIS_FAILED" ? "No se pudo analizar esta captura" : !f.readable ? "Resultado no disponible" : f.corrosion||f.crack ? [f.corrosion ? "Corrosión" : "",f.crack ? "Fisuras / grietas" : ""].filter(Boolean).join(" · ") : "Sin anomalías detectadas"}</strong>{f.corrosion && <span>Gravedad: {severityLabels[f.severity]}</span>}{f.crack && <span>La gravedad de las grietas requiere evaluación humana.</span>}</div>
