@@ -143,3 +143,22 @@
 .analysis-asset-name strong { font-size: 13px; }
 .analysis-bars button, .analysis-finding-bars > div { font-size: 13px; }
 .analysis-heatmap strong { font-size: 12px; }
+
+.analysis-summary-line { border-top: 0; }
+.analysis-summary-line > :nth-child(3) strong { color: #ba3547; }
+.analysis-summary-line > :nth-child(4) strong { color: #7851b0; }
+.analysis-bars button > span:first-child { position: relative; padding-left: 12px; }
+.analysis-bars button > span:first-child::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); height: 7px; width: 7px; border-radius: 50%; background: var(--severity-color); }
+.analysis-bars button:nth-child(1) { --severity-color: #c74348; }.analysis-bars button:nth-child(2) { --severity-color: #ba7b17; }.analysis-bars button:nth-child(3) { --severity-color: #376eb3; }.analysis-bars button:nth-child(4) { --severity-color: #8062b0; }
+.analysis-finding-bars > div > span:first-child { font-weight: 600; }.analysis-finding-bars > div:nth-child(1) > span:first-child { color: #9a6714; }.analysis-finding-bars > div:nth-child(2) > span:first-child { color: #7851b0; }
+.analysis-asset-priority { min-width: 420px; }
+.analysis-asset-priority th { font-size: 12px; }
+.analysis-asset-priority td { padding-block: 17px; }
+.analysis-asset-priority tbody tr { cursor: pointer; }
+.analysis-asset-priority tbody tr:hover { background: #edf4ff; }
+.analysis-asset-name:focus-visible { outline: 2px solid #608bbd; outline-offset: 5px; border-radius: 2px; }
+.analysis-anomaly-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.analysis-tag, .analysis-gravity { display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 650; }
+.analysis-tag.corrosion { background: #fff0ce; color: #97600c; }.analysis-tag.crack { background: #eee2ff; color: #7043a7; }.analysis-tag.clear { background: #dff4e7; color: #1e7850; }.analysis-tag.pending { background: #eee2ff; color: #7043a7; }.analysis-tag.unknown { background: #eef2f7; color: #7a8799; }
+.analysis-gravity.critical { background: #8e2438; color: white; }.analysis-gravity.red { background: #ffe0e5; color: #ae243a; }.analysis-gravity.amber { background: #ffedc1; color: #966008; }.analysis-gravity.blue { background: #dfebff; color: #315da0; }.analysis-gravity.violet { background: #eee2ff; color: #7043a7; }.analysis-gravity.green { background: #dff4e7; color: #1e7850; }.analysis-gravity.gray { background: #eef2f7; color: #7a8799; }
+.analysis-bars button { grid-template-columns: 92px minmax(40px, 1fr) 20px; }
