@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { AlertTriangle, Ban, CheckCircle2, ImagePlus, LoaderCircle, PenLine } from "lucide-react";
-import { createReport, downloadInspectionPdf, downloadReportPdf, getAssets, getInspectionPhoto, getMissions, getReport, uploadInspectionPhoto, validateReport as saveValidation } from "../api/client";
+import { AlertTriangle, Ban, CheckCircle2, ImagePlus, LoaderCircle } from "lucide-react";
+import { createReport, downloadReportPdf, getAssets, getInspectionPhoto, getMissions, getReport, uploadInspectionPhoto } from "../api/client";
 import type { BackendAsset, BackendInspectionPhoto, BackendMission, BackendReport } from "../api/types";
 import { AppTopActions } from "../components/AppTopActions";
-import { PhotoResultCard, getReportStatus, getBackendSeverityLabel } from "../components/reports/PhotoResultCard";
+import { PhotoResultCard, getReportStatus } from "../components/reports/PhotoResultCard";
 import type { PhotoAnalysis, PhotoDate, ReportState } from "../components/reports/PhotoResultCard";
 
 import { useSelectedPlant } from "../data/PlantContext";
@@ -15,16 +15,13 @@ const ACCEPTED_FILE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const POLL_INTERVAL_MS = 1_000;
 const MAX_POLL_ATTEMPTS = 120;
 
-export function ManualAnalysisView({ onBack }: { onBack: () => void }) {
+export function ManualAnalysisView({ onBack, onViewReport }: { onBack: () => void; onViewReport: (code:string)=>void }) {
   const plant = useSelectedPlant();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef(new Set<string>());
   const [photos, setPhotos] = useState<PhotoAnalysis[]>([]);
   const [selectionError, setSelectionError] = useState("");
   const [isAnalyzingAll, setIsAnalyzingAll] = useState(false);
-  const [validatorComments, setValidatorComments] = useState("");
-  const [signature, setSignature] = useState("");
-  const [validationError, setValidationError] = useState("");
   const [reportState, setReportState] = useState<ReportState>("pending");
   const [missions, setMissions] = useState<BackendMission[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState("");
@@ -34,7 +31,6 @@ export function ManualAnalysisView({ onBack }: { onBack: () => void }) {
   const [assets, setAssets] = useState<BackendAsset[]>([]);
   const [generatedReports, setGeneratedReports] = useState<BackendReport[]>([]);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
-  const [isSavingDecision, setIsSavingDecision] = useState(false);
 
   useEffect(() => {
     const previewUrls = previewUrlsRef.current;
@@ -71,13 +67,12 @@ export function ManualAnalysisView({ onBack }: { onBack: () => void }) {
   const mission = missions.find(item => item.idMission === selectedMissionId);
   const assetOptions = manualAssetOptions(mission, assets);
   const assignmentsComplete = photos.every(photo => assetOptions.some(option => option.waypointId === photo.waypointId));
-  const busy = isAnalyzingAll || isSavingDecision;
+  const busy = isAnalyzingAll;
   const assignmentLocked = busy || activeReports.some(report => report.status === "VALIDATED" || report.status === "REJECTED");
   const isClosed = reportState !== "pending";
 
   const resetDecision = () => {
     setReportState("pending");
-    setValidationError("");
   };
 
   const handleMissionChange = (idMission: string) => {
@@ -176,17 +171,17 @@ export function ManualAnalysisView({ onBack }: { onBack: () => void }) {
     setSelectionError("");
     setSelectedPhotos(new Set());
     resetDecision();
-    const reportsByAsset = new Map(activeReports.map(report => [report.idAsset, report]));
+    let inspectionReport = activeReports[0];
     try {
       for (const photo of photos) {
         if (photo.analysis?.status === "ANALYZED" || !photo.file) continue;
         const option = assetOptions.find(item => item.waypointId === photo.waypointId)!;
         updatePhoto(photo.id, { error: "", isAnalyzing: true });
         try {
-          let report = reportsByAsset.get(option.idAsset);
+          let report = inspectionReport;
           if (!report) {
             report = await createReport(selectedMissionId, option.idAsset);
-            reportsByAsset.set(option.idAsset, report);
+            inspectionReport = report;
             rememberReport(report);
           }
           // Preserve a registered photo on retry, so polling never uploads it twice.
@@ -202,34 +197,15 @@ export function ManualAnalysisView({ onBack }: { onBack: () => void }) {
           updatePhoto(photo.id, { error: error instanceof Error ? error.message : "No se pudo analizar esta imagen.", isAnalyzing: false });
         }
       }
-      for (const report of reportsByAsset.values()) {
+      for (const report of inspectionReport ? [inspectionReport] : []) {
         try { rememberReport(await getReport(report.code)); }
         catch { setSelectionError("Los resultados se guardaron, pero no se pudo actualizar el resumen. Consultá el historial."); }
       }
     } finally { setIsAnalyzingAll(false); }
   };
 
-  const saveDecision = async (approved: boolean) => {
-    if (!activeReports.length || !signature.trim()) {
-      setValidationError("Primero generá los reportes e ingresá la firma."); return;
-    }
-    if (approved && (!photos.length || photos.some(photo => photo.analysis?.status !== "ANALYZED"))) {
-      setValidationError("Todas las imágenes deben analizarse correctamente antes de validar."); return;
-    }
-    setIsSavingDecision(true); setValidationError("");
-    try {
-      for (const report of activeReports) {
-        if (report.status === (approved ? "VALIDATED" : "REJECTED")) continue;
-        rememberReport(await saveValidation(report.code, signature, validatorComments, approved));
-      }
-      setReportState(approved ? "validated" : "discarded");
-    } catch (error) {
-      setValidationError(error instanceof Error ? error.message : "No se pudo guardar la decisión. Podés reintentar; los cambios ya guardados se conservan.");
-    } finally { setIsSavingDecision(false); }
-  };
 
   const status = getReportStatus(reportState);
-
   return (
     <section className="real-report-page">
       <header className="real-report-topbar">
@@ -241,12 +217,7 @@ export function ManualAnalysisView({ onBack }: { onBack: () => void }) {
         <AppTopActions />
       </header>
 
-      {generatedReports.length > 0 && <section className="real-report-card manual-generated-reports">
-        <h2>Resultados de la inspección · {generatedReports.length} activos</h2>
-        <p>La firma y los comentarios se aplicarán a todos los reportes de esta carga.</p>
-        {generatedReports.map(report => <div key={report.code}><strong>{report.assetName}</strong><span>{report.code} · {getBackendSeverityLabel(report.severity)} · {report.status === "VALIDATED" ? "Validado" : report.status === "REJECTED" ? "Descartado" : "Pendiente"}</span><button type="button" onClick={() => void downloadReportPdf(report.code)}>Descargar PDF del activo</button></div>)}
-        <button type="button" onClick={() => void downloadInspectionPdf(selectedMissionId, generatedReports.map(report => report.idAsset)).catch(error => setSelectionError(error instanceof Error ? error.message : "No se pudo descargar el PDF"))}>Descargar inspección completa</button>
-      </section>}
+      {generatedReports.length > 0 && <section className="real-report-card manual-generated-reports"><h2>Inspección guardada</h2><button className="report-secondary" onClick={()=>onViewReport(generatedReports[0].code)}>Abrir reporte de inspección</button><button className="report-secondary" onClick={()=>void downloadReportPdf(generatedReports[0].code)}>Descargar inspección</button></section>}
 
       <div className={`real-report-status ${status.tone}`} role="status">
         {reportState === "validated" ? <CheckCircle2 size={22} /> : reportState === "discarded" ? <Ban size={22} /> : <AlertTriangle size={22} />}
@@ -350,50 +321,7 @@ export function ManualAnalysisView({ onBack }: { onBack: () => void }) {
           </button>}
         </article>
 
-        <article className="real-report-card real-report-validation">
-          <div className="real-report-card-title">
-            <PenLine size={22} />
-            <div>
-              <h2>Firma y validación</h2>
-              <p>Revise todos los resultados antes de decidir.</p>
-            </div>
-          </div>
 
-          <label>
-            <span>Comentarios del validador</span>
-            <textarea
-              disabled={isClosed || busy}
-              onChange={(event) => setValidatorComments(event.target.value)}
-              placeholder="Agregue observaciones o correcciones..."
-              rows={5}
-              value={validatorComments}
-            />
-          </label>
-
-          <label>
-            <span>Firma digital</span>
-            <input
-              disabled={isClosed || busy}
-              onChange={(event) => setSignature(event.target.value)}
-              placeholder="Nombre y apellido"
-              type="text"
-              value={signature}
-            />
-          </label>
-
-          {validationError && <p className="real-report-error" role="alert">{validationError}</p>}
-
-          <div className="real-report-decision-actions">
-            <button className="real-report-discard" disabled={isClosed || busy} onClick={() => void saveDecision(false)} type="button">
-              <Ban size={18} />
-              {reportState === "discarded" ? "Reporte descartado" : "Descartar"}
-            </button>
-            <button className="real-report-validate" disabled={isClosed || busy} onClick={() => void saveDecision(true)} type="button">
-              <CheckCircle2 size={18} />
-              {reportState === "validated" ? "Reporte validado" : "Validar"}
-            </button>
-          </div>
-        </article>
       </div>
     </section>
   );

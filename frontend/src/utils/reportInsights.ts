@@ -2,10 +2,10 @@ import type { BackendAsset, BackendInspectionPhoto, BackendReport } from "../api
 
 export const severityLabels = { CRITICAL: "Crítica", HIGH: "Alta", MEDIUM: "Media", LOW: "Baja", NOT_REPORTED: "Sin gravedad informada" };
 export const severityRank = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, NOT_REPORTED: 0 };
-export type EvidenceFinding = { corrosion: boolean; crack: boolean; severity: BackendReport["severity"]; readable: boolean; crackOverlay: string | null };
+export type EvidenceFinding = { corrosion: boolean; crack: boolean; severity: BackendReport["severity"]; readable: boolean; crackOverlay: string | null; crackSeverity: BackendReport["severity"] };
 export function evidenceFinding(photo: BackendInspectionPhoto): EvidenceFinding {
-  const empty: EvidenceFinding = { corrosion: false, crack: false, severity: "NOT_REPORTED", readable: false, crackOverlay: null };
-  if (photo.status !== "ANALYZED" || !photo.findings) return empty;
+  const empty: EvidenceFinding = { corrosion: false, crack: false, severity: "NOT_REPORTED", readable: false, crackOverlay: null, crackSeverity: "NOT_REPORTED" };
+  if (photo.discarded || photo.status !== "ANALYZED" || !photo.findings) return empty;
   try {
     const root = JSON.parse(photo.findings);
     if (!root || typeof root !== "object") return empty;
@@ -13,7 +13,7 @@ export function evidenceFinding(photo: BackendInspectionPhoto): EvidenceFinding 
     const corrosion = c.status === "corrosion_candidate_detected" || (c.status !== "no_corrosion_detected" && Number(c.detected_area_percent) > 0);
     const crack = root.crack?.status === "crack_candidate_detected";
     const severities: Record<string, BackendReport["severity"]> = { baja: "LOW", low: "LOW", media: "MEDIUM", medium: "MEDIUM", alta: "HIGH", high: "HIGH", critica: "CRITICAL", "crítica": "CRITICAL", critical: "CRITICAL" };
-    return { corrosion, crack, severity: corrosion ? severities[String(root.severity?.predicted_severity).toLowerCase()] ?? "NOT_REPORTED" : "NOT_REPORTED", readable: ["corrosion_candidate_detected", "no_corrosion_detected"].includes(c.status) || typeof c.detected_area_percent === "number" || ["crack_candidate_detected", "no_crack_detected"].includes(root.crack?.status), crackOverlay: root.crack?.overlay_url ?? null };
+    return { corrosion, crack, crackSeverity: crack ? photo.crackSeverity ?? "NOT_REPORTED" : "NOT_REPORTED", severity: corrosion ? photo.corrosionSeverity ?? severities[String(root.severity?.predicted_severity).toLowerCase()] ?? "NOT_REPORTED" : "NOT_REPORTED", readable: ["corrosion_candidate_detected", "no_corrosion_detected"].includes(c.status) || typeof c.detected_area_percent === "number" || ["crack_candidate_detected", "no_crack_detected"].includes(root.crack?.status), crackOverlay: root.crack?.overlay_url ?? null };
   } catch { return empty; }
 }
 export function reportTime(report: BackendReport): number {
@@ -29,7 +29,7 @@ export type InspectionGroup = { id: string; name: string; date: number; reports:
 export function groupInspections(reports: BackendReport[]): InspectionGroup[] {
   const groups = new Map<string, BackendReport[]>();
   for (const r of reports) groups.set(r.idMission, [...(groups.get(r.idMission) ?? []), r]);
-  return [...groups.entries()].map(([id, items]) => ({ id, name: items[0].missionName, date: Math.max(...items.map(reportTime)), reports: [...items].sort((a,b) => (a.status === "REJECTED" ? 1 : 0) - (b.status === "REJECTED" ? 1 : 0) || severityRank[b.severity]-severityRank[a.severity] || a.assetName.localeCompare(b.assetName)), assetsCount: new Set(items.map(r=>r.idAsset)).size, severity: maximumSeverity(items.filter(r=>r.status !== "REJECTED")) })).sort((a,b)=>b.date-a.date);
+  return [...groups.entries()].map(([id, items]) => ({ id, name: items[0].missionName, date: Math.max(...items.map(reportTime)), reports: [...items].sort((a,b) => (a.status === "REJECTED" ? 1 : 0) - (b.status === "REJECTED" ? 1 : 0) || severityRank[b.severity]-severityRank[a.severity] || a.assetName.localeCompare(b.assetName)), assetsCount: new Set(items.flatMap(r=>r.assets?.map(a=>a.idAsset)??(r.idAsset===null?[]:[r.idAsset]))).size, severity: maximumSeverity(items.filter(r=>r.status !== "REJECTED")) })).sort((a,b)=>b.date-a.date);
 }
 export type AssetInsight = { asset: BackendAsset; reports: BackendReport[]; photos: BackendInspectionPhoto[]; severity: BackendReport["severity"]; findings: number; corrosion: number; cracks: number; pending: boolean; category: "high" | "medium" | "low" | "review" | "clear" | "unknown"; date: number | null; label: string; tone: string };
 export function assetInsights(assets: BackendAsset[], reports: BackendReport[]): AssetInsight[] {
@@ -39,10 +39,10 @@ export function assetInsights(assets: BackendAsset[], reports: BackendReport[]):
     const current = latest ? history.filter(r=>r.idMission===latest.idMission) : [];
     const accepted = current.filter(r=>r.status !== "REJECTED");
     const photos = reportPhotos(current);
-    const acceptedPhotos = reportPhotos(accepted);
+    const acceptedPhotos = reportPhotos(accepted).filter(p=>!p.discarded);
     const findings = acceptedPhotos.map(evidenceFinding);
     const corrosion = findings.filter(f=>f.corrosion).length, cracks = findings.filter(f=>f.crack).length;
-    const pending = accepted.some(r=>r.status !== "VALIDATED") || acceptedPhotos.some(p=>p.status !== "ANALYZED");
+    const pending = acceptedPhotos.length > 0 && (accepted.some(r=>r.status !== "VALIDATED") || acceptedPhotos.some(p=>p.status !== "ANALYZED"));
     const severity = maximumSeverity(accepted);
     let category: AssetInsight["category"] = "unknown";
     let label = latest ? "Sin resultado concluyente" : "Sin inspección registrada";
@@ -59,3 +59,30 @@ export function assetInsights(assets: BackendAsset[], reports: BackendReport[]):
 }
 export const formatReportDate = (value: string | number | null) => value ? new Date(value).toLocaleString("es-AR", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "Sin fecha";
 export const localPhotoDay = (value: string) => { const d=new Date(value); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+
+const area = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : null;
+
+export function captureAnalytics(assets: BackendAsset[], reports: BackendReport[]) {
+  const affected = assetInsights(assets, reports).filter(a => a.corrosion || a.cracks).map(a => {
+    let corrosionArea: number | null = null, crackArea: number | null = null;
+    for (const photo of reportPhotos(a.reports.filter(r => r.status !== "REJECTED"))) {
+      const finding = evidenceFinding(photo);
+      if (!finding.readable) continue;
+      const root = JSON.parse(photo.findings!);
+      const corrosion = root.corrosion ?? root;
+      const c = finding.corrosion ? area(corrosion.detected_area_percent) : null;
+      const g = finding.crack ? area(root.crack?.detected_area_percent) : null;
+      if (c !== null) corrosionArea = Math.max(corrosionArea ?? 0, c);
+      if (g !== null) crackArea = Math.max(crackArea ?? 0, g);
+    }
+    return { asset: a.asset, corrosion: a.corrosion > 0, crack: a.cracks > 0, corrosionArea, crackArea };
+  });
+  return {
+    affected,
+    distribution: [
+      { label: "Corrosión", count: affected.filter(a => a.corrosion && !a.crack).length, color: "#ba7b17" },
+      { label: "Grietas", count: affected.filter(a => a.crack && !a.corrosion).length, color: "#8062b0" },
+      { label: "Ambas", count: affected.filter(a => a.corrosion && a.crack).length, color: "#376eb3" }
+    ]
+  };
+}

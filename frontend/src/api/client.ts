@@ -249,15 +249,18 @@ export function getInspectionPhoto(idInspectionPhoto: string) {
 export async function getReports(plant: Plant = apiPlant) {
   const [reports, assets] = await Promise.all([request<BackendReport[]>("/api/v1/reports"),getAssets(plant)]);
   const ids = new Set(assets.map(asset => asset.idAsset));
-  return reports.filter(report => ids.has(report.idAsset));
+  return reports.flatMap(report => report.assets?.length ? report.assets.map(section => ({...report, ...section, assets: undefined})) : [report]).filter(report => report.idAsset !== null && ids.has(report.idAsset));
 }
 export function getReport(code: string) { return request<BackendReport>(`/api/v1/reports/${code}`); }
 export function deleteReport(code: string) { return request<void>(`/api/v1/reports/${code}`, { method: "DELETE" }); }
 export function createReport(idMission: string, idAsset: number, title?: string) {
   return request<BackendReport>("/api/v1/reports", { method: "POST", body: JSON.stringify({ idMission, idAsset, title }) });
 }
-export function validateReport(code: string, signature: string, comments: string, approved: boolean) {
-  return request<BackendReport>(`/api/v1/reports/${code}/validation`, { method: "PUT", body: JSON.stringify({ signature, comments, approved }) });
+export function validateReport(code: string, signature: string, comments: string, approved: boolean, evidenceReviews?: import("./types").EvidenceReview[]) {
+  return request<BackendReport>(`/api/v1/reports/${code}/validation`, { method: "PUT", body: JSON.stringify({ signature, comments, approved, evidenceReviews }) });
+}
+export function saveEvidenceReviews(code: string, reviews: import("./types").EvidenceReview[]) {
+  return request<BackendReport>(`/api/v1/reports/${code}/evidence-validation`, { method: "PUT", body: JSON.stringify(reviews) });
 }
 export async function downloadReportPdf(code: string, inline = false) {
   const response = await fetch(`/api/v1/reports/${code}/pdf?v=${Date.now()}`, {
@@ -282,4 +285,15 @@ export async function downloadInspectionPdf(idMission: string, assetIds: number[
   if (inline) window.open(url, "_blank", "noopener,noreferrer");
   else { const a=document.createElement("a"); a.href=url; a.download=`inspeccion-${idMission}.pdf`; a.click(); }
   window.setTimeout(()=>URL.revokeObjectURL(url),60_000);
+}
+
+export function getCustomReports(plant: Plant = apiPlant) { return request<import("./types").CustomReport[]>(`/api/v1/custom-reports?plantId=${encodeURIComponent(plant.id)}`); }
+export function createCustomReport(data: import("./types").CreateCustomReport) { return request<import("./types").CustomReport>("/api/v1/custom-reports", { method: "POST", body: JSON.stringify(data) }); }
+export async function downloadCustomReportPdf(code: string, plant: Plant = apiPlant, inline = false) {
+  const response = await fetch(`/api/v1/custom-reports/${code}/pdf?plantId=${encodeURIComponent(plant.id)}`, { headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined });
+  if (!response.ok) throw new Error("No se pudo abrir el reporte personalizado");
+  const url = URL.createObjectURL(await response.blob());
+  if (inline) window.open(url, "_blank", "noopener,noreferrer");
+  else { const link=document.createElement("a");link.href=url;link.download=`${code}.pdf`;link.click(); }
+  setTimeout(()=>URL.revokeObjectURL(url),60_000);
 }

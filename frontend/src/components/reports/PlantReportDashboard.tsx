@@ -9,31 +9,27 @@ export function PlantReportDashboard({ assets, reports, onCaptures }: {
   const insights = useMemo(() => assetInsights(assets, reports), [assets, reports]);
   const [filter, setFilter] = useState("all");
   const visible = useMemo(() => insights.filter(a =>
-    filter === "all" || (filter === "attention" ? a.findings > 0 || a.pending || a.category === "review"
-      : filter === "review" ? a.pending || a.category === "review" : a.category === filter)), [insights, filter]);
+    filter === "all" || a.asset.type === filter), [insights, filter]);
   const severityRows = [
     { key: "high", label: "Alta / crítica", count: insights.filter(a => a.category === "high").length, color: colors.red },
     { key: "medium", label: "Media", count: insights.filter(a => a.category === "medium").length, color: colors.amber },
     { key: "low", label: "Baja", count: insights.filter(a => a.category === "low").length, color: colors.blue },
     { key: "review", label: "Sin gravedad", count: insights.filter(a => a.category === "review" && a.findings > 0).length, color: colors.violet }
   ];
-  const comparison = insights.filter(a => a.findings > 0).slice(0, 8);
   const findingRows = [
-    { label: "Corrosión", count: insights.filter(a => a.corrosion > 0).length, color: colors.amber },
-    { label: "Grietas", count: insights.filter(a => a.cracks > 0).length, color: colors.violet }
+    { label: "Corrosión", count: insights.filter(a => a.corrosion > 0).length, color: "#8b96a5" },
+    { label: "Grietas", count: insights.filter(a => a.cracks > 0).length, color: "#8b96a5" }
   ];
   const findingMax = Math.max(1, ...findingRows.map(row => row.count));
-  const severityColumns = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NOT_REPORTED"] as const;
   const severityMax = Math.max(1, ...severityRows.map(row => row.count));
   const changeFilter = (next: string) => setFilter(next);
   return <section className="plant-analysis" aria-label="Dashboard de análisis de planta">
     <div className="analysis-plots">
-      <section className="analysis-severity"><h3 title="Activos agrupados por su mayor gravedad informada en la última inspección.">Gravedad de los hallazgos</h3><div className="analysis-bars">{severityRows.map(row => <button type="button" key={row.key} onClick={() => changeFilter(row.key)} aria-label={`${row.label}: ${row.count} activos. Filtrar`} aria-pressed={filter === row.key}><span>{row.label}</span><span className="analysis-bar-track"><i style={{ width: `${row.count / severityMax * 100}%`, background: row.color }}/></span><strong>{row.count}</strong></button>)}</div></section>
+      <section className="analysis-severity"><h3 title="Activos agrupados por su mayor gravedad informada en la última inspección.">Gravedad de los hallazgos</h3><div className="analysis-bars">{severityRows.map(row => <div key={row.key} aria-label={`${row.label}: ${row.count} activos`}><span>{row.label}</span><span className="analysis-bar-track"><i style={{ width: `${row.count / severityMax * 100}%`, background: row.color }}/></span><strong>{row.count}</strong></div>)}</div></section>
       <section className="analysis-findings"><h3 title="Cantidad de activos afectados. Un activo puede presentar corrosión y grietas a la vez.">Tipos de hallazgo</h3><div className="analysis-bars analysis-finding-bars">{findingRows.map(row => <div key={row.label} aria-label={`${row.label}: ${row.count} activos`}><span>{row.label}</span><span className="analysis-bar-track"><i style={{ width: `${row.count / findingMax * 100}%`, background: row.color }}/></span><strong>{row.count}</strong></div>)}</div></section>
     </div>
-    {comparison.length > 0 && <section className="analysis-comparison"><header><h3 title="Hasta 8 activos con hallazgos, ordenados por prioridad. Cada marca indica su mayor gravedad informada.">Gravedad por activo</h3></header><div className="analysis-heatmap-scroll"><div className="analysis-heatmap"><div className="analysis-heatmap-heading"><span>Activo</span>{severityColumns.map(level => <span key={level}>{level === "NOT_REPORTED" ? "Sin gravedad" : severityLabels[level]}</span>)}</div>{comparison.map(a => <button key={a.asset.idAsset} type="button" aria-label={`Ver capturas de ${a.asset.name}: ${severityLabels[a.severity]}`} onClick={() => onCaptures(a.asset.idAsset)}><strong>{a.asset.name}{a.pending && <small>Provisional</small>}</strong>{severityColumns.map(level => <span key={level} className={a.severity === level ? "active" : ""} style={a.severity === level ? { background: colors[a.tone as keyof typeof colors] } : undefined}>{a.severity === level ? "●" : ""}</span>)}</button>)}</div></div></section>}
     <section className="analysis-priority">
-      <div className="analysis-table-toolbar"><div className="analysis-filters">{[{ key: "all", label: "Todos" }, { key: "attention", label: "Requieren atención" }, { key: "review", label: "Por revisar" }, { key: "unknown", label: "Sin información" }, { key: "clear", label: "Sin anomalías" }].map(item => <button key={item.key} type="button" className={filter === item.key ? "selected" : ""} aria-pressed={filter === item.key} onClick={() => changeFilter(item.key)}>{item.label}</button>)}</div></div>
+      <div className="analysis-table-toolbar"><div className="analysis-filters">{[{ key: "all", label: "Todos" }, { key: "SILO", label: "Silos" }, { key: "CELDA", label: "Celdas" }, { key: "SILO_FLOTANTE", label: "Flotantes" }, { key: "SECADORA", label: "Secadoras" }, { key: "NORIA", label: "Norias" }].map(item => <button key={item.key} type="button" className={filter === item.key ? "selected" : ""} aria-pressed={filter === item.key} onClick={() => changeFilter(item.key)}>{item.label}</button>)}</div></div>
       <div className="analysis-table-scroll"><table className="analysis-table analysis-asset-priority"><thead><tr><th>Activo</th><th>Anomalías</th><th>Gravedad</th></tr></thead><tbody>{visible.map(a => <tr key={a.asset.idAsset} onClick={() => onCaptures(a.asset.idAsset)}>
         <td><button type="button" className="analysis-asset-name" aria-label={`Ver capturas de ${a.asset.name}`} onClick={event => { event.stopPropagation(); onCaptures(a.asset.idAsset); }}><strong>{a.asset.name}</strong><small>{a.asset.code}</small></button></td>
         <td><div className="analysis-anomaly-tags">{a.corrosion > 0 && <span className="analysis-tag corrosion">Corrosión</span>}{a.cracks > 0 && <span className="analysis-tag crack">Grietas</span>}{!a.findings && <span className={`analysis-tag ${a.category === "clear" ? "clear" : a.pending ? "pending" : "unknown"}`} title={a.label}>{a.category === "clear" ? "Sin anomalías" : a.pending ? "Pendiente" : "Sin resultados"}</span>}</div></td>

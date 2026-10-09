@@ -72,6 +72,7 @@ export function Home({
   setUsers: Dispatch<SetStateAction<MockUser[]>>;
   setUser: Dispatch<SetStateAction<SessionUser | null>>;
 }) {
+  const [reportCaptureAssetId, setReportCaptureAssetId] = useState<number | null>(null);
   const [selectedPlant, setSelectedPlant] = useState(loadSelectedPlant);
   const isLujan = selectedPlant.id === LUJAN_PLANT.id;
   const assets = allAssets.filter(asset => asset.plantId === selectedPlant.id);
@@ -297,15 +298,15 @@ export function Home({
         ) : isReportDetailPath ? (
           <ReporteDetalleView onBack={() => navigateTo("/reportes")} />
         ) : isTemporaryAnalysisPath ? (
-          <Suspense fallback={<LoadingState text="Cargando herramienta manual..." compact />}><ManualAnalysisView onBack={() => navigateTo("/reportes")} /></Suspense>
+          <Suspense fallback={<LoadingState text="Cargando herramienta manual..." compact />}><ManualAnalysisView onBack={() => navigateTo("/reportes")} onViewReport={code=>{setSelectedReportCode(code);navigateTo("/reporte-detalle-real");}} /></Suspense>
         ) : isSavedReportPath ? (
-          <ReporteDetalleRealView reportCode={selectedReportCode} onBack={() => navigateTo("/reportes")} />
+          <ReporteDetalleRealView reportCode={selectedReportCode} onBack={() => {setReportCaptureAssetId(null);navigateTo("/reportes");}} onViewAsset={id=>{setReportCaptureAssetId(id);navigateTo("/reportes");}} />
         ) : isHelpPath ? (
           <CentroAyudaView />
         ) : isActivityPath ? (
           <ActividadRecienteView />
         ) : isReportsPath ? (
-          <div className="reports-route-shell"><TemporaryManualAnalysisShortcut onOpen={() => navigateTo("/analisis-manual")} /><ReportesView onViewReport={(code) => { setSelectedReportCode(code); navigateTo("/reporte-detalle-real"); }} /></div>
+          <div className="reports-route-shell"><TemporaryManualAnalysisShortcut onOpen={() => navigateTo("/analisis-manual")} /><ReportesView initialAssetId={reportCaptureAssetId} onViewReport={(code) => { setSelectedReportCode(code); navigateTo("/reporte-detalle-real"); }} /></div>
         ) : user.role === "Jefe de Planta" || user.role === "Técnico de Mantenimiento" ? (
           <InspectionHomeView
             navigateTo={navigateTo}

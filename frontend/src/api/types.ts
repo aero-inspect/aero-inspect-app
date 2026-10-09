@@ -291,7 +291,15 @@ export type BackendInspectionPhoto = {
   status: InspectionPhotoStatus;
   findings: string | null;
   analyzedAt: string | null;
+  corrosionSeverity?: BackendReport["severity"] | null;
+  crackSeverity?: BackendReport["severity"] | null;
+  validatorComments?: string | null;
+  discarded?: boolean;
+  reviewedAt?: string | null;
+  reviewerUsername?: string | null;
 };
+export type EvidenceReview = { idInspectionPhoto: string; corrosionSeverity: BackendReport["severity"] | null; crackSeverity: BackendReport["severity"] | null; comments: string; discarded?: boolean };
+export type ReportAsset = { idAsset: number; assetName: string; severity: BackendReport["severity"]; findingsCount: number; corrosionFindingsCount: number; crackFindingsCount: number; photos: BackendInspectionPhoto[] };
 
 export type BackendReportStatus = "PROCESSING" | "PENDING_VALIDATION" | "VALIDATED" | "REJECTED";
 
@@ -301,7 +309,7 @@ export type BackendReport = {
   title: string;
   idMission: string;
   missionName: string;
-  idAsset: number;
+  idAsset: number | null;
   assetName: string;
   createdAt: string;
   updatedAt: string;
@@ -314,4 +322,8 @@ export type BackendReport = {
   corrosionFindingsCount?: number;
   crackFindingsCount?: number;
   photos: BackendInspectionPhoto[];
+  assets?: ReportAsset[];
 };
+
+export type CustomReport = { idCustomReport: string; code: string; title: string; plantId: string; fromDate: string; toDate: string; createdAt: string; assetIds: number[]; assetNames: string[]; evidenceCount: number; findingsCount: number; severity: BackendReport["severity"]; status: "VALIDATED" };
+export type CreateCustomReport = { plantId: string; assetIds: number[]; fromDate: string; toDate: string; title: string };

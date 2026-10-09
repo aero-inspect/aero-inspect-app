@@ -21,20 +21,20 @@ export type PhotoAnalysis = {
   isAnalyzing: boolean;
 };
 
-export function PhotoResultCard({ canRemove, index, onRemove, photo, assignment }: { canRemove: boolean; index: number; onRemove: () => void; photo: PhotoAnalysis; assignment?: ReactNode }) {
+export function PhotoResultCard({ canRemove, index, onRemove, photo, assignment, hideSeverity = false }: { canRemove: boolean; index: number; onRemove: () => void; photo: PhotoAnalysis; assignment?: ReactNode; hideSeverity?: boolean }) {
   const findings = parseFindings(photo.analysis?.findings);
   const report = findings?.corrosion ?? null;
   const severity = findings?.severity ?? null;
   const crack = findings?.crack ?? null;
   const result = report ? getResult(report, severity) : null;
   const crackResult = crack ? getCrackResult(crack) : null;
-  const overlayUrl = photo.analysis?.analyzedImageUrl ?? null;
-  const crackOverlayUrl = crack?.overlay_url ?? null;
+  const overlayUrl = report?.status === "corrosion_candidate_detected" ? photo.analysis?.analyzedImageUrl ?? null : null;
+  const crackOverlayUrl = crack?.status === "crack_candidate_detected" ? crack.overlay_url ?? null : null;
   const imageCount = 1 + (overlayUrl ? 1 : 0) + (crackOverlayUrl ? 1 : 0);
 
   return (
     <section className="real-report-photo-card">
-      <header className="real-report-photo-header">
+      {canRemove && <header className="real-report-photo-header">
         <img alt={`Evidencia ${index + 1}`} src={photo.previewUrl} />
         <div>
           <span>Evidencia {index + 1}</span>
@@ -42,7 +42,7 @@ export function PhotoResultCard({ canRemove, index, onRemove, photo, assignment 
           <small>{photo.file ? formatFileSize(photo.file.size) : new Date(photo.photoDate.value).toLocaleString("es-AR")}</small>
         </div>
         {canRemove && <button aria-label={`Quitar imagen ${index + 1}`} onClick={onRemove} type="button"><X size={18} /></button>}
-      </header>
+      </header>}
 
       {assignment}
       {photo.isAnalyzing && <p className="real-report-photo-progress"><LoaderCircle className="real-report-spinner" size={18} /> Procesando esta imagen...</p>}
@@ -50,7 +50,7 @@ export function PhotoResultCard({ canRemove, index, onRemove, photo, assignment 
 
       {photo.analysis && report && result && (
         <div className="real-report-result" aria-live="polite">
-          <div className={`real-report-images${imageCount === 3 ? " three" : ""}`}>
+          <div className={`real-report-images${imageCount === 3 ? " three" : imageCount === 1 ? " single" : ""}`}>
             <figure>
               <img alt={`Imagen original ${index + 1}`} src={photo.previewUrl} />
               <figcaption>Imagen original</figcaption>
@@ -72,12 +72,13 @@ export function PhotoResultCard({ canRemove, index, onRemove, photo, assignment 
           {crackResult && <div className={`real-report-result-badge ${crackResult.tone}`}>{crackResult.label}</div>}
           <dl className="real-report-result-data">
             <div><dt>Tipo de anomalia</dt><dd>{getAnomalyType(report, crack)}</dd></div>
-            <div><dt>Fecha de la foto</dt><dd><CalendarDays size={15} /> {photo.photoDate.value} <small>({photo.photoDate.source === "captura" ? "metadato de captura" : "fecha del archivo"})</small></dd></div>
+            <div><dt>Fecha de la foto</dt><dd><CalendarDays size={15} /> {/^\d{4}-\d{2}-/.test(photo.photoDate.value) ? new Date(photo.photoDate.value).toLocaleString("es-AR") : photo.photoDate.value} <small>({photo.photoDate.source === "captura" ? "metadato de captura" : "fecha del archivo"})</small></dd></div>
             <div><dt>Área con corrosión</dt><dd>{formatPercent(report.detected_area_percent)}</dd></div>
             {crack && <div><dt>Área con fisuras</dt><dd>{formatPercent(crack.detected_area_percent)}</dd></div>}
-            <div><dt>Severidad estimada</dt><dd><span className={`real-report-severity ${severityTone(severity)}`}>{getSeverityLabel(severity)}</span></dd></div>
-            <div><dt>Descripción del resultado</dt><dd>{result.description}</dd></div>
-            {crackResult && <div><dt>Resultado de fisuras</dt><dd>{crackResult.description}</dd></div>}
+            {!hideSeverity && report.status === "corrosion_candidate_detected" && <div><dt>Gravedad de corrosión</dt><dd><span className={`real-report-severity ${severityTone(severity)}`} data-severity={photo.analysis?.corrosionSeverity??({baja:"LOW",media:"MEDIUM",alta:"HIGH",sin_corrosion:"NOT_REPORTED"}[severity?.predicted_severity??"sin_corrosion"])}>{photo.analysis?.corrosionSeverity ? getBackendSeverityLabel(photo.analysis.corrosionSeverity) : getSeverityLabel(severity)}</span></dd></div>}
+            {!hideSeverity && crack?.status === "crack_candidate_detected" && <div><dt>Gravedad de grietas</dt><dd><span className="real-report-severity" data-severity={photo.analysis?.crackSeverity??"NOT_REPORTED"}>{photo.analysis?.crackSeverity ? getBackendSeverityLabel(photo.analysis.crackSeverity) : "Sin determinar"}</span></dd></div>}
+            <div><dt>Descripción del resultado</dt><dd>{[result.description, crackResult?.description].filter(Boolean).join(" ")}</dd></div>
+
           </dl>
         </div>
       )}
@@ -166,7 +167,7 @@ function parseFindings(findings: string | null | undefined): AiAnalysisFindings 
 }
 
 function getSeverityLabel(severity: AiSeverityReport | null) {
-  if (!severity || severity.predicted_severity === "sin_corrosion") return "No aplica";
+  if (!severity || severity.predicted_severity === "sin_corrosion") return "Sin determinar";
   return { baja: "Baja", media: "Media", alta: "Alta" }[severity.predicted_severity];
 }
 
@@ -175,7 +176,7 @@ function severityTone(severity: AiSeverityReport | null) {
 }
 
 export function getBackendSeverityLabel(severity: BackendReport["severity"]) {
-  return { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica", NOT_REPORTED: "No informada" }[severity];
+  return { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica", NOT_REPORTED: "Sin determinar" }[severity];
 }
 
 
