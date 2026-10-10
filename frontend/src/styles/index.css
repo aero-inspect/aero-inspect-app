@@ -17,6 +17,7 @@
 @import "./components/shared-tables.css";
 @import "./pages/mis-activos.css";
 @import "./pages/reportes.css";
+@import "./pages/reportes-workspace.css";
 @import "./pages/crear-reporte.css";
 @import "./pages/reporte-detalle.css";
 @import "./pages/reporte-detalle-real.css";
@@ -179,4 +180,3 @@
   border-radius: 50%;
   background: transparent;
 }
-

@@ -18,7 +18,7 @@ import { LUJAN_DRONE_BASE, LUJAN_DRONE_SCALE, lujanPlaybackReference } from "./l
 type View = "perspective" | "top" | "patio" | "entrance" | "service";
 
 type Location = { latitude: string; longitude: string };
-export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters, onViewAsset, focusedAssetCode, assetSelection, playback}: {
+export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters, onViewAsset, focusedAssetCode, assetSelection, playback, inspectionStates}: {
   onSelect?: (location: Location) => void;
   selectedLocation?: Location;
   assets?: BackendAsset[];
@@ -27,16 +27,17 @@ export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters,
   focusedAssetCode?: string | null;
   assetSelection?: AssetSelectionData;
   playback?: MissionPlaybackData;
+  inspectionStates?: import("./BragadoPlant3DMap").InspectionMapStates;
 } = {}) {
   const playbackRef=useRef(playback);playbackRef.current=playback;
   const playbackController=useRef<ReturnType<typeof createMissionPlayback>|null>(null);
   const [following,setFollowing]=useState(false);
   useEffect(()=>{if(playback)playbackController.current?.update(playback);},[playback]);
   useEffect(()=>{setFollowing(false);playbackController.current?.setFollowing(false);},[playback?.id]);
-  const assetProps=useRef({assets,filters,onViewAsset,focusedAssetCode,assetSelection});
-  assetProps.current={assets,filters,onViewAsset,focusedAssetCode,assetSelection};
+  const assetProps=useRef({assets,filters,onViewAsset,focusedAssetCode,assetSelection,inspectionStates});
+  assetProps.current={assets,filters,onViewAsset,focusedAssetCode,assetSelection,inspectionStates};
   const updateAssets=useRef<() => void>(()=>{});
-  useEffect(()=>{updateAssets.current();},[assets,filters,onViewAsset,focusedAssetCode,assetSelection]);
+  useEffect(()=>{updateAssets.current();},[assets,filters,onViewAsset,focusedAssetCode,assetSelection,inspectionStates]);
   const selectRef = useRef(onSelect);
   selectRef.current = onSelect;
   const locationRef = useRef(selectedLocation);
@@ -136,7 +137,7 @@ export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters,
     root.traverse(object=>{if(object instanceof THREE.Mesh) pickable.push(object);});
     const raycaster=new THREE.Raycaster();
     const assetLayer=new THREE.Group();scene.add(assetLayer);
-    let assetLabels:Array<{position:THREE.Vector3;element:HTMLButtonElement;assetId:number}>=[];
+    let assetLabels:Array<{position:THREE.Vector3;element:HTMLButtonElement;assetId:number;persistent:boolean}>=[];
     let hoveredId:number|null=null;
     let hoverPointer:THREE.Vector2|null=null;
     const hoverHighlight=new THREE.Group();scene.add(hoverHighlight);
@@ -183,7 +184,13 @@ export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters,
         element.textContent=asset.name;element.title=`${asset.name} · Banqueta`;element.setAttribute("aria-label",`Ver ${asset.name} en el mapa`);
         element.disabled=!!selectRef.current || !!props.assetSelection?.disabledIds?.includes(asset.idAsset);
         element.onclick=()=>viewAsset(asset.idAsset);host.appendChild(element);
-        assetLabels.push({position:new THREE.Vector3(x,y+.65,z),element,assetId:asset.idAsset});
+        const state=props.inspectionStates?.[asset.idAsset];
+        if(state) {
+          element.className="report-map-marker";element.textContent="!";
+          element.style.backgroundColor=state.color;
+          element.title=`${asset.name}: ${state.label}`;element.setAttribute("aria-label",element.title);
+        }
+        assetLabels.push({position:new THREE.Vector3(x,y+.65,z),element,assetId:asset.idAsset,persistent:Boolean(state)});
         if(asset.code===props.focusedAssetCode && lastFocused!==props.focusedAssetCode) {
           controls.target.set(x,y+.2,z);camera.position.set(x+2.5,y+2.3,z+3.2);controls.update();
         }
@@ -262,7 +269,7 @@ export function LujanPlant3DMap({onSelect, selectedLocation, assets=[], filters,
       renderer.render(scene,camera);
       if(compass.current) compass.current.style.transform=`rotate(${Math.atan2(camera.position.x-controls.target.x,camera.position.z-controls.target.z)*180/Math.PI}deg)`;
       [...labels,...assetLabels].forEach(label => { const {position,element}=label; const p=position.clone().project(camera);
-        const hiddenAsset="assetId" in label && label.assetId!==hoveredId;
+        const hiddenAsset="assetId" in label && !label.persistent && label.assetId!==hoveredId;
         element.style.display = hiddenAsset || p.z < -1 || p.z>1 || Math.abs(p.x)>1 || Math.abs(p.y)>1 ? "none" : "block";
         element.style.left=`${(p.x+1)*50}%`; element.style.top=`${(1-p.y)*50}%`;
       });

@@ -1,4 +1,4 @@
-﻿import { Fragment, useEffect, useMemo, useState } from "react";
+﻿import { Fragment, Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, ChevronLeft, ChevronRight, UsersRound } from "lucide-react";
 import type { CSSProperties, Dispatch, SetStateAction } from "react";
 import type { MockUser, InspectionMission, Asset, Plant, SessionUser } from "../types";
@@ -23,6 +23,7 @@ import { MonitorMissionView } from "./MonitorMission";
 import { ReportesView } from "./ReportesConnected";
 import { CrearReporteView } from "./CrearReporte";
 import { ReporteDetalleView } from "./ReporteDetalle";
+import { TemporaryManualAnalysisShortcut } from "../components/TemporaryManualAnalysisShortcut";
 import { ReporteDetalleRealView } from "./ReporteDetalleReal";
 import { CentroAyudaView } from "./CentroAyuda";
 import { ActividadRecienteView } from "./ActividadReciente";
@@ -35,6 +36,8 @@ import { PlantContext } from "../data/PlantContext";
 import { ActivityProvider } from "../data/ActivityContext";
 import { setApiPlant } from "../api/client";
 
+
+const ManualAnalysisView = lazy(() => import("./ManualAnalysis").then(module => ({ default: module.ManualAnalysisView })));
 
 export function Home({
   currentPath,
@@ -69,6 +72,7 @@ export function Home({
   setUsers: Dispatch<SetStateAction<MockUser[]>>;
   setUser: Dispatch<SetStateAction<SessionUser | null>>;
 }) {
+  const [reportCaptureAssetId, setReportCaptureAssetId] = useState<number | null>(null);
   const [selectedPlant, setSelectedPlant] = useState(loadSelectedPlant);
   const isLujan = selectedPlant.id === LUJAN_PLANT.id;
   const assets = allAssets.filter(asset => asset.plantId === selectedPlant.id);
@@ -88,7 +92,9 @@ export function Home({
   const isReportsPath = currentPath === "/reportes";
   const isCreateReportPath = currentPath === "/crear-reporte";
   const isReportDetailPath = currentPath === "/reporte-detalle";
-  const isReportDetailRealPath = currentPath === "/reporte-detalle-real";
+  const isSavedReportPath = currentPath === "/reporte-detalle-real";
+  const isTemporaryAnalysisPath = currentPath === "/analisis-manual";
+  const isReportDetailRealPath = isSavedReportPath || isTemporaryAnalysisPath;
   const isHelpPath = currentPath === "/centro-ayuda";
   const isActivityPath = currentPath === "/actividad-reciente";
   const isPruebaTelemetriaPath = currentPath === "/prueba-telemetria";
@@ -291,14 +297,16 @@ export function Home({
           <CrearReporteView onBack={() => navigateTo("/reportes")} />
         ) : isReportDetailPath ? (
           <ReporteDetalleView onBack={() => navigateTo("/reportes")} />
-        ) : isReportDetailRealPath ? (
-          <ReporteDetalleRealView reportCode={selectedReportCode} onBack={() => navigateTo("/reportes")} />
+        ) : isTemporaryAnalysisPath ? (
+          <Suspense fallback={<LoadingState text="Cargando herramienta manual..." compact />}><ManualAnalysisView onBack={() => navigateTo("/reportes")} onViewReport={code=>{setSelectedReportCode(code);navigateTo("/reporte-detalle-real");}} /></Suspense>
+        ) : isSavedReportPath ? (
+          <ReporteDetalleRealView reportCode={selectedReportCode} onBack={() => {setReportCaptureAssetId(null);navigateTo("/reportes");}} onViewAsset={id=>{setReportCaptureAssetId(id);navigateTo("/reportes");}} />
         ) : isHelpPath ? (
           <CentroAyudaView />
         ) : isActivityPath ? (
           <ActividadRecienteView />
         ) : isReportsPath ? (
-          <ReportesView onRunAi={() => { setSelectedReportCode(null); navigateTo("/reporte-detalle-real"); }} onViewReport={(code) => { setSelectedReportCode(code); navigateTo("/reporte-detalle-real"); }} />
+          <div className="reports-route-shell"><TemporaryManualAnalysisShortcut onOpen={() => navigateTo("/analisis-manual")} /><ReportesView initialAssetId={reportCaptureAssetId} onViewReport={(code) => { setSelectedReportCode(code); navigateTo("/reporte-detalle-real"); }} /></div>
         ) : user.role === "Jefe de Planta" || user.role === "Técnico de Mantenimiento" ? (
           <InspectionHomeView
             navigateTo={navigateTo}
