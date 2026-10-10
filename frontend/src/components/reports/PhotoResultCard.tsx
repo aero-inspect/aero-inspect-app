@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { CalendarDays, LoaderCircle, X } from "lucide-react";
-import type { AiAnalysisFindings, AiCorrosionReport, AiCrackReport, AiSeverityReport, BackendInspectionPhoto, BackendReport } from "../../api/types";
+import type { AiAnalysisFindings, AiCorrosionReport, AiCrackReport, AiDeformationReport, AiSeverityReport, BackendInspectionPhoto, BackendReport } from "../../api/types";
 const CORROSION_AREA_THRESHOLD = 70;
 
 export type ReportState = "pending" | "validated" | "discarded";
@@ -26,11 +26,14 @@ export function PhotoResultCard({ canRemove, index, onRemove, photo, assignment,
   const report = findings?.corrosion ?? null;
   const severity = findings?.severity ?? null;
   const crack = findings?.crack ?? null;
+  const deformation = findings?.deformation ?? null;
   const result = report ? getResult(report, severity) : null;
   const crackResult = crack ? getCrackResult(crack) : null;
+  const deformationResult = deformation ? getDeformationResult(deformation) : null;
   const overlayUrl = report?.status === "corrosion_candidate_detected" ? photo.analysis?.analyzedImageUrl ?? null : null;
   const crackOverlayUrl = crack?.status === "crack_candidate_detected" ? crack.overlay_url ?? null : null;
-  const imageCount = 1 + (overlayUrl ? 1 : 0) + (crackOverlayUrl ? 1 : 0);
+  const deformationOverlayUrl = deformation?.status === "deformation_candidate_detected" ? deformation.overlay_url ?? null : null;
+  const imageCount = 1 + (overlayUrl ? 1 : 0) + (crackOverlayUrl ? 1 : 0) + (deformationOverlayUrl ? 1 : 0);
 
   return (
     <section className="real-report-photo-card">
@@ -67,17 +70,26 @@ export function PhotoResultCard({ canRemove, index, onRemove, photo, assignment,
                 <figcaption>Fisuras resaltadas</figcaption>
               </figure>
             )}
+            {deformationOverlayUrl && (
+              <figure>
+                <img alt={`Deformaciones resaltadas en evidencia ${index + 1}`} src={deformationOverlayUrl} />
+                <figcaption>Deformaciones resaltadas</figcaption>
+              </figure>
+            )}
           </div>
           <div className={`real-report-result-badge ${result.tone}`}>{result.label}</div>
           {crackResult && <div className={`real-report-result-badge ${crackResult.tone}`}>{crackResult.label}</div>}
+          {deformationResult && <div className={`real-report-result-badge ${deformationResult.tone}`}>{deformationResult.label}</div>}
           <dl className="real-report-result-data">
-            <div><dt>Tipo de anomalia</dt><dd>{getAnomalyType(report, crack)}</dd></div>
+            <div><dt>Tipo de anomalia</dt><dd>{getAnomalyType(report, crack, deformation)}</dd></div>
             <div><dt>Fecha de la foto</dt><dd><CalendarDays size={15} /> {/^\d{4}-\d{2}-/.test(photo.photoDate.value) ? new Date(photo.photoDate.value).toLocaleString("es-AR") : photo.photoDate.value} <small>({photo.photoDate.source === "captura" ? "metadato de captura" : "fecha del archivo"})</small></dd></div>
             <div><dt>Área con corrosión</dt><dd>{formatPercent(report.detected_area_percent)}</dd></div>
             {crack && <div><dt>Área con fisuras</dt><dd>{formatPercent(crack.detected_area_percent)}</dd></div>}
+            {deformation && <div><dt>Área con deformaciones</dt><dd>{formatPercent(deformation.detected_area_percent)}</dd></div>}
             {!hideSeverity && report.status === "corrosion_candidate_detected" && <div><dt>Gravedad de corrosión</dt><dd><span className={`real-report-severity ${severityTone(severity)}`} data-severity={photo.analysis?.corrosionSeverity??({baja:"LOW",media:"MEDIUM",alta:"HIGH",sin_corrosion:"NOT_REPORTED"}[severity?.predicted_severity??"sin_corrosion"])}>{photo.analysis?.corrosionSeverity ? getBackendSeverityLabel(photo.analysis.corrosionSeverity) : getSeverityLabel(severity)}</span></dd></div>}
             {!hideSeverity && crack?.status === "crack_candidate_detected" && <div><dt>Gravedad de grietas</dt><dd><span className="real-report-severity" data-severity={photo.analysis?.crackSeverity??"NOT_REPORTED"}>{photo.analysis?.crackSeverity ? getBackendSeverityLabel(photo.analysis.crackSeverity) : "Sin determinar"}</span></dd></div>}
-            <div><dt>Descripción del resultado</dt><dd>{[result.description, crackResult?.description].filter(Boolean).join(" ")}</dd></div>
+            {!hideSeverity && deformation?.status === "deformation_candidate_detected" && <div><dt>Gravedad de deformación</dt><dd><span className="real-report-severity" data-severity={photo.analysis?.deformationSeverity??"NOT_REPORTED"}>{photo.analysis?.deformationSeverity ? getBackendSeverityLabel(photo.analysis.deformationSeverity) : "Sin determinar"}</span></dd></div>}
+            <div><dt>Descripción del resultado</dt><dd>{[result.description, crackResult?.description, deformationResult?.description].filter(Boolean).join(" ")}</dd></div>
 
           </dl>
         </div>
@@ -137,13 +149,27 @@ function getCrackResult(crack: AiCrackReport) {
   };
 }
 
-function getAnomalyType(report: AiCorrosionReport, crack: AiCrackReport | null) {
-  const corrosion = report.status === "corrosion_candidate_detected";
-  const fissure = crack?.status === "crack_candidate_detected";
-  if (corrosion && fissure) return "Corrosion y fisura";
-  if (corrosion) return "Corrosion";
-  if (fissure) return "Fisura";
-  return "Sin anomalias";
+function getDeformationResult(deformation: AiDeformationReport) {
+  if (deformation.status === "deformation_candidate_detected") {
+    return {
+      label: "DEFORMACIÓN DETECTADA - REQUIERE REVISION",
+      tone: "review",
+      description: "El modelo detecto zonas compatibles con deformaciones en metal. Validar en campo: reflejos, sombras o irregularidades de soldadura pueden generar falsas alarmas."
+    };
+  }
+  return {
+    label: "SIN DEFORMACIONES DETECTADAS",
+    tone: "clear",
+    description: "El modelo no detecto deformaciones visibles en esta imagen."
+  };
+}
+
+function getAnomalyType(report: AiCorrosionReport, crack: AiCrackReport | null, deformation?: AiDeformationReport | null) {
+  const parts: string[] = [];
+  if (report.status === "corrosion_candidate_detected") parts.push("Corrosion");
+  if (crack?.status === "crack_candidate_detected") parts.push("Fisura");
+  if (deformation?.status === "deformation_candidate_detected") parts.push("Deformacion");
+  return parts.length > 0 ? parts.join(", ") : "Sin anomalias";
 }
 
 function formatPercent(value: unknown) {
@@ -157,9 +183,9 @@ function parseFindings(findings: string | null | undefined): AiAnalysisFindings 
     if (!parsed || typeof parsed !== "object") return null;
     if ("corrosion" in parsed) {
       const wrapped = parsed as AiAnalysisFindings;
-      return { ...wrapped, severity: wrapped.severity ?? null, crack: wrapped.crack ?? null };
+      return { ...wrapped, severity: wrapped.severity ?? null, crack: wrapped.crack ?? null, deformation: wrapped.deformation ?? null };
     }
-    if ("status" in parsed) return { corrosion: parsed as AiCorrosionReport, severity: null, crack: null };
+    if ("status" in parsed) return { corrosion: parsed as AiCorrosionReport, severity: null, crack: null, deformation: null };
     return null;
   } catch {
     return null;

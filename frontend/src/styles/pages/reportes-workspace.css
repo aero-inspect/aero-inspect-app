@@ -158,7 +158,7 @@
 .analysis-asset-name:focus-visible { outline: 2px solid #608bbd; outline-offset: 5px; border-radius: 2px; }
 .analysis-anomaly-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .analysis-tag, .analysis-gravity { display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 650; }
-.analysis-tag.corrosion { background: #fff0ce; color: #97600c; }.analysis-tag.crack { background: #eee2ff; color: #7043a7; }.analysis-tag.clear { background: #dff4e7; color: #1e7850; }.analysis-tag.pending { background: #eee2ff; color: #7043a7; }.analysis-tag.unknown { background: #eef2f7; color: #7a8799; }
+.analysis-tag.corrosion { background: #fff0ce; color: #97600c; }.analysis-tag.crack { background: #eee2ff; color: #7043a7; }.analysis-tag.deformation { background: #f5e0f5; color: #8b008b; }.analysis-tag.clear { background: #dff4e7; color: #1e7850; }.analysis-tag.pending { background: #eee2ff; color: #7043a7; }.analysis-tag.unknown { background: #eef2f7; color: #7a8799; }
 .analysis-gravity.critical { background: #8e2438; color: white; }.analysis-gravity.red { background: #ffe0e5; color: #ae243a; }.analysis-gravity.amber { background: #ffedc1; color: #966008; }.analysis-gravity.blue { background: #dfebff; color: #315da0; }.analysis-gravity.violet { background: #eee2ff; color: #7043a7; }.analysis-gravity.green { background: #dff4e7; color: #1e7850; }.analysis-gravity.gray { background: #eef2f7; color: #7a8799; }
 .analysis-severity .analysis-bars > div { grid-template-columns: 92px minmax(40px, 1fr) 20px; }
 .analysis-plots { grid-template-columns: 1fr 1fr; }
@@ -241,7 +241,7 @@
 .capture-area-section header > span { display: block; font-size: 11px; color: #7b8ba0; margin-top: 6px; }
 .capture-area-legend { display: flex; gap: 16px; margin: 13px 0; font-size: 11px; color: #677e98; }
 .capture-area-legend > span { display: flex; align-items: center; gap: 6px; }
-.capture-analytics .corrosion { background: #ba7b17; }.capture-analytics .crack { background: #8062b0; }
+.capture-analytics .corrosion { background: #ba7b17; }.capture-analytics .crack { background: #8062b0; }.capture-analytics .deformation { background: #c800c8; }
 .capture-area-scroll { max-height: 260px; overflow-y: auto; }
 .capture-area-row { display: grid; grid-template-columns: 95px minmax(0, 1fr); align-items: center; width: 100%; padding: 9px 8px; gap: 14px; border: 0; border-radius: 7px; background: transparent; text-align: left; cursor: pointer; color: #35527a; }
 .capture-area-row:hover, .capture-area-row.selected { background: #f0f5fc; }

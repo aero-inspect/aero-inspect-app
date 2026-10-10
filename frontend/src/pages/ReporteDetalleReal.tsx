@@ -19,7 +19,7 @@ export function ReporteDetalleRealView({ onBack, reportCode, onViewAsset }: {
  const [dirty,setDirty]=useState(false);
  const apply=(next:BackendReport)=>{
   setDirty(false);setReport(next);setSignature(next.validatorSignature??"");
-  setReviews(Object.fromEntries(next.photos.map(p=>[p.idInspectionPhoto,{idInspectionPhoto:p.idInspectionPhoto,corrosionSeverity:p.corrosionSeverity??null,crackSeverity:p.crackSeverity??null,comments:p.validatorComments??"",discarded:p.discarded??false}])));
+  setReviews(Object.fromEntries(next.photos.map(p=>[p.idInspectionPhoto,{idInspectionPhoto:p.idInspectionPhoto,corrosionSeverity:p.corrosionSeverity??null,crackSeverity:p.crackSeverity??null,deformationSeverity:p.deformationSeverity??null,comments:p.validatorComments??"",discarded:p.discarded??false}])));
  };
  useEffect(()=>{
   let cancelled=false;setLoading(true);setError("");setReport(null);setSaved("");
@@ -62,6 +62,7 @@ export function ReporteDetalleRealView({ onBack, reportCode, onViewAsset }: {
    <div className="evidence-gravity-fields">
     {f.corrosion && <label><span>Gravedad de corrosión</span><SeverityDropdown label={`Gravedad de corrosión de evidencia ${report!.photos.findIndex(p=>p.idInspectionPhoto===photo.idInspectionPhoto)+1}`} disabled={saving||Boolean(review.discarded)||photo.status!=="ANALYZED"} value={review.corrosionSeverity??f.severity} onChange={value=>update(photo.idInspectionPhoto,{corrosionSeverity:value})}/></label>}
     {f.crack && <label><span>Gravedad de grietas</span><SeverityDropdown label={`Gravedad de grietas de evidencia ${report!.photos.findIndex(p=>p.idInspectionPhoto===photo.idInspectionPhoto)+1}`} disabled={saving||Boolean(review.discarded)||photo.status!=="ANALYZED"} value={review.crackSeverity??"NOT_REPORTED"} onChange={value=>update(photo.idInspectionPhoto,{crackSeverity:value})}/></label>}
+    {f.deformation && <label><span>Gravedad de deformación</span><SeverityDropdown label={`Gravedad de deformación de evidencia ${report!.photos.findIndex(p=>p.idInspectionPhoto===photo.idInspectionPhoto)+1}`} disabled={saving||Boolean(review.discarded)||photo.status!=="ANALYZED"} value={review.deformationSeverity??"NOT_REPORTED"} onChange={value=>update(photo.idInspectionPhoto,{deformationSeverity:value})}/></label>}
    </div>
    <label><span>Comentario del validador <small>(opcional)</small></span><textarea aria-label={`Comentario de evidencia ${report!.photos.findIndex(p=>p.idInspectionPhoto===photo.idInspectionPhoto)+1}`} maxLength={4000} rows={2} disabled={closed||saving} placeholder="Observaciones sobre esta evidencia…" value={review.comments} onChange={e=>update(photo.idInspectionPhoto,{comments:e.target.value})}/></label>
   </div>;

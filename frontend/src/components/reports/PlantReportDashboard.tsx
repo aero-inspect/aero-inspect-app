@@ -18,7 +18,8 @@ export function PlantReportDashboard({ assets, reports, onCaptures }: {
   ];
   const findingRows = [
     { label: "Corrosión", count: insights.filter(a => a.corrosion > 0).length, color: "#8b96a5" },
-    { label: "Grietas", count: insights.filter(a => a.cracks > 0).length, color: "#8b96a5" }
+    { label: "Grietas", count: insights.filter(a => a.cracks > 0).length, color: "#8b96a5" },
+    { label: "Deformaciones", count: insights.filter(a => a.deformations > 0).length, color: "#8b96a5" }
   ];
   const findingMax = Math.max(1, ...findingRows.map(row => row.count));
   const severityMax = Math.max(1, ...severityRows.map(row => row.count));
@@ -32,7 +33,7 @@ export function PlantReportDashboard({ assets, reports, onCaptures }: {
       <div className="analysis-table-toolbar"><div className="analysis-filters">{[{ key: "all", label: "Todos" }, { key: "SILO", label: "Silos" }, { key: "CELDA", label: "Celdas" }, { key: "SILO_FLOTANTE", label: "Flotantes" }, { key: "SECADORA", label: "Secadoras" }, { key: "NORIA", label: "Norias" }].map(item => <button key={item.key} type="button" className={filter === item.key ? "selected" : ""} aria-pressed={filter === item.key} onClick={() => changeFilter(item.key)}>{item.label}</button>)}</div></div>
       <div className="analysis-table-scroll"><table className="analysis-table analysis-asset-priority"><thead><tr><th>Activo</th><th>Anomalías</th><th>Gravedad</th></tr></thead><tbody>{visible.map(a => <tr key={a.asset.idAsset} onClick={() => onCaptures(a.asset.idAsset)}>
         <td><button type="button" className="analysis-asset-name" aria-label={`Ver capturas de ${a.asset.name}`} onClick={event => { event.stopPropagation(); onCaptures(a.asset.idAsset); }}><strong>{a.asset.name}</strong><small>{a.asset.code}</small></button></td>
-        <td><div className="analysis-anomaly-tags">{a.corrosion > 0 && <span className="analysis-tag corrosion">Corrosión</span>}{a.cracks > 0 && <span className="analysis-tag crack">Grietas</span>}{!a.findings && <span className={`analysis-tag ${a.category === "clear" ? "clear" : a.pending ? "pending" : "unknown"}`} title={a.label}>{a.category === "clear" ? "Sin anomalías" : a.pending ? "Pendiente" : "Sin resultados"}</span>}</div></td>
+        <td><div className="analysis-anomaly-tags">{a.corrosion > 0 && <span className="analysis-tag corrosion">Corrosión</span>}{a.cracks > 0 && <span className="analysis-tag crack">Grietas</span>}{a.deformations > 0 && <span className="analysis-tag deformation">Deformaciones</span>}{!a.findings && <span className={`analysis-tag ${a.category === "clear" ? "clear" : a.pending ? "pending" : "unknown"}`} title={a.label}>{a.category === "clear" ? "Sin anomalías" : a.pending ? "Pendiente" : "Sin resultados"}</span>}</div></td>
         <td><span className={`analysis-gravity ${a.severity === "CRITICAL" ? "critical" : a.tone}`} title={a.label}>{a.severity !== "NOT_REPORTED" && a.findings > 0 ? severityLabels[a.severity] : a.category === "clear" ? "No aplica" : "Sin determinar"}</span>{a.pending && a.findings > 0 && <small className="analysis-provisional">Provisional</small>}</td>
       </tr>)}</tbody></table>{!visible.length && <p className="analysis-empty">Sin activos en este filtro.</p>}</div>
     </section>

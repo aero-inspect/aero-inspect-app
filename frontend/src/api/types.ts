@@ -267,11 +267,20 @@ export type AiCrackReport = {
   warning?: string;
 };
 
+export type AiDeformationReport = {
+  status: "deformation_candidate_detected" | "no_deformation_detected";
+  detected_area_percent: number;
+  model_score_max?: number;
+  overlay_url?: string | null;
+  warning?: string;
+};
+
 export type AiAnalysisFindings = {
   schema_version?: "2.0" | "2.1";
   corrosion: AiCorrosionReport;
   severity?: AiSeverityReport | null;
   crack?: AiCrackReport | null;
+  deformation?: AiDeformationReport | null;
 };
 
 export type InspectionPhotoStatus =
@@ -293,13 +302,14 @@ export type BackendInspectionPhoto = {
   analyzedAt: string | null;
   corrosionSeverity?: BackendReport["severity"] | null;
   crackSeverity?: BackendReport["severity"] | null;
+  deformationSeverity?: BackendReport["severity"] | null;
   validatorComments?: string | null;
   discarded?: boolean;
   reviewedAt?: string | null;
   reviewerUsername?: string | null;
 };
-export type EvidenceReview = { idInspectionPhoto: string; corrosionSeverity: BackendReport["severity"] | null; crackSeverity: BackendReport["severity"] | null; comments: string; discarded?: boolean };
-export type ReportAsset = { idAsset: number; assetName: string; severity: BackendReport["severity"]; findingsCount: number; corrosionFindingsCount: number; crackFindingsCount: number; photos: BackendInspectionPhoto[] };
+export type EvidenceReview = { idInspectionPhoto: string; corrosionSeverity: BackendReport["severity"] | null; crackSeverity: BackendReport["severity"] | null; deformationSeverity: BackendReport["severity"] | null; comments: string; discarded?: boolean };
+export type ReportAsset = { idAsset: number; assetName: string; severity: BackendReport["severity"]; findingsCount: number; corrosionFindingsCount: number; crackFindingsCount: number; deformationFindingsCount: number; photos: BackendInspectionPhoto[] };
 
 export type BackendReportStatus = "PROCESSING" | "PENDING_VALIDATION" | "VALIDATED" | "REJECTED";
 
@@ -321,6 +331,7 @@ export type BackendReport = {
   findingsCount: number;
   corrosionFindingsCount?: number;
   crackFindingsCount?: number;
+  deformationFindingsCount?: number;
   photos: BackendInspectionPhoto[];
   assets?: ReportAsset[];
 };
