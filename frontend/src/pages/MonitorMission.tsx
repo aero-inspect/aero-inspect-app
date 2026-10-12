@@ -185,15 +185,21 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
   const totalWaypoints = routePoints.length;
   const orderedRoutePoints = useMemo(() => [...routePoints].sort((a, b) => a.sequence - b.sequence), [routePoints]);
   const totalRouteDistanceMetersValue = useMemo(() => totalRouteDistanceMeters(orderedRoutePoints), [orderedRoutePoints]);
+  // Una misión completada recorrió todo el plan, aunque la telemetría diga otra cosa: el dron
+  // ancla el plan a su posición real (hasta 10 m de corrimiento) y deja de mandar telemetría al
+  // aterrizar, así que la última posición queda lejos del punto de aterrizaje planeado. En rutas
+  // cortas eso dejaba la barra clavada en ~80 %.
+  const isCompleted = mission?.status === "COMPLETED";
   const distanceRemainingMeters = useMemo(
-    () => remainingRouteDistanceMeters(orderedRoutePoints, inspectionTelemetry?.position, currentWaypoint),
-    [orderedRoutePoints, inspectionTelemetry?.position, currentWaypoint]
+    () => (isCompleted ? 0 : remainingRouteDistanceMeters(orderedRoutePoints, inspectionTelemetry?.position, currentWaypoint)),
+    [isCompleted, orderedRoutePoints, inspectionTelemetry?.position, currentWaypoint]
   );
   const distanceTraveledMeters = Math.max(0, totalRouteDistanceMetersValue - distanceRemainingMeters);
   const progress =
     totalRouteDistanceMetersValue > 0
       ? Math.min(100, (distanceTraveledMeters / totalRouteDistanceMetersValue) * 100)
       : mission?.completionPercentage ?? null;
+  const displayedWaypoint = isCompleted && totalWaypoints > 0 ? totalWaypoints : currentWaypoint;
   const progressWidth = progress == null ? 0 : Math.max(0, Math.min(100, progress));
   const missionStatus = statusLabel(mission?.status);
   const isPendingMission = mission?.status === "PLANNED";
@@ -215,7 +221,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
       for (const waypoint of mission.missionWaypoints) {
         if (waypoint.gimbalPitchDeg == null) continue;
         total += 1;
-        if (currentWaypoint != null && waypoint.sequence < currentWaypoint) taken += 1;
+        if (isCompleted || (currentWaypoint != null && waypoint.sequence < currentWaypoint)) taken += 1;
       }
       return { total, taken };
     }
@@ -228,7 +234,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
       return { total, taken: 0 };
     }
     return { total: 0, taken: 0 };
-  }, [mission?.missionWaypoints, flightPlan?.route, currentWaypoint]);
+  }, [mission?.missionWaypoints, flightPlan?.route, currentWaypoint, isCompleted]);
 
   const pollMissionStatus = (idMission: string) => {
     if (statusPollRef.current) window.clearInterval(statusPollRef.current);
@@ -359,7 +365,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
             <article className="monitor-side-card monitor-progress-card">
               <CardHeader icon={<Route size={15} />} title="Progreso de misión" />
               <strong>
-                Punto {currentWaypoint ?? EMPTY_VALUE} de {totalWaypoints || EMPTY_VALUE}
+                Punto {displayedWaypoint ?? EMPTY_VALUE} de {totalWaypoints || EMPTY_VALUE}
               </strong>
               <div className="monitor-progress-track"><span style={{ width: `${progressWidth}%` }} /></div>
               <p>{formatPercent(progress)} completado</p>
