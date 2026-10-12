@@ -107,6 +107,19 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
     if(status==='CANCELLED'||status==='COMPLETED'){
       setIsCancelling(false);
       getMission(statusEvent.missionId).then(updated=>setMission(previous=>previous?.idMission===updated.idMission?{...updated,status}:previous)).catch(()=>{});
+    } else if(!status){
+      // statusEvent sólo guarda el último evento: al aterrizar, MISSION_COMPLETED y el
+      // RECORDING_* que le sigue llegan casi juntos y React puede renderizar sólo el segundo.
+      // El backend guarda el estado antes de reenviar el evento, así que se relee de ahí.
+      getMission(statusEvent.missionId).then(updated=>{
+        if(updated.status==='COMPLETED'||updated.status==='CANCELLED')setIsCancelling(false);
+        setMission(previous=>{
+          if(previous?.idMission!==updated.idMission)return previous;
+          // Una respuesta pedida antes del final no puede volver atrás un estado terminal.
+          const finished=previous.status==='COMPLETED'||previous.status==='CANCELLED';
+          return finished&&updated.status==='IN_PROGRESS'?{...updated,status:previous.status}:updated;
+        });
+      }).catch(()=>{});
     }
     if(statusEvent.event==='MISSION_START_REJECTED')setStartError(statusEvent.reason || 'El controlador rechazó el inicio de la misión.');
     if(statusEvent.event==='COMMAND_REJECTED'){setStartError(statusEvent.reason || 'El controlador rechazó la orden.');setIsCancelling(false);}
