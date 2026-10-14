@@ -5,6 +5,8 @@
 export type BackendAssetType = "SILO" | "NORIA" | "CINTA_TRANSPORTADORA" | "TUBERIA" | "TECHO" | "SILO_FLOTANTE" | "CELDA" | "SECADORA" | "BANQUETA";
 export type BackendAssetStatus = "ACTIVE" | "MAINTENANCE" | "OUT_OF_SERVICE" | "UNCONFIRMED";
 
+export type AssetDocument = { name: string; data: string };
+
 export type BackendAsset = {
   idAsset: number;
   name: string;
@@ -17,6 +19,9 @@ export type BackendAsset = {
   locationDetail: string | null;
   imageName: string | null;
   imageData: string | null;
+  documentName?: string | null;
+  documentData?: string | null;
+  documents?: AssetDocument[];
   latitude: number;
   longitude: number;
 };
@@ -43,6 +48,9 @@ export type CreateAssetPayload = {
   lastMaintenanceAt?: string | null;
   imageName?: string | null;
   imageData?: string | null;
+  documentName?: string | null;
+  documentData?: string | null;
+  documents?: AssetDocument[];
   description?: string | null;
 };
 

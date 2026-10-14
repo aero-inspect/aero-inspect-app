@@ -1891,3 +1891,52 @@
 
 
 
+
+
+/* Asset documentation: stable, compact upload and borderless file actions. */
+.asset-create-modal { height: 536px; }
+.asset-create-modal .asset-edit-modal-body { padding-bottom: 18px; overflow-y: auto; align-items: start; }
+.asset-create-modal .asset-edit-side { gap: 14px; }
+.asset-document-field { display: grid; gap: 6px; min-width: 0; }
+.asset-document-label { color: #8a99aa; font-size: 11px; line-height: 15px; font-weight: 600; }
+.asset-document-optional { font-weight: 400; }
+.asset-document-control { display: flex; align-items: center; gap: 8px; min-width: 0; height: 48px; padding: 0 10px; border: 1px dashed #b6c4d4; border-radius: 8px; background: #fbfcfe; color: #3c5d86; }
+.asset-document-control:has(.asset-document-link) { border-style: solid; border-color: #e3ebf2; }
+.asset-document-upload { display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; color: #3c5d86; font: inherit; font-size: 12px; cursor: pointer; }
+.asset-document-upload:hover { color: #203d76; }
+.asset-document-file-icon { flex-shrink: 0; }
+.asset-document-link { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; padding: 4px 0; border: 0; background: transparent; box-shadow: none; color: #284f83; font: inherit; font-size: 12px; line-height: 18px; text-align: left; cursor: pointer; }
+.asset-document-link span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: inherit; font-size: inherit; font-weight: 500; }
+.asset-document-link svg { flex-shrink: 0; }
+.asset-document-link:hover span { text-decoration: underline; }
+.asset-document-icon-button { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; box-shadow: none; color: #71849c; cursor: pointer; }
+.asset-document-icon-button:hover { background: #edf3fa; color: #284f83; }
+.asset-document-remove:hover { background: #fff0f0; color: #c34f4f; }
+.asset-document-hint { color: #8a99aa; font-size: 10px; line-height: 14px; }
+.asset-document-field .asset-document-error { margin: 0; color: #bd4848; font-size: 11px; line-height: 15px; }
+.asset-document-field input[hidden] { display: none; }
+.asset-document-field button:disabled { opacity: .5; cursor: wait; }
+.asset-document-field button:focus-visible, .asset-document-detail button:focus-visible { outline: 2px solid #577cad; outline-offset: 3px; }
+.asset-document-detail { display: grid; align-content: start; gap: 6px; min-width: 0; grid-column: 1 / -1; }
+.asset-document-detail-row { display: flex; align-items: center; gap: 8px; min-width: 0; color: #3c5d86; }
+.asset-document-detail-row > svg { flex-shrink: 0; }
+.asset-document-detail .asset-document-link { font-size: 13px; }
+.asset-document-empty { color: #8a99aa; font-size: 12px; line-height: 18px; }
+@media (max-width: 600px) {
+  .asset-create-modal { width: calc(100vw - 24px); height: auto; max-height: calc(100dvh - 24px); }
+  .asset-create-modal .asset-edit-modal-body { grid-template-columns: minmax(0, 1fr); padding: 16px 20px; gap: 18px; }
+  .asset-create-modal .asset-edit-modal-footer { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 12px 20px; }
+}
+.asset-create-modal .asset-edit-form-grid, .asset-create-modal .asset-edit-side { display: flex; flex-direction: column; }
+.asset-create-modal .asset-edit-form-grid > *, .asset-create-modal .asset-edit-side > * { flex-shrink: 0; }
+@media (max-width: 600px) {
+  .asset-create-modal { height: min(720px, calc(100dvh - 24px)); grid-template-rows: 62px minmax(0, 1fr) auto; }
+}
+.asset-create-modal .asset-edit-modal-body { grid-auto-rows: max-content; align-content: start; }
+.asset-document-link { text-decoration: none; }
+
+.asset-document-list { display: grid; gap: 6px; min-width: 0; }
+.asset-document-list .asset-document-control { height: 36px; }
+.asset-document-field .asset-document-hint { font-size: 10px; line-height: 14px; }
+.asset-create-modal { height: 592px; }
+@media (max-width: 600px) { .asset-create-modal { height: min(760px, calc(100dvh - 24px)); } }
