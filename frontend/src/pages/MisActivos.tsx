@@ -25,10 +25,13 @@ import { AppTopActions } from "../components/AppTopActions";
 import { LoadingState } from "../components/LoadingState";
 import { ASSET_TYPE_OPTIONS, assetTypesForPlant } from "../data/assetTypes";
 
+import { AssetDocumentInput, AssetDocumentLink } from "../components/AssetDocumentInput";
+
 type AssetStatus = "Activo" | "En mantenimiento" | "Fuera de servicio" | "Sin confirmar";
 type AssetDetailRow = Asset & { displayName: string; displayType: string; displayStatus: AssetStatus; tone: "warning" | "ok" | "danger" };
 
 type AssetFormState = {
+  documents: import("../api/types").AssetDocument[];
   name: string;
   type: BackendAssetType | "";
   locationDetail: string;
@@ -40,6 +43,8 @@ type AssetFormState = {
   description: string;
   imageName: string | null;
   imageData: string | null;
+  documentName: string | null;
+  documentData: string | null;
 };
 
 type AssetRequiredField = "name" | "type" | "locationDetail" | "status" | "latitude" | "longitude" | "code";
@@ -101,7 +106,10 @@ const EMPTY_FORM: AssetFormState = {
   code: "",
   description: "",
   imageName: null,
-  imageData: null
+  imageData: null,
+  documentName: null,
+  documentData: null,
+  documents: []
 };
 
 
@@ -143,6 +151,9 @@ function backendAssetToAsset(asset: BackendAsset, plantId: string): AssetDetailR
     lastMaintenanceAt: asset.lastMaintenanceAt ?? undefined,
     imageName: asset.imageName ?? undefined,
     imagePreview: asset.imageData ?? undefined,
+    documentName: asset.documentName ?? undefined,
+    documentData: asset.documentData ?? undefined,
+    documents: asset.documents ?? (asset.documentName && asset.documentData ? [{ name: asset.documentName, data: asset.documentData }] : []),
     plantId,
     displayName: asset.name,
     displayType,
@@ -178,6 +189,7 @@ export function MisActivosView({
   const [mapHoveredAssetId, setMapHoveredAssetId] = useState<number | null>(null);
   const [openFilter, setOpenFilter] = useState<"type" | "status" | null>(null);
   const [openAssetFormSelect, setOpenAssetFormSelect] = useState<"create-type" | "create-status" | "edit-type" | "edit-status" | null>(null);
+  const [isReadingDocument, setIsReadingDocument] = useState(false);
   const [createAsset, setCreateAsset] = useState(false);
   const [assetCreated, setAssetCreated] = useState(false);
   const [detailAsset, setDetailAsset] = useState<AssetDetailRow | null>(null);
@@ -298,6 +310,7 @@ export function MisActivosView({
   };
 
   const handleCreateAsset = async () => {
+    if (isReadingDocument) return;
     const requiredErrors: Partial<Record<AssetRequiredField, boolean>> = {
       name: !form.name.trim(),
       code: !form.code.trim(),
@@ -327,6 +340,7 @@ export function MisActivosView({
         lastMaintenanceAt: form.lastMaintenanceAt ? new Date(form.lastMaintenanceAt).toISOString() : null,
         imageName: form.imageName,
         imageData: form.imageData,
+        documents: form.documents,
         description: form.description.trim() || null
       };
       const savedAsset = await createBackendAsset(payload);
@@ -367,7 +381,10 @@ export function MisActivosView({
       code: asset.code ?? "",
       description: asset.description,
       imageName: asset.imageName ?? null,
-      imageData: asset.imagePreview ?? null
+      imageData: asset.imagePreview ?? null,
+      documentName: asset.documentName ?? null,
+      documentData: asset.documentData ?? null,
+      documents: asset.documents ?? (asset.documentName && asset.documentData ? [{ name: asset.documentName, data: asset.documentData }] : [])
     });
     setSaveError(null);
     setIsEditingDetail(true);
@@ -393,6 +410,7 @@ export function MisActivosView({
   };
 
   const handleUpdateAsset = async () => {
+    if (isReadingDocument) return;
     if (!detailAsset || !detailEditForm.type || !detailEditForm.status) return;
     if (!detailEditForm.name.trim() || !detailEditForm.code.trim() || !detailEditForm.locationDetail.trim() || !detailEditForm.latitude.trim() || !detailEditForm.longitude.trim()) {
       setSaveError("Completá todos los campos obligatorios antes de guardar.");
@@ -412,6 +430,7 @@ export function MisActivosView({
         lastMaintenanceAt: detailEditForm.lastMaintenanceAt ? new Date(detailEditForm.lastMaintenanceAt).toISOString() : null,
         imageName: detailEditForm.imageName,
         imageData: detailEditForm.imageData,
+        documents: detailEditForm.documents,
         description: detailEditForm.description.trim() || null
       });
       const nextDetail = backendAssetToAsset(updated, plant.id);
@@ -480,6 +499,7 @@ export function MisActivosView({
                     {detailEditForm.imageData && <button onClick={() => setDetailEditForm((current) => ({ ...current, imageName: null, imageData: null }))} type="button">Quitar</button>}
                   </div>
                   <p>{detailEditForm.imageName ?? "JPG, PNG o WebP"}</p>
+                  <AssetDocumentInput onReadingChange={setIsReadingDocument} documents={detailEditForm.documents} disabled={isSaving || isReadingDocument} onChange={documents => setDetailEditForm(current => ({ ...current, documents }))} />
                 </div>
               </div>
             ) : (
@@ -492,6 +512,7 @@ export function MisActivosView({
                   <AssetDetailField label="Fecha de creación" value={formatDateTime(detailAsset.createdAt)} />
                   <AssetDetailField label="Último mantenimiento" value={formatDateTime(detailAsset.lastMaintenanceAt)} />
                   <AssetDetailField label="Código" value={detailAsset.code || "-"} />
+                  <AssetDocumentLink documents={detailAsset.documents ?? []} />
                 </div>
 
                 <div className="asset-detail-image-area">
@@ -510,7 +531,7 @@ export function MisActivosView({
               {saveError && <span className="asset-detail-save-error" role="alert">{saveError}</span>}
               {isEditingDetail ? <>
                 <button className="asset-detail-edit-button" onClick={() => { setIsEditingDetail(false); setSaveError(null); }} type="button">Cancelar</button>
-                <button className="asset-detail-save-button" disabled={isSaving} onClick={handleUpdateAsset} type="button">{isSaving ? "Guardando..." : "Guardar cambios"}</button>
+                <button className="asset-detail-save-button" disabled={isSaving || isReadingDocument} onClick={handleUpdateAsset} type="button">{isSaving ? "Guardando..." : "Guardar cambios"}</button>
               </> : <>
                 <button className="asset-detail-edit-button" onClick={() => beginDetailEdit(detailAsset)} type="button"><Pencil size={15} aria-hidden="true" />Editar activo</button>
                 <button className="asset-detail-delete-button" onClick={() => setDeleteAsset(detailAsset)} type="button">Eliminar activo</button>
@@ -847,7 +868,10 @@ export function MisActivosView({
                     <input accept="image/*" hidden onChange={handleImageChange} type="file" />
                   </label>
                   <p>{form.imageName || "Registro visual del activo seleccionado."}</p>
+
                 </div>
+
+                  <AssetDocumentInput onReadingChange={setIsReadingDocument} documents={form.documents} disabled={isSaving || isReadingDocument} onChange={documents => setForm(current => ({ ...current, documents }))} />
 
                 <label className="asset-edit-field asset-edit-description">
                   <span>Descripción</span>
@@ -868,7 +892,7 @@ export function MisActivosView({
                 {saveError && <p className="assets-empty-message assets-form-error">{saveError}</p>}
                 <button
                   className="asset-edit-save"
-                  disabled={isSaving}
+                  disabled={isSaving || isReadingDocument}
                   onClick={handleCreateAsset}
                   type="button"
                 >
