@@ -14,6 +14,7 @@ import type {
   ManagedUser,
   BackendMission,
   BackendMissionSchedule,
+  BackendMissionVideo,
   BackendReport,
   BackendWeather,
   CreateAssetPayload,
@@ -124,6 +125,10 @@ export async function getMissions(plant: Plant = apiPlant) {
 
 export function getMission(idMission: string) {
   return request<BackendMission>(`/api/v1/missions/${idMission}`);
+}
+
+export function getMissionVideos(idMission: string) {
+  return request<BackendMissionVideo[]>(`/api/v1/missions/${idMission}/videos`);
 }
 
 export function createMission(payload: CreateMissionPayload) {

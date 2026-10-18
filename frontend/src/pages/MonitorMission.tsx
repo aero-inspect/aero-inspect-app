@@ -9,6 +9,7 @@ import { Compass } from "../components/Compass";
 import { useMissionTelemetry } from "../hooks/useMissionTelemetry";
 import { remainingRouteDistanceMeters, totalRouteDistanceMeters } from "../utils/geo";
 import { LoadingState } from "../components/LoadingState";
+import { MissionVideoCard } from "../components/MissionVideoCard";
 
 type MonitorMissionViewProps = {
   missionId: string | null;
@@ -425,6 +426,11 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
                 value={photoCounts.total > 0 ? `${photoCounts.taken} de ${photoCounts.total}` : EMPTY_VALUE}
               />
             </article>
+
+            <MissionVideoCard
+              missionId={mission.idMission}
+              finished={mission.status === "COMPLETED" || mission.status === "CANCELLED"}
+            />
           </aside>
         </section>
       )}

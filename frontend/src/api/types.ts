@@ -316,6 +316,18 @@ export type BackendInspectionPhoto = {
   reviewedAt?: string | null;
   reviewerUsername?: string | null;
 };
+// Video de un vuelo completo, grabado por la cámara del gimbal y subido por el dron al aterrizar.
+export type BackendMissionVideo = {
+  idMissionVideo: string;
+  idMission: string;
+  videoUrl: string;
+  fileName: string | null;
+  sizeBytes: number | null;
+  durationSeconds: number | null;
+  recordingStartedAt: string | null;
+  recordingEndedAt: string | null;
+  registeredAt: string;
+};
 export type EvidenceReview = { idInspectionPhoto: string; corrosionSeverity: BackendReport["severity"] | null; crackSeverity: BackendReport["severity"] | null; deformationSeverity: BackendReport["severity"] | null; comments: string; discarded?: boolean };
 export type ReportAsset = { idAsset: number; assetName: string; severity: BackendReport["severity"]; findingsCount: number; corrosionFindingsCount: number; crackFindingsCount: number; deformationFindingsCount: number; photos: BackendInspectionPhoto[] };
 
