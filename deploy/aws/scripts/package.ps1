@@ -72,6 +72,12 @@ foreach ($model in $models) {
     Copy-Item (Join-Path $ReposRoot $model) $dest
 }
 
+# Los SHA-256 congelados en ia-module son inconsistentes: los de corrosión y fisuras se
+# calcularon sobre reportes con CRLF y el de deformaciones sobre LF. Este paso deja cada
+# reporte con el salto de línea que espera su selección (si ninguno coincide, falla).
+& python (Join-Path $PSScriptRoot "match_calibration_eol.py") (Join-Path $stage "ia-module")
+if ($LASTEXITCODE -ne 0) { throw "match_calibration_eol.py termino con error $LASTEXITCODE" }
+
 # tar.exe de Windows (bsdtar). Las barras normales se conservan dentro del paquete.
 & tar.exe -czf $tarball --exclude "__pycache__" --exclude "*.pyc" -C $ReposRoot @items -C $stage "ia-module"
 if ($LASTEXITCODE -ne 0) { throw "tar termino con error $LASTEXITCODE" }

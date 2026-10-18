@@ -146,9 +146,10 @@ services:
       - minio_data:/data
     mem_limit: 192m
 
-  # Crea el bucket y lo deja con lectura anónima: el frontend y el worker abren las fotos
-  # por su URL pública (https://s3.<DOMAIN>/aeroinspect-evidence/...). Escribir sigue
-  # requiriendo credenciales. Reintenta hasta que MinIO responda (la imagen de MinIO no trae
+  # Crea el bucket y deja leer cada foto por su URL pública
+  # (https://s3.<DOMAIN>/aeroinspect-evidence/...), que es como la abren el frontend y el
+  # worker. Solo s3:GetObject: la política "download" de mc también permitía listar el
+  # bucket, o sea enumerar todas las fotos. Escribir sigue requiriendo credenciales. Reintenta hasta que MinIO responda (la imagen de MinIO no trae
   # mc para un healthcheck), corre una vez y termina.
   minio-init:
     image: pgsty/mc:RELEASE.2026-10-18T00-00-00Z@sha256:6ecdaec70bc5e8cf9d0e9a70c190f3beb1c83f11617ff4333f1fcd71ab1daf18
@@ -163,7 +164,8 @@ services:
         i=$$((i + 1)); [ $$i -ge 30 ] && echo 'MinIO no responde' && exit 1; sleep 2;
       done &&
       mc mb --ignore-existing local/aeroinspect-evidence &&
-      mc anonymous set download local/aeroinspect-evidence
+      echo '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::aeroinspect-evidence/*\"]}]}' > /tmp/policy.json &&
+      mc anonymous set-json /tmp/policy.json local/aeroinspect-evidence
       "
     restart: "no"
 
