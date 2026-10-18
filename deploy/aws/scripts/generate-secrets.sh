@@ -21,8 +21,9 @@ fi
 
 rand() { openssl rand -hex 24; }
 
-MQTT_MONOLITH_PASSWORD="$(rand)"
-MQTT_DRON_PASSWORD="$(rand)"
+# Exportadas: `docker run -e VAR` (sin valor) toma la variable del entorno, no del shell.
+export MQTT_MONOLITH_PASSWORD="$(rand)"
+export MQTT_DRON_PASSWORD="$(rand)"
 
 umask 077
 cat > .env <<EOF

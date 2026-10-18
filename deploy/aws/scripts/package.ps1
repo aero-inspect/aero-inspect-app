@@ -43,24 +43,39 @@ $items = @(
     "aero-inspect-app/frontend/dist",
     "general-monolith/Dockerfile",
     "general-monolith/.dockerignore",
-    $jar,
-    "ia-module/Dockerfile",
-    "ia-module/.dockerignore",
-    "ia-module/requirements-inference.lock.txt",
-    "ia-module/requirements-training.lock.txt",
-    "ia-module/src",
-    "ia-module/scripts/run_worker.py",
-    "ia-module/evaluation",
-    "ia-module/configs"
-) + $models
+    $jar
+)
 
 $outDir = Join-Path $PSScriptRoot "..\out"
 New-Item -ItemType Directory -Force $outDir | Out-Null
-$tarball = Join-Path (Resolve-Path $outDir).Path "aeroinspect-deploy.tar.gz"
+$outDir = (Resolve-Path $outDir).Path
+$tarball = Join-Path $outDir "aeroinspect-deploy.tar.gz"
+
+# ia-module sale del commit actual (git archive) y no del disco: con core.autocrlf=true los
+# JSON de evaluation/ quedan con CRLF en Windows y su SHA-256 deja de coincidir con el que
+# congelaron las selecciones (el worker se niega a arrancar). Los .pt de Git LFS sí salen del
+# disco, porque git archive solo trae los punteros. Lo que no esté commiteado no se sube.
+$stage = Join-Path $outDir "stage"
+if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
+New-Item -ItemType Directory -Force (Join-Path $stage "ia-module") | Out-Null
+$iaArchive = Join-Path $outDir "ia-module.tar"
+$iaPaths = @("Dockerfile", ".dockerignore", "requirements-inference.lock.txt",
+    "requirements-training.lock.txt", "src", "scripts/run_worker.py", "evaluation", "configs")
+& git -C (Join-Path $ReposRoot "ia-module") -c core.autocrlf=false archive --format=tar -o $iaArchive HEAD @iaPaths
+if ($LASTEXITCODE -ne 0) { throw "git archive de ia-module termino con error $LASTEXITCODE" }
+& tar.exe -xf $iaArchive -C (Join-Path $stage "ia-module")
+if ($LASTEXITCODE -ne 0) { throw "tar (extraer ia-module) termino con error $LASTEXITCODE" }
+Remove-Item $iaArchive
+foreach ($model in $models) {
+    $dest = Join-Path $stage $model
+    New-Item -ItemType Directory -Force (Split-Path $dest) | Out-Null
+    Copy-Item (Join-Path $ReposRoot $model) $dest
+}
 
 # tar.exe de Windows (bsdtar). Las barras normales se conservan dentro del paquete.
-& tar.exe -czf $tarball -C $ReposRoot --exclude "__pycache__" --exclude "*.pyc" @items
+& tar.exe -czf $tarball --exclude "__pycache__" --exclude "*.pyc" -C $ReposRoot @items -C $stage "ia-module"
 if ($LASTEXITCODE -ne 0) { throw "tar termino con error $LASTEXITCODE" }
+Remove-Item -Recurse -Force $stage
 
 $sizeMb = [math]::Round((Get-Item $tarball).Length / 1MB, 1)
 Write-Host "Paquete listo: $tarball ($sizeMb MB)"
