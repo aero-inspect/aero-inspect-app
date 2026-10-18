@@ -534,3 +534,35 @@
   border: 2px solid #063b7a;
 }
 .monitor-map-frame .bragado-map:not(.bragado-map-expanded) { height:100%; min-height:300px; }
+
+.monitor-video-item {
+  margin-top: 12px;
+}
+
+.monitor-video-item video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  background: #0a1a38;
+}
+
+.monitor-video-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 7px;
+  color: #5c6e8a;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.monitor-video-meta a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #063b7a;
+  text-decoration: none;
+  white-space: nowrap;
+}
