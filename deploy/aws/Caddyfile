@@ -1,0 +1,29 @@
+# Caddy saca y renueva solo los certificados de Let's Encrypt para los tres nombres.
+# DOMAIN es la IP elástica en formato sslip.io (p.ej. 3-14-15-92.sslip.io), o "localhost"
+# para probar en la compu (certificados de la CA interna de Caddy).
+
+# App: frontend estático + API del monolito (incluye el SSE de telemetría: Caddy no
+# bufferea las respuestas text/event-stream).
+{$DOMAIN} {
+	encode gzip
+
+	handle /api/* {
+		reverse_proxy general-monolith:8080
+	}
+
+	handle {
+		root * /srv/frontend
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# Fotos y overlays (API S3 de MinIO). Leer el bucket es anónimo; escribir pide credenciales.
+s3.{$DOMAIN} {
+	reverse_proxy minio:9000
+}
+
+# Este nombre existe solo para que Caddy saque el certificado que usa Mosquitto en el 8883.
+mqtt.{$DOMAIN} {
+	respond "AeroInspect MQTT: conectarse por mqtts al puerto 8883" 404
+}

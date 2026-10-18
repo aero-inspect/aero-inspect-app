@@ -1,0 +1,199 @@
+# Stack de AeroInspect para una sola instancia EC2 t3.small (2 vCPU, 2 GB + 4 GB de swap).
+# Ver README.md de esta carpeta.
+#
+# Asume los repos como carpetas hermanas, igual que en la compu de desarrollo:
+#   <raiz>/aero-inspect-app/deploy/aws   (este archivo)
+#   <raiz>/general-monolith               (Dockerfile + target/*.jar ya compilado)
+#   <raiz>/ia-module                      (Dockerfile + modelos de Git LFS)
+#   <raiz>/aero-inspect-app/frontend/dist (build del frontend)
+#
+# Hacia afuera solo se publican Caddy (80/443) y Mosquitto con TLS (8883). Postgres,
+# RabbitMQ, MinIO y el MQTT sin cifrar quedan en la red interna de Docker.
+#
+# Los mem_limit suman ~1.9 GB a propósito: con 2 GB de RAM la instancia vive del swap
+# cuando la IA analiza una foto. Si se queda corta, ver "Más memoria" en el README.
+
+name: aeroinspect
+
+services:
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?falta DOMAIN en .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../frontend/dist:/srv/frontend:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    # Sin depends_on: Mosquitto espera a Caddy (certificado) y el monolito a Mosquitto.
+    mem_limit: 64m
+
+  general-monolith:
+    build: ../../../general-monolith
+    image: aeroinspect/general-monolith
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: aeroinspect
+      DB_USERNAME: aeroinspect
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?falta JWT_SECRET}
+      MQTT_BROKER_URL: tcp://mosquitto:1883
+      MQTT_USERNAME: monolith
+      MQTT_PASSWORD: ${MQTT_MONOLITH_PASSWORD:?falta MQTT_MONOLITH_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: aeroinspect
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?falta RABBITMQ_PASSWORD}
+      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-}
+      WEATHER_MOCK_ENABLED: ${WEATHER_MOCK_ENABLED:-false}
+      INSPECTION_IMAGES_STORAGE_TYPE: minio
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: aeroinspect
+      MINIO_SECRET_KEY: ${MINIO_PASSWORD:?falta MINIO_PASSWORD}
+      MINIO_BUCKET: aeroinspect-evidence
+      MINIO_PUBLIC_BASE_URL: https://s3.${DOMAIN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      mosquitto:
+        condition: service_healthy
+    mem_limit: 700m
+
+  ia-module:
+    build: ../../../ia-module
+    image: aeroinspect/ia-module
+    restart: unless-stopped
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: aeroinspect
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      AEROINSPECT_BACKEND_BASE_URL: http://general-monolith:8080
+      AEROINSPECT_OVERLAY_STORAGE_TYPE: minio
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: aeroinspect
+      MINIO_SECRET_KEY: ${MINIO_PASSWORD}
+      MINIO_BUCKET: aeroinspect-evidence
+      MINIO_PUBLIC_BASE_URL: https://s3.${DOMAIN}
+      # torch usa todos los núcleos por default; con 2 vCPU compartidos conviene limitarlo.
+      OMP_NUM_THREADS: "2"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    mem_limit: 900m
+    memswap_limit: 3g
+
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aeroinspect
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: aeroinspect
+    command: >
+      postgres
+      -c shared_buffers=64MB
+      -c work_mem=4MB
+      -c max_connections=30
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aeroinspect -d aeroinspect"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: aeroinspect
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/90-aeroinspect.conf:ro
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    mem_limit: 256m
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: aeroinspect
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
+      MINIO_BROWSER: "off"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 192m
+
+  # Crea el bucket y lo deja con lectura anónima: el frontend y el worker abren las fotos
+  # por su URL pública (https://s3.<DOMAIN>/aeroinspect-evidence/...). Escribir sigue
+  # requiriendo credenciales. Corre una vez y termina.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_PASSWORD: ${MINIO_PASSWORD}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 aeroinspect \"$$MINIO_PASSWORD\" &&
+      mc mb --ignore-existing local/aeroinspect-evidence &&
+      mc anonymous set download local/aeroinspect-evidence
+      "
+    restart: "no"
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "8883:8883"
+    environment:
+      DOMAIN: ${DOMAIN}
+    entrypoint: ["/bin/sh", "/mosquitto/bootstrap/entrypoint.sh"]
+    volumes:
+      - ./mosquitto/entrypoint.sh:/mosquitto/bootstrap/entrypoint.sh:ro
+      - ./mosquitto/mosquitto.conf:/mosquitto/bootstrap/mosquitto.conf:ro
+      - ./mosquitto/acl:/mosquitto/bootstrap/acl:ro
+      - ./mosquitto/passwd:/mosquitto/bootstrap/passwd:ro
+      # Certificado de mqtt.<DOMAIN>: lo saca Caddy y Mosquitto lo copia al arrancar.
+      - caddy_data:/caddy-data:ro
+    depends_on:
+      - caddy
+    # El monolito no arranca si el broker no responde (MqttConfig conecta al iniciar).
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 1883"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 150s
+    mem_limit: 32m
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:
+  rabbitmq_data:
+  minio_data:
