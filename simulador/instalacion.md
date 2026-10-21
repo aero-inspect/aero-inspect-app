@@ -41,8 +41,8 @@ Abrilo y esperá. El dron debería aparecer solo en el mapa (conecta automática
 
 | Parámetro      | Ejemplo                         | Para qué sirve             |
 | -------------- | ------------------------------- | -------------------------- |
-| `PX4_HOME_LAT` | `-34.6037`                      | Latitud inicial del dron   |
-| `PX4_HOME_LON` | `-58.3816`                      | Longitud inicial del dron  |
+| `PX4_HOME_LAT` | `-34.5508553`                      | Latitud inicial del dron   |
+| `PX4_HOME_LON` | `-59.0675205`                      | Longitud inicial del dron  |
 | `PX4_HOME_ALT` | `10`                            | Altitud inicial en metros  |
 | `VEHICLE`      | `iris` / `plane` / `tailsitter` | Tipo de vehículo a simular |
 | `WORLD`        | `baylands` / `warehouse`        | Entorno de Gazebo          |
@@ -54,13 +54,13 @@ Abrilo y esperá. El dron debería aparecer solo en el mapa (conecta automática
 
 **tailsitter** es híbrido entre avión y dron, despega vertical y luego se inclina para volar horizontal.
 
-Ejemplo con ubicación en Buenos Aires:
+Ejemplo con el home en Luján (home de Luján, `LUJAN_DRONE_BASE` del frontend):
 
 ```bash
 docker run --rm -it \
   -e PX4_SIM_HOST_ADDR=host-gateway \
-  -e PX4_HOME_LAT=-34.6037 \
-  -e PX4_HOME_LON=-58.3816 \
+  -e PX4_HOME_LAT=-34.5508553 \
+  -e PX4_HOME_LON=-59.0675205 \
   -e PX4_HOME_ALT=25 \
   -e VEHICLE=iris \
   jonasvautherin/px4-gazebo-headless:latest
