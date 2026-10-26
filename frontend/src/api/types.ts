@@ -80,6 +80,8 @@ export type BackendPlanWaypoint = {
   name: string | null;
   description: string | null;
   cameraAngles: CameraAngle[] | null;
+  // false = parada sin foto (el dron frena y espera igual). Ausente en planes viejos = true.
+  takePhoto?: boolean;
 };
 
 export type BackendFlightPlan = {

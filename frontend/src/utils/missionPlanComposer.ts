@@ -45,7 +45,8 @@ function asNavigate(
     idAsset: null,
     name: null,
     description: null,
-    cameraAngles: null
+    cameraAngles: null,
+    takePhoto: true
   };
 }
 

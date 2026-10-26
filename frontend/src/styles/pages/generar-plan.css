@@ -303,6 +303,25 @@
   white-space: nowrap;
 }
 
+/* Un único par de botones por punto: posición, altitud, espera y rumbo se guardan juntos. */
+.plan-builder-edit-actions {
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.plan-builder-edit-actions button {
+  flex: 0 0 auto;
+  padding: 0 12px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Flecha de abrir/cerrar el punto, a la derecha del título. */
+.plan-builder-waypoint-info strong svg {
+  margin-left: 4px;
+  vertical-align: -2px;
+}
+
 .plan-builder-altitude-negative {
   display: inline-flex;
   align-items: center;
