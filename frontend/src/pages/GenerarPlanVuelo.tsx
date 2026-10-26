@@ -14,6 +14,8 @@ import type {
   FlightRecordingDetail,
   FlightRecordingSummary,
   GeneratedFlightPlan,
+  PlannedPhoto,
+  PlanWaypoint,
   WaypointAction
 } from "../api/planBuilder";
 import {
@@ -27,8 +29,6 @@ import {
   insertPlanWaypoint,
   movePlanWaypoint,
   updatePlanWaypoint,
-  updatePlanWaypointCameraAngles,
-  updatePlanWaypointStopSeconds,
   updatePlanWaypointType
 } from "../api/planBuilder";
 import { getAssets } from "../api/client";
@@ -64,6 +64,38 @@ function formatDateTime(iso: string) {
 
 function formatDistance(meters: number) {
   return meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
+}
+
+type WaypointEditDraft = {
+  latitude: string;
+  longitude: string;
+  altitude: string;
+  stopSeconds: string;
+  droneDegree: string;
+};
+
+const EMPTY_EDIT_DRAFT: WaypointEditDraft = { latitude: "", longitude: "", altitude: "", stopSeconds: "", droneDegree: "" };
+
+function editDraftOf(waypoint: PlanWaypoint): WaypointEditDraft {
+  return {
+    latitude: String(waypoint.latitude),
+    longitude: String(waypoint.longitude),
+    altitude: String(waypoint.altitude),
+    stopSeconds: String(waypoint.stopSeconds),
+    droneDegree: String(waypoint.droneDegree)
+  };
+}
+
+function samePhotos(a: PlannedPhoto[], b: PlannedPhoto[]) {
+  return a.length === b.length && a.every((photo, i) => photo.pitch === b[i].pitch && photo.yaw === b[i].yaw);
+}
+
+const CARDINAL_POINTS = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
+
+// "45° (NE)": el número es lo que viaja al dron, el punto cardinal es para leerlo de un vistazo.
+function formatDroneDegree(degree: number) {
+  const cardinal = CARDINAL_POINTS[Math.round((((degree % 360) + 360) % 360) / 45) % 8];
+  return `${Math.round(degree)}° (${cardinal})`;
 }
 
 function formatDuration(seconds: number) {
@@ -110,16 +142,11 @@ export function GenerarPlanVueloView({
   const [deletingSequence, setDeletingSequence] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<{ sequence: number; message: string } | null>(null);
 
-  // Edición manual de la coordenada del waypoint seleccionado. x/y y z se guardan por separado:
-  // tocar uno nunca manda el otro.
-  const [coordDraft, setCoordDraft] = useState<{ latitude: string; longitude: string; altitude: string }>({
-    latitude: "",
-    longitude: "",
-    altitude: ""
-  });
-  const [isSavingCoords, setIsSavingCoords] = useState<"xy" | "z" | "stop" | null>(null);
-  const [coordError, setCoordError] = useState<string | null>(null);
-  const [stopSecondsDraft, setStopSecondsDraft] = useState("");
+  // Edición manual del waypoint seleccionado: posición, altitud, espera y rumbo se editan juntos y
+  // se guardan con un único "Guardar cambios" (o se descartan).
+  const [editDraft, setEditDraft] = useState<WaypointEditDraft>(EMPTY_EDIT_DRAFT);
+  const [isSavingWaypoint, setIsSavingWaypoint] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Tipo del waypoint seleccionado: null = como está; "interes" mientras se elige el activo antes
   // de confirmarlo (recién ahí se manda al backend).
@@ -127,11 +154,12 @@ export function GenerarPlanVueloView({
   const [isSavingType, setIsSavingType] = useState(false);
   const [typeError, setTypeError] = useState<string | null>(null);
 
-  // ABM de fotos de un punto de interés (tanto uno con activo asignado ahora como uno que ya lo
-  // tenía).
+  // Fotos de un punto de interés: se arman en la lista local (agregar/quitar) y viajan con el resto
+  // del punto en "Guardar cambios". planPhotoDraft son los inputs de la foto que se está cargando.
+  const [photosDraft, setPhotosDraft] = useState<PlannedPhoto[]>([]);
+  const [takePhotoDraft, setTakePhotoDraft] = useState(true);
   const [planPhotoDraft, setPlanPhotoDraft] = useState({ pitch: "", yaw: "" });
   const [planPhotoError, setPlanPhotoError] = useState<string | null>(null);
-  const [isSavingPlanPhotos, setIsSavingPlanPhotos] = useState(false);
 
   // Reordenar un waypoint intermedio un lugar hacia arriba/abajo.
   const [movingSequence, setMovingSequence] = useState<number | null>(null);
@@ -179,24 +207,23 @@ export function GenerarPlanVueloView({
   // Sincroniza los inputs de edición con el waypoint recién seleccionado (o los limpia si no hay
   // ninguno elegido).
   useEffect(() => {
-    if (!selectedWaypoint) {
-      setCoordDraft({ latitude: "", longitude: "", altitude: "" });
-      setStopSecondsDraft("");
-      return;
-    }
-    setCoordDraft({
-      latitude: String(selectedWaypoint.latitude),
-      longitude: String(selectedWaypoint.longitude),
-      altitude: String(selectedWaypoint.altitude)
-    });
-    setStopSecondsDraft(String(selectedWaypoint.stopSeconds));
-    setCoordError(null);
+    setEditDraft(selectedWaypoint ? editDraftOf(selectedWaypoint) : EMPTY_EDIT_DRAFT);
+    setEditError(null);
+    if (!selectedWaypoint) return;
     setPendingPointType(null);
     setTypeError(null);
     setPlanPhotoDraft({ pitch: "", yaw: "" });
     setPlanPhotoError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSequence]);
+
+  // Las fotos guardadas cambian también al cambiar el tipo o el activo (se guardan al instante y
+  // pasar a punto de paso las borra): la lista local se vuelve a tomar de lo guardado.
+  useEffect(() => {
+    setPhotosDraft(selectedWaypoint?.cameraAngles ?? []);
+    setTakePhotoDraft(selectedWaypoint?.takePhoto ?? true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSequence, selectedWaypoint?.idAsset, selectedWaypoint?.pointOfInterest]);
 
   const handleSelectRecording = (idFlightRecording: number) => {
     setSelectedRecordingId(idFlightRecording);
@@ -264,85 +291,118 @@ export function GenerarPlanVueloView({
     if (!waypoint) return;
     const moved = { latitude, longitude, altitude: waypoint.altitude };
 
-    setCoordError(null);
+    setEditError(null);
     try {
       const updated = await updatePlanWaypoint(plan.idFlightPlan, sequence, moved);
       setPlan(updated);
       // Si el punto arrastrado es el seleccionado, los inputs tienen que reflejar la nueva
       // posición: si no, quedarían mostrando la coordenada vieja hasta volver a seleccionarlo.
       if (selectedSequence === sequence) {
-        setCoordDraft((current) => ({ ...current, latitude: String(latitude), longitude: String(longitude) }));
+        setEditDraft((current) => ({ ...current, latitude: String(latitude), longitude: String(longitude) }));
       }
     } catch (error) {
-      setCoordError(error instanceof Error ? error.message : "No se pudo mover el waypoint.");
+      setEditError(error instanceof Error ? error.message : "No se pudo mover el waypoint.");
     }
   };
 
-  const handleSaveXY = async () => {
+  // Hay cambios sin guardar si algún input difiere de lo que tiene guardado el waypoint.
+  const hasPendingPhotoInput = planPhotoDraft.pitch.trim() !== "" || planPhotoDraft.yaw.trim() !== "";
+  const hasUnsavedChanges = (() => {
+    if (!selectedWaypoint) return false;
+    if (selectedWaypoint.pointOfInterest) {
+      if (takePhotoDraft !== selectedWaypoint.takePhoto) return true;
+      if (takePhotoDraft && (hasPendingPhotoInput || !samePhotos(photosDraft, selectedWaypoint.cameraAngles ?? []))) {
+        return true;
+      }
+    }
+    const saved = editDraftOf(selectedWaypoint);
+    return (Object.keys(saved) as (keyof WaypointEditDraft)[]).some(
+      // "3.0" y "3" son el mismo valor: sólo cuenta como cambio si el número es otro.
+      (field) => {
+        const value = editDraft[field].trim();
+        return value !== saved[field] && (value === "" || Number(value) !== Number(saved[field]));
+      }
+    );
+  })();
+
+  // Abrir otro punto, o cerrar el abierto (null), avisa antes de tirar cambios sin guardar.
+  const selectWaypoint = (sequence: number | null) => {
+    if (sequence === selectedSequence) return;
+    if (hasUnsavedChanges && !window.confirm("Tenés cambios sin guardar en este punto. ¿Descartarlos?")) return;
+    setSelectedSequence(sequence);
+  };
+
+  const handleDiscardWaypoint = () => {
+    if (!selectedWaypoint) return;
+    setEditDraft(editDraftOf(selectedWaypoint));
+    setEditError(null);
+    setPhotosDraft(selectedWaypoint.cameraAngles ?? []);
+    setTakePhotoDraft(selectedWaypoint.takePhoto);
+    setPlanPhotoDraft({ pitch: "", yaw: "" });
+    setPlanPhotoError(null);
+  };
+
+  const handleSaveWaypoint = async () => {
     if (!plan || !selectedWaypoint) return;
-    const latitude = Number(coordDraft.latitude);
-    const longitude = Number(coordDraft.longitude);
-    if (coordDraft.latitude.trim() === "" || coordDraft.longitude.trim() === "" || Number.isNaN(latitude) || Number.isNaN(longitude)) {
-      setCoordError("Ingresá una latitud y una longitud válidas.");
+    // Sin nada que guardar, el botón sólo cierra el punto.
+    if (!hasUnsavedChanges) {
+      setSelectedSequence(null);
       return;
     }
-    setCoordError(null);
-    setIsSavingCoords("xy");
+    const toNumber = (value: string) => (value.trim() === "" ? Number.NaN : Number(value));
+    const latitude = toNumber(editDraft.latitude);
+    const longitude = toNumber(editDraft.longitude);
+    const altitude = toNumber(editDraft.altitude);
+    const stopSeconds = toNumber(editDraft.stopSeconds);
+    const droneDegree = toNumber(editDraft.droneDegree);
+    const isStop = selectedWaypoint.action === "STOP";
+    // El rumbo del despegue no se edita: lo pone el flight-controller con la orientación del dron.
+    const editsDegree = selectedWaypoint.action !== "TAKEOFF";
+
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      setEditError("Ingresá una latitud y una longitud válidas.");
+      return;
+    }
+    if (Number.isNaN(altitude)) {
+      setEditError("Ingresá una altitud válida.");
+      return;
+    }
+    if (isStop && (Number.isNaN(stopSeconds) || !Number.isInteger(stopSeconds) || stopSeconds < 1)) {
+      setEditError("Ingresá un tiempo de espera válido (segundos enteros, mínimo 1).");
+      return;
+    }
+    if (editsDegree && (Number.isNaN(droneDegree) || droneDegree < 0 || droneDegree >= 360)) {
+      setEditError("Ingresá un rumbo válido, entre 0 y 359 grados.");
+      return;
+    }
+
+    // Una foto escrita pero sin "+ Foto" también se guarda: es lo que se espera al tocar
+    // "Guardar cambios" con los dos campos completos.
+    let cameraAngles = photosDraft;
+    if (selectedWaypoint.pointOfInterest && takePhotoDraft && hasPendingPhotoInput) {
+      const pending = parsePlanPhoto();
+      if (!pending) return;
+      cameraAngles = [...photosDraft, pending];
+    }
+
+    setEditError(null);
+    setIsSavingWaypoint(true);
     try {
-      // z no se toca: viaja el valor que ya tenía el waypoint, no lo que haya en el input de altitud.
       const updated = await updatePlanWaypoint(plan.idFlightPlan, selectedWaypoint.sequence, {
         latitude,
         longitude,
-        altitude: selectedWaypoint.altitude
+        altitude,
+        ...(isStop ? { stopSeconds } : {}),
+        ...(editsDegree ? { droneDegree } : {}),
+        ...(selectedWaypoint.pointOfInterest ? { cameraAngles, takePhoto: takePhotoDraft } : {})
       });
       setPlan(updated);
+      // Guardado: se cierra el punto. Si falla, queda abierto con el error y lo escrito.
+      setSelectedSequence(null);
     } catch (error) {
-      setCoordError(error instanceof Error ? error.message : "No se pudo guardar la posición.");
+      setEditError(error instanceof Error ? error.message : "No se pudieron guardar los cambios.");
     } finally {
-      setIsSavingCoords(null);
-    }
-  };
-
-  const handleSaveAltitude = async () => {
-    if (!plan || !selectedWaypoint) return;
-    const altitude = Number(coordDraft.altitude);
-    if (coordDraft.altitude.trim() === "" || Number.isNaN(altitude)) {
-      setCoordError("Ingresá una altitud válida.");
-      return;
-    }
-    setCoordError(null);
-    setIsSavingCoords("z");
-    try {
-      // x/y no se tocan: viaja lo que ya tenía el waypoint, no lo que haya en los inputs de posición.
-      const updated = await updatePlanWaypoint(plan.idFlightPlan, selectedWaypoint.sequence, {
-        latitude: selectedWaypoint.latitude,
-        longitude: selectedWaypoint.longitude,
-        altitude
-      });
-      setPlan(updated);
-    } catch (error) {
-      setCoordError(error instanceof Error ? error.message : "No se pudo guardar la altitud.");
-    } finally {
-      setIsSavingCoords(null);
-    }
-  };
-
-  const handleSaveStopSeconds = async () => {
-    if (!plan || !selectedWaypoint) return;
-    const stopSeconds = Number(stopSecondsDraft);
-    if (stopSecondsDraft.trim() === "" || Number.isNaN(stopSeconds) || !Number.isInteger(stopSeconds) || stopSeconds < 1) {
-      setCoordError("Ingresá un tiempo de espera válido (segundos enteros, mínimo 1).");
-      return;
-    }
-    setCoordError(null);
-    setIsSavingCoords("stop");
-    try {
-      const updated = await updatePlanWaypointStopSeconds(plan.idFlightPlan, selectedWaypoint.sequence, stopSeconds);
-      setPlan(updated);
-    } catch (error) {
-      setCoordError(error instanceof Error ? error.message : "No se pudo guardar el tiempo de espera.");
-    } finally {
-      setIsSavingCoords(null);
+      setIsSavingWaypoint(false);
     }
   };
 
@@ -383,49 +443,35 @@ export function GenerarPlanVueloView({
     }
   };
 
-  const handleAddPlanPhoto = async () => {
-    if (!plan || !selectedWaypoint) return;
+  // Valida los inputs de la foto en carga; null (con el error a la vista) si no sirven.
+  const parsePlanPhoto = (): PlannedPhoto | null => {
     const pitch = Number(planPhotoDraft.pitch);
     const yaw = Number(planPhotoDraft.yaw);
     if (planPhotoDraft.pitch.trim() === "" || planPhotoDraft.yaw.trim() === "" || Number.isNaN(pitch) || Number.isNaN(yaw)) {
-      setPlanPhotoError("Ingresá un pitch y un yaw.");
-      return;
+      setPlanPhotoError("Completá pitch y yaw de la foto (o borralos si no querés agregarla).");
+      return null;
     }
     if (pitch < PITCH_RANGE.min || pitch > PITCH_RANGE.max) {
       setPlanPhotoError(`El pitch debe estar entre ${PITCH_RANGE.min} y ${PITCH_RANGE.max}.`);
-      return;
+      return null;
     }
     if (yaw < YAW_RANGE.min || yaw > YAW_RANGE.max) {
       setPlanPhotoError(`El yaw debe estar entre ${YAW_RANGE.min} y ${YAW_RANGE.max}.`);
-      return;
+      return null;
     }
     setPlanPhotoError(null);
-    setIsSavingPlanPhotos(true);
-    try {
-      const nextPhotos = [...(selectedWaypoint.cameraAngles ?? []), { pitch, yaw }];
-      const updated = await updatePlanWaypointCameraAngles(plan.idFlightPlan, selectedWaypoint.sequence, nextPhotos);
-      setPlan(updated);
-      setPlanPhotoDraft({ pitch: "", yaw: "" });
-    } catch (error) {
-      setPlanPhotoError(error instanceof Error ? error.message : "No se pudo agregar la foto.");
-    } finally {
-      setIsSavingPlanPhotos(false);
-    }
+    return { pitch, yaw };
   };
 
-  const handleRemovePlanPhoto = async (photoIndex: number) => {
-    if (!plan || !selectedWaypoint) return;
-    setPlanPhotoError(null);
-    setIsSavingPlanPhotos(true);
-    try {
-      const nextPhotos = (selectedWaypoint.cameraAngles ?? []).filter((_, i) => i !== photoIndex);
-      const updated = await updatePlanWaypointCameraAngles(plan.idFlightPlan, selectedWaypoint.sequence, nextPhotos);
-      setPlan(updated);
-    } catch (error) {
-      setPlanPhotoError(error instanceof Error ? error.message : "No se pudo eliminar la foto.");
-    } finally {
-      setIsSavingPlanPhotos(false);
-    }
+  const handleAddPlanPhoto = () => {
+    const photo = parsePlanPhoto();
+    if (!photo) return;
+    setPhotosDraft((current) => [...current, photo]);
+    setPlanPhotoDraft({ pitch: "", yaw: "" });
+  };
+
+  const handleRemovePlanPhoto = (photoIndex: number) => {
+    setPhotosDraft((current) => current.filter((_, i) => i !== photoIndex));
   };
 
   // Reordena un waypoint intermedio un lugar hacia arriba/abajo: cada punto conserva su propia
@@ -681,7 +727,7 @@ export function GenerarPlanVueloView({
               assets={assets ?? []}
               highlightedAssetId={highlightedAssetId}
               onMoveWaypoint={handleMoveWaypoint}
-              onSelectWaypoint={setSelectedSequence}
+              onSelectWaypoint={selectWaypoint}
               route={plan.route}
               selectedSequence={selectedSequence}
               trackPoints={recordingDetail?.points ?? []}
@@ -717,7 +763,8 @@ export function GenerarPlanVueloView({
                   <div key={waypoint.idPlanWaypoint}>
                     <div
                       className={isSelected ? "plan-builder-waypoint-row selected" : "plan-builder-waypoint-row"}
-                      onClick={() => setSelectedSequence(waypoint.sequence)}
+                      // Tocar el punto abierto lo cierra; el editor de adentro no propaga sus clicks.
+                      onClick={() => selectWaypoint(isSelected ? null : waypoint.sequence)}
                     >
                       {canMove && (
                         <div className="plan-builder-reorder-buttons" onClick={(event) => event.stopPropagation()}>
@@ -747,6 +794,11 @@ export function GenerarPlanVueloView({
                           {waypoint.action === "NAVIGATE"
                             ? NAVIGATE_MOVEMENT_LABELS[getNavigateMovementKind(waypoint, orderedRoute[index - 1])]
                             : ACTION_LABELS[waypoint.action]}
+                          {isSelected ? (
+                            <ChevronUp aria-label="Cerrar punto" size={14} />
+                          ) : (
+                            <ChevronDown aria-label="Abrir punto" size={14} />
+                          )}
                         </strong>
                         <span>
                           {waypoint.latitude.toFixed(6)}, {waypoint.longitude.toFixed(6)} ·{" "}
@@ -754,6 +806,10 @@ export function GenerarPlanVueloView({
                             {waypoint.altitude.toFixed(1)} m
                           </span>
                           {waypoint.stopSeconds > 0 ? ` · ${waypoint.stopSeconds}s de espera` : ""}
+                          {waypoint.pointOfInterest && !waypoint.takePhoto ? " · sin foto" : ""}
+                          {waypoint.action === "TAKEOFF"
+                            ? " · rumbo libre"
+                            : ` · rumbo ${formatDroneDegree(waypoint.droneDegree)}`}
                         </span>
                         {isNegativeAltitude && (
                           <span className="plan-builder-altitude-negative">
@@ -815,122 +871,165 @@ export function GenerarPlanVueloView({
                               <label>
                                 <span>Latitud</span>
                                 <input
-                                  onChange={(event) => setCoordDraft((current) => ({ ...current, latitude: event.target.value }))}
+                                  onChange={(event) => setEditDraft((current) => ({ ...current, latitude: event.target.value }))}
                                   type="number"
-                                  value={coordDraft.latitude}
+                                  value={editDraft.latitude}
                                 />
                               </label>
                               <label>
                                 <span>Longitud</span>
                                 <input
-                                  onChange={(event) => setCoordDraft((current) => ({ ...current, longitude: event.target.value }))}
+                                  onChange={(event) => setEditDraft((current) => ({ ...current, longitude: event.target.value }))}
                                   type="number"
-                                  value={coordDraft.longitude}
+                                  value={editDraft.longitude}
                                 />
                               </label>
-                              <button
-                                className="configure-cancel plan-builder-coord-save"
-                                disabled={isSavingCoords !== null}
-                                onClick={handleSaveXY}
-                                type="button"
-                              >
-                                {isSavingCoords === "xy" ? "Guardando..." : "Guardar posición"}
-                              </button>
                             </div>
                             <div className="plan-builder-coord-row">
                               <label>
                                 <span>Altitud (z)</span>
                                 <input
-                                  onChange={(event) => setCoordDraft((current) => ({ ...current, altitude: event.target.value }))}
+                                  onChange={(event) => setEditDraft((current) => ({ ...current, altitude: event.target.value }))}
                                   type="number"
-                                  value={coordDraft.altitude}
+                                  value={editDraft.altitude}
                                 />
                               </label>
-                              <button
-                                className="configure-cancel plan-builder-coord-save"
-                                disabled={isSavingCoords !== null}
-                                onClick={handleSaveAltitude}
-                                type="button"
-                              >
-                                {isSavingCoords === "z" ? "Guardando..." : "Guardar altitud"}
-                              </button>
-                            </div>
-                            {waypoint.action === "STOP" && (
-                              <div className="plan-builder-coord-row">
+                              {waypoint.action === "STOP" && (
                                 <label>
                                   <span>Tiempo de espera (s)</span>
                                   <input
                                     min={1}
-                                    onChange={(event) => setStopSecondsDraft(event.target.value)}
+                                    onChange={(event) => setEditDraft((current) => ({ ...current, stopSeconds: event.target.value }))}
                                     type="number"
-                                    value={stopSecondsDraft}
+                                    value={editDraft.stopSeconds}
                                   />
                                 </label>
-                                <button
-                                  className="configure-cancel plan-builder-coord-save"
-                                  disabled={isSavingCoords !== null}
-                                  onClick={handleSaveStopSeconds}
-                                  type="button"
-                                >
-                                  {isSavingCoords === "stop" ? "Guardando..." : "Guardar tiempo"}
-                                </button>
+                              )}
+                            </div>
+                            {waypoint.action === "TAKEOFF" ? (
+                              // El flight-controller despega con el rumbo que tiene el dron apoyado
+                              // (takeoff_facing): el rumbo guardado acá no llega a usarse.
+                              <p className="plan-builder-points-hint">
+                                Rumbo del dron: <strong>Libre</strong>. Usa la orientación del dron.
+                              </p>
+                            ) : (
+                              <div className="plan-builder-coord-row">
+                                <label>
+                                  <span>Rumbo del dron (°, 0 = norte, 90 = este)</span>
+                                  <input
+                                    max={359}
+                                    min={0}
+                                    onChange={(event) => setEditDraft((current) => ({ ...current, droneDegree: event.target.value }))}
+                                    type="number"
+                                    value={editDraft.droneDegree}
+                                  />
+                                </label>
                               </div>
                             )}
-                            {coordError && <FieldError message={coordError} />}
-
-                            {waypoint.action === "STOP" && (
+                            {waypoint.action === "STOP" && !waypoint.pointOfInterest && (
+                              <p className="plan-builder-points-hint">Para planificar fotos, pasalo a punto de interés y elegí un activo.</p>
+                            )}
+                            {waypoint.pointOfInterest && (
                               <div className="plan-builder-photos">
-                                <span className="plan-builder-photos-label">
-                                  Fotos planificadas ({(waypoint.cameraAngles ?? []).length})
-                                </span>
-
-                                {(waypoint.cameraAngles ?? []).map((photo, photoIndex) => (
-                                  <div className="plan-builder-photo-row" key={photoIndex}>
-                                    <span>Pitch {photo.pitch}° · Yaw {photo.yaw}°</span>
-                                    <button
-                                      aria-label={`Eliminar foto ${photoIndex + 1}`}
-                                      className="mission-delete-button"
-                                      disabled={isSavingPlanPhotos}
-                                      onClick={() => handleRemovePlanPhoto(photoIndex)}
-                                      title="Eliminar foto"
-                                      type="button"
-                                    >
-                                      <Trash2 size={13} />
-                                    </button>
-                                  </div>
-                                ))}
-
-                                <div className="plan-builder-photo-add">
-                                  <input
-                                    aria-label="Pitch de la nueva foto"
-                                    max={PITCH_RANGE.max}
-                                    min={PITCH_RANGE.min}
-                                    onChange={(event) => setPlanPhotoDraft((current) => ({ ...current, pitch: event.target.value }))}
-                                    placeholder="Pitch"
-                                    type="number"
-                                    value={planPhotoDraft.pitch}
-                                  />
-                                  <input
-                                    aria-label="Yaw de la nueva foto"
-                                    max={YAW_RANGE.max}
-                                    min={YAW_RANGE.min}
-                                    onChange={(event) => setPlanPhotoDraft((current) => ({ ...current, yaw: event.target.value }))}
-                                    placeholder="Yaw"
-                                    type="number"
-                                    value={planPhotoDraft.yaw}
-                                  />
+                                <div className="plan-builder-point-type-toggle">
                                   <button
-                                    className="configure-cancel plan-builder-photo-add-button"
-                                    disabled={isSavingPlanPhotos}
-                                    onClick={handleAddPlanPhoto}
+                                    aria-pressed={takePhotoDraft}
+                                    className={takePhotoDraft ? "selected" : undefined}
+                                    onClick={() => setTakePhotoDraft(true)}
                                     type="button"
                                   >
-                                    Agregar foto
+                                    Con foto
+                                  </button>
+                                  <button
+                                    aria-pressed={!takePhotoDraft}
+                                    className={!takePhotoDraft ? "selected" : undefined}
+                                    onClick={() => setTakePhotoDraft(false)}
+                                    type="button"
+                                  >
+                                    Sin foto
                                   </button>
                                 </div>
-                                {planPhotoError && <FieldError message={planPhotoError} />}
+                                {!takePhotoDraft && (
+                                  <span className="plan-builder-points-hint">
+                                    El dron frena y espera {editDraft.stopSeconds || waypoint.stopSeconds} s, pero no saca foto.
+                                  </span>
+                                )}
+                                {takePhotoDraft && (
+                                  <>
+                                    <span className="plan-builder-photos-label">Fotos planificadas ({photosDraft.length})</span>
+                                    {photosDraft.length === 0 && (
+                                      <span className="plan-builder-points-hint">Sin fotos cargadas: saca una con el gimbal como esté.</span>
+                                    )}
+                                    {photosDraft.map((photo, photoIndex) => (
+                                      <div className="plan-builder-photo-row" key={photoIndex}>
+                                        <span>Foto {photoIndex + 1} · Pitch {photo.pitch}° · Yaw {photo.yaw}°</span>
+                                        <button
+                                          aria-label={`Quitar foto ${photoIndex + 1}`}
+                                          className="mission-delete-button"
+                                          disabled={isSavingWaypoint}
+                                          onClick={() => handleRemovePlanPhoto(photoIndex)}
+                                          title="Quitar foto"
+                                          type="button"
+                                        >
+                                          <Trash2 size={13} />
+                                        </button>
+                                      </div>
+                                    ))}
+                                    <div className="plan-builder-photo-add">
+                                      <input
+                                        aria-label="Pitch de la nueva foto"
+                                        max={PITCH_RANGE.max}
+                                        min={PITCH_RANGE.min}
+                                        onChange={(event) => setPlanPhotoDraft((current) => ({ ...current, pitch: event.target.value }))}
+                                        onKeyDown={(event) => event.key === "Enter" && handleAddPlanPhoto()}
+                                        placeholder={`Pitch (${PITCH_RANGE.min} a ${PITCH_RANGE.max})`}
+                                        type="number"
+                                        value={planPhotoDraft.pitch}
+                                      />
+                                      <input
+                                        aria-label="Yaw de la nueva foto"
+                                        max={YAW_RANGE.max}
+                                        min={YAW_RANGE.min}
+                                        onChange={(event) => setPlanPhotoDraft((current) => ({ ...current, yaw: event.target.value }))}
+                                        onKeyDown={(event) => event.key === "Enter" && handleAddPlanPhoto()}
+                                        placeholder={`Yaw (${YAW_RANGE.min} a ${YAW_RANGE.max})`}
+                                        type="number"
+                                        value={planPhotoDraft.yaw}
+                                      />
+                                      <button
+                                        className="configure-cancel plan-builder-photo-add-button"
+                                        disabled={isSavingWaypoint}
+                                        onClick={handleAddPlanPhoto}
+                                        type="button"
+                                      >
+                                        + Foto
+                                      </button>
+                                    </div>
+                                    {planPhotoError && <FieldError message={planPhotoError} />}
+                                  </>
+                                )}
                               </div>
                             )}
+                            <div className="plan-builder-coord-row plan-builder-edit-actions">
+                              <button
+                                className="configure-cancel"
+                                disabled={!hasUnsavedChanges || isSavingWaypoint}
+                                onClick={handleDiscardWaypoint}
+                                type="button"
+                              >
+                                Descartar
+                              </button>
+                              <button
+                                className="configure-create"
+                                disabled={isSavingWaypoint}
+                                onClick={handleSaveWaypoint}
+                                type="button"
+                              >
+                                {isSavingWaypoint ? "Guardando..." : hasUnsavedChanges ? "Guardar cambios" : "Listo"}
+                              </button>
+                            </div>
+                            {editError && <FieldError message={editError} />}
+
                           </div>
                         )}
                       </div>
