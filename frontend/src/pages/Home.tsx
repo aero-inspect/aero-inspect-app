@@ -31,7 +31,7 @@ import { AppTopActions, DroneGlyph } from "../components/AppTopActions";
 import { LoadingState } from "../components/LoadingState";
 import sidebarLogo from "../assets/aeroinspect-sidebar-logo.png";
 
-import { PLANTS, LUJAN_PLANT, PLANT_STORAGE_KEY, loadSelectedPlant } from "../data/plants";
+import { PLANTS, UTN_PLANT, LUJAN_PLANT, PLANT_STORAGE_KEY, loadSelectedPlant } from "../data/plants";
 import { PlantContext } from "../data/PlantContext";
 import { ActivityProvider } from "../data/ActivityContext";
 import { setApiPlant } from "../api/client";
@@ -202,7 +202,7 @@ export function Home({
               {PLANTS.map(plant => <option key={plant.id} value={plant.id}>{plant.name}</option>)}
             </select>
           </label>
-          <small>{isLujan ? "Terreno de pruebas · Luján, Buenos Aires" : "Planta de acopio · Bragado, Buenos Aires"}</small>
+          <small>{selectedPlant.id === UTN_PLANT.id ? "Campus UTN · Villa Lugano, CABA" : isLujan ? "Terreno de pruebas · Luján, Buenos Aires" : "Planta de acopio · Bragado, Buenos Aires"}</small>
         </div>}
         {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isManualInspectionPath && !isHelpPath && !isActivityPath && user.role !== "Técnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">

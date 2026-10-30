@@ -4,12 +4,12 @@ import { emptyWeather, fetchWeather } from "../services/weather";
 import { getWeatherIcon } from "../utils/weatherIcon";
 
 import { useSelectedPlant } from "../data/PlantContext";
-import { LUJAN_PLANT } from "../data/plants";
+import { UTN_PLANT, LUJAN_PLANT } from "../data/plants";
 import { useActivity, noticeTitles, eventDate } from "../data/ActivityContext";
 
 export function AppTopActions() {
   const plant = useSelectedPlant();
-  const WEATHER_CITY = plant.id === LUJAN_PLANT.id ? "Luján" : "Bragado";
+  const WEATHER_CITY = plant.id === UTN_PLANT.id ? "Buenos Aires" : plant.id === LUJAN_PLANT.id ? "Luján" : "Bragado";
   const [isOpen, setIsOpen] = useState(false);
   const {notifications,unread,markRead,dismiss,loading,error}=useActivity();
   const [weather, setWeather] = useState(emptyWeather);
