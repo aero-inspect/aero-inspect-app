@@ -18,7 +18,13 @@ export const LUJAN_PLANT: Plant = {
     { latitude: "-34.55103017897", longitude: "-59.06742709207172" }
   ]
 };
-export const PLANTS = [BRAGADO_PLANT, LUJAN_PLANT];
+export const UTN_PLANT: Plant = {
+  id: "utn-lugano", name: "UTN Lugano", province: "Ciudad Autónoma de Buenos Aires",
+  center: { latitude: "-34.6584", longitude: "-58.4678" },
+  // No campus perimeter supplied: avoid inventing a parcel boundary.
+  bounds: []
+};
+export const PLANTS = [BRAGADO_PLANT, LUJAN_PLANT, UTN_PLANT];
 export const PLANT_STORAGE_KEY = "aeroinspect.selectedPlant";
 export function loadSelectedPlant(): Plant {
   try { return PLANTS.find(plant => plant.id === localStorage.getItem(PLANT_STORAGE_KEY)) ?? BRAGADO_PLANT; }

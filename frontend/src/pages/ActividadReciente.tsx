@@ -10,7 +10,7 @@ export function ActividadRecienteView() {
   const items=activity.filter(item=>filter==='Todas'||(filter==='Activos'?item.kind==='ASSET_CREATED':item.kind.startsWith('MISSION_')));
   const pages=Math.max(1,Math.ceil(items.length/8)),current=Math.min(page,pages),start=(current-1)*8;
   return <section className="activity-dashboard">
-    <header className="activity-header"><div><h1>Actividad reciente</h1><p>Últimas acciones realizadas en la plataforma.</p></div><AppTopActions/></header>
+    <header className="activity-header"><div><h1 data-page-title="true">Actividad reciente</h1></div><AppTopActions/></header>
     <section className="activity-history-card" aria-label="Historial cronológico">
       <div className="activity-history-heading"><h2>Historial cronológico</h2><p>Registro de eventos del usuario en AeroInspect.</p></div>
       <div className="activity-filter-tabs" aria-label="Filtros de actividad">

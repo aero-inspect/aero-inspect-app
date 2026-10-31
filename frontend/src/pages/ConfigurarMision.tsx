@@ -296,7 +296,7 @@ export function ConfigurarMisionView({
             <ArrowLeft size={19} />
           </button>
           <div>
-            <h1>Configurar misión</h1>
+            <h1 data-page-title="true">Configurar misión</h1>
           </div>
         </div>
         <AppTopActions />

@@ -585,8 +585,7 @@ export function GenerarPlanVueloView({
             <ArrowLeft size={19} />
           </button>
           <div>
-            <h1>Generar plan de vuelo</h1>
-            <p>A partir de un recorrido manual, generá un plan de vuelo reproducible por el dron.</p>
+            <h1 data-page-title="true">Generar plan de vuelo</h1>
           </div>
         </div>
         <AppTopActions />

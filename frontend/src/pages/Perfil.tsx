@@ -258,8 +258,7 @@ export function ProfileView({
     <section className={isEditing ? "profile-dashboard profile-dashboard-editing" : "profile-dashboard"}>
       <header className="profile-topbar">
         <div>
-          <h1>Mi Perfil</h1>
-          <p>Gestiona tus datos personales y seguridad</p>
+          <h1 data-page-title="true">Mi Perfil</h1>
         </div>
         <AppTopActions />
       </header>

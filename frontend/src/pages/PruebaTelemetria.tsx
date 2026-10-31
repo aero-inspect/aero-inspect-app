@@ -85,10 +85,7 @@ export function PruebaTelemetriaView({ token, onBack }: { token: string; onBack:
           Volver
         </button>
         <div>
-          <h1 style={{ margin: 0 }}>Prueba de telemetría (SSE)</h1>
-          <p style={{ margin: 0, color: "#666" }}>
-            Conecta directamente al endpoint SSE de general-monolith y muestra el último valor recibido.
-          </p>
+          <h1 style={{ margin: 0 }} data-page-title="true">Prueba de telemetría (SSE)</h1>
         </div>
       </header>
 

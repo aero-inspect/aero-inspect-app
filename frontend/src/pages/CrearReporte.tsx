@@ -30,8 +30,7 @@ export function CrearReporteView({ onBack }: CrearReporteViewProps) {
     <section className="create-report-dashboard">
       <header className="create-report-topbar">
         <div>
-          <h1>Crear Reporte</h1>
-          <p>Crear el reporte de una misión realizada</p>
+          <h1 data-page-title="true">Crear Reporte</h1>
         </div>
         <AppTopActions />
       </header>

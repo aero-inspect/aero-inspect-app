@@ -150,8 +150,7 @@ export function RoleManagementView({ user }: { user: SessionUser; onBack: () => 
     <section className="personnel-page">
       <header className="personnel-topbar">
         <div>
-          <h1>Gestión de Personal</h1>
-          <p>Creá y administrá los usuarios de tus plantas</p>
+          <h1 data-page-title="true">Gestión de Personal</h1>
         </div>
         <AppTopActions />
       </header>
