@@ -42,6 +42,14 @@ textarea {
   font: inherit;
 }
 
+select:not([multiple]) {
+  min-height: 40px;
+  border: 1px solid #d4dad7;
+  border-radius: 6px;
+  box-shadow: none;
+  color: #314555;
+}
+
 button {
   transition:
     background-color 0.16s ease,

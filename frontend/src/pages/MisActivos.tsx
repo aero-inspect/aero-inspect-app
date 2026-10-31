@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
-import { ArrowLeft, Plus, Search, MoreHorizontal, MapPin, Upload, X, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, Search, MapPin, Upload, X, Pencil, Trash2 } from "lucide-react";
 import type { Asset, Plant } from "../types";
 import type { BackendAsset, BackendAssetStatus, BackendAssetType, BackendReport, CreateAssetPayload } from "../api/types";
 import { createAsset, deleteAsset, getAssets, updateAsset, getReports } from "../api/client";
@@ -26,14 +26,6 @@ export function MisActivosView({initialCreate=false, selectedAssetId, plant, onD
   const [mode,setMode]=useState<"list"|"create"|"detail"|"edit">(initialCreate?"create":selectedAssetId?"detail":"list");
   const [notice,setNotice]=useState("");
   const [deleting,setDeleting]=useState<BackendAsset|null>(null),[busyDelete,setBusyDelete]=useState(false),[deleteError,setDeleteError]=useState("");
-  const [menuId,setMenuId]=useState<number|null>(null);
-  useEffect(()=>{
-    if(menuId===null)return;
-    const outside=(event:MouseEvent)=>{if(!(event.target instanceof Element)||!event.target.closest(".asset-more-wrap"))setMenuId(null);};
-    const escape=(event:KeyboardEvent)=>{if(event.key==="Escape")setMenuId(null);};
-    document.addEventListener("click",outside);document.addEventListener("keydown",escape);
-    return()=>{document.removeEventListener("click",outside);document.removeEventListener("keydown",escape);};
-  },[menuId]);
   const [history,setHistory]=useState<BackendReport[]>([]),[historyLoading,setHistoryLoading]=useState(false),[historyError,setHistoryError]=useState("");
   const selected=assets.find(a=>a.idAsset===selectedId);
   const load=()=>{setLoading(true);setError("");getAssets(plant).then(setAssets).catch(e=>setError(e.message)).finally(()=>setLoading(false));};
@@ -58,19 +50,19 @@ export function MisActivosView({initialCreate=false, selectedAssetId, plant, onD
   const remove=async()=>{if(!deleting)return;setBusyDelete(true);setDeleteError("");try{
     await deleteAsset(deleting.idAsset);onDeleteAsset(deleting.idAsset);setAssets(items=>items.filter(a=>a.idAsset!==deleting.idAsset));setDeleting(null);setSelectedId(null);setMode("list");setNotice("Activo eliminado.");
   }catch(e){setDeleteError(e instanceof Error?e.message:"No se pudo eliminar el activo.");}finally{setBusyDelete(false);}};
-  const askDelete=(asset:BackendAsset)=>{setDeleting(asset);setMenuId(null);setDeleteError("");};
-  const openDetail=(asset:BackendAsset)=>{setSelectedId(asset.idAsset);setMode("detail");setMenuId(null);};
-  const menu=(asset:BackendAsset)=><div className="asset-more-wrap" onClick={e=>e.stopPropagation()}>
-    <button className="asset-icon-button" type="button" aria-label={`Más opciones de ${asset.name}`} aria-expanded={menuId===asset.idAsset} onClick={()=>setMenuId(menuId===asset.idAsset?null:asset.idAsset)}><MoreHorizontal size={20}/></button>
-    {menuId===asset.idAsset&&<div className="asset-more-menu"><button type="button" onClick={()=>{setSelectedId(asset.idAsset);setMode("edit");setMenuId(null);}}>Editar activo</button><button type="button" className="danger-text" onClick={()=>askDelete(asset)}>Eliminar activo</button></div>}
+  const askDelete=(asset:BackendAsset)=>{setDeleting(asset);setDeleteError("");};
+  const openDetail=(asset:BackendAsset)=>{setSelectedId(asset.idAsset);setMode("detail");};
+  const rowActions=(asset:BackendAsset)=><div className="asset-row-actions" onClick={e=>e.stopPropagation()}>
+    <button className="asset-icon-button" type="button" aria-label={`Editar ${asset.name}`} title="Editar" onClick={()=>{setSelectedId(asset.idAsset);setMode("edit");}}><Pencil size={17}/></button>
+    <button className="asset-icon-button asset-delete-icon" type="button" aria-label={`Eliminar ${asset.name}`} title="Eliminar" onClick={()=>askDelete(asset)}><Trash2 size={17}/></button>
   </div>;
 
-  return <section className="asset-workspace">
+  return <section className={`asset-workspace mode-${mode}`}>
     {mode==="create" || mode==="edit" && selected ? <AssetEditor key={mode+String(selectedId)} plant={plant} asset={mode==="edit"?selected:undefined} assets={assets} onCancel={()=>setMode(mode==="edit"?"detail":"list")} onSaved={save}/> : <>
-      <header className="asset-workspace-heading">
+      {mode==="detail"&&<header className="asset-workspace-heading">
         <div>{mode==="detail"&&<button className="asset-back" type="button" onClick={()=>setMode("list")}><ArrowLeft size={16}/>Todos los activos</button>}<h1 data-page-title="true">{mode==="detail"?(selected?.name??"Activo"):"Activos"}</h1>{mode==="detail"&&<p>{selected?.code??""} · {selected?typeName(selected.type):""}</p>}</div>
-        {mode==="list"?<button className="asset-primary" type="button" onClick={()=>{setMode("create");setNotice("");}}><Plus size={17}/>Nuevo activo</button>:selected&&<div className="asset-heading-actions"><button className="asset-secondary" type="button" onClick={()=>setMode("edit")}><Pencil size={16}/>Editar activo</button>{menu(selected)}</div>}
-      </header>
+        {selected&&<div className="asset-heading-actions"><button className="asset-icon-button asset-heading-icon" type="button" aria-label="Editar activo" title="Editar" onClick={()=>setMode("edit")}><Pencil size={18}/></button><button className="asset-icon-button asset-heading-icon asset-delete-icon" type="button" aria-label="Eliminar activo" title="Eliminar" onClick={()=>askDelete(selected)}><Trash2 size={18}/></button></div>}
+      </header>}
       {notice&&<div className="asset-notice" role="status"><span>{notice}</span>{mode==="list"&&selected&&<button type="button" onClick={()=>openDetail(selected)}>Ver activo</button>}<button type="button" aria-label="Cerrar aviso" onClick={()=>setNotice("")}><X size={16}/></button></div>}
       {error&&<div className="asset-feedback" role="alert">{error} <button type="button" onClick={load}>Reintentar</button></div>}
       {mode==="detail"? selected?<>
@@ -87,12 +79,12 @@ export function MisActivosView({initialCreate=false, selectedAssetId, plant, onD
           {historyLoading?<p role="status">Cargando historial…</p>:historyError?<p role="alert">{historyError}</p>:history.length?<div className="asset-history-list">{history.map(r=><article key={r.idReport}><div><strong>{r.title||r.missionName}</strong><small>{dateLabel(r.createdAt)} · {r.photos.length} evidencias</small></div><span>{REPORT_STATUS[r.status]}</span><span>{r.findingsCount} hallazgos</span></article>)}</div>:<p className="asset-muted">Este activo todavía no tiene inspecciones registradas.</p>}
         </section>
       </>:<p role="status">{loading?"Cargando activo…":"No se encontró el activo en esta planta."}</p>:<>
-        <div className="asset-toolbar"><label className="asset-search"><Search size={18}/><input aria-label="Buscar activos" placeholder="Buscar por nombre o código" value={search} onChange={e=>setSearch(e.target.value)}/></label><label><span className="sr-only">Tipo de activo</span><select aria-label="Tipo de activo" value={type} onChange={e=>setType(e.target.value)}><option value="Todos">Todos los tipos</option>{assetTypesForPlant(plant.id).map(t=><option key={t.value}>{t.label}</option>)}</select></label><label><span className="sr-only">Estado del activo</span><select aria-label="Estado del activo" value={status} onChange={e=>setStatus(e.target.value)}><option value="Todos">Todos los estados</option>{Object.values(STATUSES).map(s=><option key={s}>{s}</option>)}</select></label>{(search||type!=="Todos"||status!=="Todos")&&<button className="asset-text-button" type="button" onClick={()=>{setSearch("");setType("Todos");setStatus("Todos");}}>Limpiar filtros</button>}</div>
+        <div className="asset-toolbar"><label className="asset-search"><Search size={18}/><input aria-label="Buscar activos" placeholder="Buscar por nombre o código" value={search} onChange={e=>setSearch(e.target.value)}/></label><label><span className="sr-only">Tipo de activo</span><select aria-label="Tipo de activo" value={type} onChange={e=>setType(e.target.value)}><option value="Todos">Todos los tipos</option>{assetTypesForPlant(plant.id).map(t=><option key={t.value}>{t.label}</option>)}</select></label><label><span className="sr-only">Estado del activo</span><select aria-label="Estado del activo" value={status} onChange={e=>setStatus(e.target.value)}><option value="Todos">Todos los estados</option>{Object.values(STATUSES).map(s=><option key={s}>{s}</option>)}</select></label>{(search||type!=="Todos"||status!=="Todos")&&<button className="asset-text-button" type="button" onClick={()=>{setSearch("");setType("Todos");setStatus("Todos");}}>Limpiar filtros</button>}<button className="asset-primary asset-toolbar-create" type="button" onClick={()=>{setMode("create");setNotice("");}}><Plus size={17}/>Nuevo activo</button></div>
         <div className="asset-list-map-layout">
           <section className="asset-directory" aria-label="Listado de activos">
             <div className="asset-directory-head"><span>Activo</span><span>Estado</span><span className="sr-only">Acciones</span></div>
             {loading?<p role="status">Cargando activos…</p>:visible.length?visible.map(asset=><article className={`asset-directory-row${selectedId===asset.idAsset?" selected":""}`} key={asset.idAsset} tabIndex={0} aria-label={`Ubicar ${asset.name} en el mapa`} onClick={()=>setSelectedId(asset.idAsset)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==="Enter"||e.key===" ")){e.preventDefault();setSelectedId(asset.idAsset);}}}>
-              <div><button className="asset-name-link" type="button" onClick={e=>{e.stopPropagation();openDetail(asset);}}>{asset.name}</button><small>{asset.code} · {typeName(asset.type)}</small></div><span className={`asset-status status-${asset.status}`}>{STATUSES[asset.status]}</span>{menu(asset)}
+              <div><button className="asset-name-link" type="button" onClick={e=>{e.stopPropagation();openDetail(asset);}}>{asset.name}</button><small>{asset.code} · {typeName(asset.type)}</small></div><span className={`asset-status status-${asset.status}`}>{STATUSES[asset.status]}</span>{rowActions(asset)}
             </article>):<div className="asset-directory-empty"><h2>{assets.length?"Sin coincidencias":"Todavía no hay activos"}</h2><p>{assets.length?"Probá con otro nombre o quitá los filtros.":"Creá el primero y marcá su ubicación en el mapa."}</p></div>}
             <p className="asset-directory-count">{visible.length} {visible.length===1?"activo":"activos"}{visible.length!==assets.length?` de ${assets.length}`:""}</p>
           </section>

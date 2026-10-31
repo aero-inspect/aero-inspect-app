@@ -107,6 +107,7 @@ export function Home({
   const [selectedRecordingId, setSelectedRecordingId] = useState<number | null>(null);
   const [selectedReportCode, setSelectedReportCode] = useState<string | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
+  const [assetsViewKey, setAssetsViewKey] = useState(0);
   const sidebarRoleLabel = user.role === "Técnico de Mantenimiento" ? "Técnico de Mantenimiento" : user.role;
   return (
     <SharedHeaderContext.Provider value={true}>
@@ -127,7 +128,7 @@ export function Home({
           </button>
 
           {userCanConsultAssets && (
-            <button className={isRegisterAssetPath || isAssetsPath ? "active" : undefined} onClick={() => navigateTo("/mis-activos")} aria-label="Activos" title="Activos" type="button">
+            <button className={isRegisterAssetPath || isAssetsPath ? "active" : undefined} onClick={() => { setSelectedAssetId(null); setAssetsViewKey(value => value + 1); navigateTo("/mis-activos"); }} aria-label="Activos" title="Activos" type="button">
               <Package size={20} />
               {!isSidebarCollapsed && <span>Activos</span>}
             </button>
@@ -292,7 +293,7 @@ export function Home({
         ) : isDronePath && DRONE_OPERATION_ROLES.includes(user.role) ? (
           <DroneTelemetryView />
         ) : isAssetsPath && userCanConsultAssets ? (
-          <MisActivosView assets={assets} onBack={() => navigateTo("/")} onDeleteAsset={(assetId) => setAssets((current) => current.filter((asset) => asset.id !== assetId))} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} selectedAssetId={selectedAssetId} plant={selectedPlant} onViewAssetHistory={id=>{setReportCaptureAssetId(id);navigateTo("/reportes");}} />
+          <MisActivosView key={assetsViewKey} assets={assets} onBack={() => navigateTo("/")} onDeleteAsset={(assetId) => setAssets((current) => current.filter((asset) => asset.id !== assetId))} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} selectedAssetId={selectedAssetId} plant={selectedPlant} onViewAssetHistory={id=>{setReportCaptureAssetId(id);navigateTo("/reportes");}} />
         ) : isCreateReportPath ? (
           <CrearReporteView onBack={() => navigateTo("/reportes")} />
         ) : isReportDetailPath ? (
@@ -512,16 +513,7 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [pendingReviews, setPendingReviews] = useState<number | null>(null);
-  const [preview,setPreview]=useState(false);
-  const [previewHint,setPreviewHint]=useState(false);
-  const exampleMissions=useMemo<BackendMission[]>(()=>[
-    {name:"Inspección del laboratorio",status:"PLANNED",completionPercentage:0,scheduledAt:new Date(Date.now()+86400000).toISOString()},
-    {name:"Revisión del galpón",status:"IN_PROGRESS",completionPercentage:62,scheduledAt:new Date().toISOString()},
-    {name:"Control de arcos y cancha",status:"COMPLETED",completionPercentage:100,scheduledAt:new Date(Date.now()-86400000).toISOString()}
-  ].map((m,i)=>({...m,idMission:`example-${i}`,idFlightPlan:0,objective:"Ejemplo visual",droneId:"",startedAt:null,finishedAt:null,notes:null,assignedPilotUsername:null,selectedPlanWaypointIds:null,missionWaypoints:null} as BackendMission)),[]);
-  const displayMissions=preview?exampleMissions:missions;
-  const displayReviews=preview?2:pendingReviews;
-  const openMission=(id:string)=>{if(preview){setPreviewHint(true);return;}onViewMission(id);};
+  const openMission=(id:string)=>onViewMission(id);
 
   useEffect(() => {
     let active = true;
@@ -549,31 +541,24 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
   }, [plant]);
 
   const latestMissions = useMemo(
-    () => [...displayMissions].sort((left, right) => missionSortTime(right) - missionSortTime(left)).slice(0, 4),
-    [displayMissions]
+    () => [...missions].sort((left, right) => missionSortTime(right) - missionSortTime(left)).slice(0, 4),
+    [missions]
   );
 
-  const nextMission = [...displayMissions].filter(m=>m.status==="IN_PROGRESS" || m.status==="PLANNED" || m.status==="UPLOADING")
+  const nextMission = [...missions].filter(m=>m.status==="IN_PROGRESS" || m.status==="PLANNED" || m.status==="UPLOADING")
     .sort((a,b)=>Number(b.status==="IN_PROGRESS")-Number(a.status==="IN_PROGRESS") || missionSortTime(a)-missionSortTime(b))[0];
 
   return (
     <div className="tech-dashboard inspection-home">
-      <div className="inspection-home-header">
-        <div>
-          <h1 data-page-title="true">Inicio</h1>
-        </div>
-        <button className="home-preview-toggle" type="button" aria-pressed={preview} onClick={()=>{setPreview(!preview);setPreviewHint(false);}}>{preview?"Volver a datos reales":"Ver ejemplo con datos"}</button>
-      </div>
-      {preview&&<div className="home-preview-banner" role="status"><strong>Vista de ejemplo</strong><span>Misiones e inspecciones ficticias para revisar el diseño. El mapa sigue mostrando tu planta real.</span></div>}
-      {previewHint&&<p className="home-preview-hint" role="status">Esta misión es un ejemplo visual; no tiene un vuelo ni un reporte real.</p>}
+      <div className="inspection-home-header"><h1 data-page-title="true">Inicio</h1></div>
       <div className="home-attention" aria-label="Pendientes de la planta">
         <button type="button" onClick={()=>nextMission ? openMission(nextMission.idMission) : navigateTo("/mis-misiones")}>
           <span>{nextMission?.status === "IN_PROGRESS" ? "En curso" : nextMission && missionSortTime(nextMission)<Date.now() ? "Misión pendiente" : "Próxima misión"}</span>
-          <strong>{!preview && isLoading ? "Cargando…" : !preview && loadError ? "No disponible" : nextMission?.name ?? "Sin misiones programadas"}</strong>
+          <strong>{isLoading ? "Cargando…" : loadError ? "No disponible" : nextMission?.name ?? "Sin misiones programadas"}</strong>
           <small>{nextMission ? missionDisplayDate(nextMission) : "Ver misiones"} →</small>
         </button>
-        <button type="button" onClick={()=>preview?setPreviewHint(true):navigateTo("/reportes")}>
-          <span>Inspecciones por revisar</span><strong>{displayReviews === null ? "Consultar reportes" : displayReviews === 0 ? "Sin revisiones pendientes" : `${displayReviews} ${displayReviews === 1 ? "pendiente" : "pendientes"}`}</strong>
+        <button type="button" onClick={()=>navigateTo("/reportes")}>
+          <span>Inspecciones por revisar</span><strong>{pendingReviews === null ? "Consultar reportes" : pendingReviews === 0 ? "Sin revisiones pendientes" : `${pendingReviews} ${pendingReviews === 1 ? "pendiente" : "pendientes"}`}</strong>
           <small>Ver reportes →</small>
         </button>
       </div>
@@ -584,9 +569,9 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
             <button type="button" onClick={() => navigateTo("/mis-misiones")}>Ver todas</button>
           </header>
           <div className="inspection-latest-list">
-            {!preview && isLoading ? (
+            {isLoading ? (
               <LoadingState text="Cargando misiones..." compact />
-            ) : !preview && loadError ? (
+            ) : loadError ? (
               <p className="inspection-home-feedback error">{loadError}</p>
             ) : latestMissions.length ? (
               latestMissions.map((mission) => (
@@ -605,7 +590,7 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
               </button>
               ))
             ) : (
-              <div className="inspection-empty"><p>Todavía no hay misiones en esta planta.</p><button type="button" onClick={()=>navigateTo("/mis-misiones")}>Ir a misiones →</button></div>
+              <div className="inspection-empty"><p>Todavía no hay misiones en esta planta.</p></div>
             )}
           </div>
         </section>
