@@ -46,7 +46,8 @@
 .shared-app-header .plant-switcher label { display:block; }
 .shared-app-header .plant-switcher select {
   max-width: min(280px, 42vw); border:0; border-radius:6px;
-  padding:8px 28px 8px 0; background:transparent; color:var(--text-strong);
+  padding:8px 38px 8px 0; background-color:transparent; color:var(--text-strong);
+  background-position:right 10px center !important;
   font-size:15px; font-weight:650; cursor:pointer;
 }
 .shared-app-header .tech-user-button,

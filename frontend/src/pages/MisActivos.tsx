@@ -54,14 +54,14 @@ export function MisActivosView({initialCreate=false, selectedAssetId, plant, onD
   const openDetail=(asset:BackendAsset)=>{setSelectedId(asset.idAsset);setMode("detail");};
   const rowActions=(asset:BackendAsset)=><div className="asset-row-actions" onClick={e=>e.stopPropagation()}>
     <button className="asset-icon-button" type="button" aria-label={`Editar ${asset.name}`} title="Editar" onClick={()=>{setSelectedId(asset.idAsset);setMode("edit");}}><Pencil size={17}/></button>
-    <button className="asset-icon-button asset-delete-icon" type="button" aria-label={`Eliminar ${asset.name}`} title="Eliminar" onClick={()=>askDelete(asset)}><Trash2 size={17}/></button>
+    <button className="asset-icon-button asset-delete-button" type="button" aria-label={`Eliminar ${asset.name}`} title="Eliminar" onClick={()=>askDelete(asset)}><Trash2 size={17}/></button>
   </div>;
 
   return <section className={`asset-workspace mode-${mode}`}>
     {mode==="create" || mode==="edit" && selected ? <AssetEditor key={mode+String(selectedId)} plant={plant} asset={mode==="edit"?selected:undefined} assets={assets} onCancel={()=>setMode(mode==="edit"?"detail":"list")} onSaved={save}/> : <>
       {mode==="detail"&&<header className="asset-workspace-heading">
         <div>{mode==="detail"&&<button className="asset-back" type="button" onClick={()=>setMode("list")}><ArrowLeft size={16}/>Todos los activos</button>}<h1 data-page-title="true">{mode==="detail"?(selected?.name??"Activo"):"Activos"}</h1>{mode==="detail"&&<p>{selected?.code??""} · {selected?typeName(selected.type):""}</p>}</div>
-        {selected&&<div className="asset-heading-actions"><button className="asset-icon-button asset-heading-icon" type="button" aria-label="Editar activo" title="Editar" onClick={()=>setMode("edit")}><Pencil size={18}/></button><button className="asset-icon-button asset-heading-icon asset-delete-icon" type="button" aria-label="Eliminar activo" title="Eliminar" onClick={()=>askDelete(selected)}><Trash2 size={18}/></button></div>}
+        {selected&&<div className="asset-heading-actions"><button className="asset-icon-button asset-heading-icon" type="button" aria-label="Editar activo" title="Editar" onClick={()=>setMode("edit")}><Pencil size={18}/></button><button className="asset-icon-button asset-heading-icon asset-delete-button" type="button" aria-label="Eliminar activo" title="Eliminar" onClick={()=>askDelete(selected)}><Trash2 size={18}/></button></div>}
       </header>}
       {notice&&<div className="asset-notice" role="status"><span>{notice}</span>{mode==="list"&&selected&&<button type="button" onClick={()=>openDetail(selected)}>Ver activo</button>}<button type="button" aria-label="Cerrar aviso" onClick={()=>setNotice("")}><X size={16}/></button></div>}
       {error&&<div className="asset-feedback" role="alert">{error} <button type="button" onClick={load}>Reintentar</button></div>}
@@ -84,11 +84,11 @@ export function MisActivosView({initialCreate=false, selectedAssetId, plant, onD
           <section className="asset-directory" aria-label="Listado de activos">
             <div className="asset-directory-head"><span>Activo</span><span>Estado</span><span className="sr-only">Acciones</span></div>
             {loading?<p role="status">Cargando activos…</p>:visible.length?visible.map(asset=><article className={`asset-directory-row${selectedId===asset.idAsset?" selected":""}`} key={asset.idAsset} tabIndex={0} aria-label={`Ubicar ${asset.name} en el mapa`} onClick={()=>setSelectedId(asset.idAsset)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==="Enter"||e.key===" ")){e.preventDefault();setSelectedId(asset.idAsset);}}}>
-              <div><button className="asset-name-link" type="button" onClick={e=>{e.stopPropagation();openDetail(asset);}}>{asset.name}</button><small>{asset.code} · {typeName(asset.type)}</small></div><span className={`asset-status status-${asset.status}`}>{STATUSES[asset.status]}</span>{rowActions(asset)}
+              <div><button className="asset-name-link" type="button" onClick={e=>{e.stopPropagation();openDetail(asset);}}>{asset.name}</button><small>{typeName(asset.type)}</small></div><span className={`asset-status status-${asset.status}`}>{STATUSES[asset.status]}</span>{rowActions(asset)}
             </article>):<div className="asset-directory-empty"><h2>{assets.length?"Sin coincidencias":"Todavía no hay activos"}</h2><p>{assets.length?"Probá con otro nombre o quitá los filtros.":"Creá el primero y marcá su ubicación en el mapa."}</p></div>}
             <p className="asset-directory-count">{visible.length} {visible.length===1?"activo":"activos"}{visible.length!==assets.length?` de ${assets.length}`:""}</p>
           </section>
-          <section className="asset-directory-map" aria-label="Ubicación de activos"><div className="asset-map-context"><MapPin size={15}/><span>{selected?`${selected.name} · ${selected.code}`:"Seleccioná una fila para ubicar el activo"}</span>{selected&&<button type="button" onClick={()=>openDetail(selected)}>Ver ficha →</button>}</div><div className="asset-map-canvas"><AssetsOverviewMap assets={assets} filters={{type,status,search}} onViewAsset={setSelectedId} focusedAssetCode={selected?.code??null} plant={plant}/></div></section>
+          <section className="asset-directory-map" aria-label="Ubicación de activos"><div className="asset-map-canvas"><AssetsOverviewMap assets={assets} filters={{type,status,search}} onViewAsset={setSelectedId} focusedAssetCode={selected?.code??null} plant={plant}/></div></section>
         </div>
       </>}
     </>}

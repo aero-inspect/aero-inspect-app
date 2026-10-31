@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertCircle, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, Play, Plus, RefreshCw, Route, Search, Trash2, X, XCircle } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, Play, Plus, RefreshCw, Route, Search, Trash2, X, XCircle } from "lucide-react";
 import type { BackendFlightPlan, BackendMission, BackendMissionSchedule, BackendMissionStatus, ManagedUser } from "../api/types";
 import type { SessionUser } from "../types";
 import { deleteMission, deleteMissionSchedule, getFlightPlans, getManagedUsers, getMission, getMissions, getMissionSchedules, startMission, updateMissionPilot, updateMissionSchedule } from "../api/client";
@@ -146,6 +146,7 @@ export function MisMisionesView({
   const [statusFilter, setStatusFilter] = useState<"Todas" | MissionDisplayStatus>("Todas");
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateSort, setDateSort] = useState<"asc" | "desc">("asc");
   const [startingId, setStartingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<BackendMission | null>(null);
@@ -217,12 +218,18 @@ export function MisMisionesView({
     [missions, flightPlansById]
   );
 
-  const filteredRows = missionRows.filter((row) => {
+  const filteredRows = useMemo(() => missionRows.filter((row) => {
     const matchesStatus = statusFilter === "Todas" || row.statusLabel === statusFilter;
     const searchSource = `${row.mission.name} ${row.flightPlanName} ${row.mission.droneId ?? ""}`.toLowerCase();
     const matchesSearch = !searchTerm.trim() || searchSource.includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
-  });
+  }).sort((a, b) => {
+    const first = a.mission.scheduledAt ? new Date(a.mission.scheduledAt).getTime() : null;
+    const second = b.mission.scheduledAt ? new Date(b.mission.scheduledAt).getTime() : null;
+    if (first == null) return 1;
+    if (second == null) return -1;
+    return dateSort === "asc" ? first - second : second - first;
+  }), [missionRows, statusFilter, searchTerm, dateSort]);
 
   const filteredSchedules = (missionSchedules ?? []).filter((schedule) => {
     const planName = flightPlansById.get(schedule.idFlightPlan)?.name ?? `Plan #${schedule.idFlightPlan}`;
@@ -560,7 +567,11 @@ export function MisMisionesView({
                       <tr>
                         <th>Misión</th>
                         <th>Plan de vuelo</th>
-                        <th>Fecha</th>
+                        <th aria-sort={dateSort === "asc" ? "ascending" : "descending"}>
+                          <button className="missions-date-sort" onClick={() => setDateSort((current) => current === "asc" ? "desc" : "asc")} type="button">
+                            Fecha {dateSort === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                          </button>
+                        </th>
                         <th>Estado</th>
                         <th>Piloto asignado</th>
                         <th>Acciones</th>

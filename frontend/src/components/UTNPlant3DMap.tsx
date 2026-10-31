@@ -51,13 +51,14 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
     const scene = new THREE.Scene(); scene.background = new THREE.Color("#dce6ec");
     const camera = new THREE.PerspectiveCamera(45,1,.1,1000);
     const controls = new OrbitControls(camera,renderer.domElement);
-    controls.enableDamping = true; controls.minDistance=.65; controls.maxDistance=350; controls.maxPolarAngle=Math.PI/2-.02;
+    controls.enableDamping = true; controls.dampingFactor=.075; controls.rotateSpeed=.85; controls.panSpeed=1.05; controls.zoomSpeed=1.15;
+    controls.minDistance=.65; controls.maxDistance=350; controls.maxPolarAngle=Math.PI/2-.02;
     controls.zoomToCursor = true;
     controls.screenSpacePanning = false;
     // Keep both the orbit target and the camera above the ground after pan/zoom.
     const constrainCamera = () => {
-      controls.target.y = Math.max(.05, controls.target.y);
-      camera.position.y = Math.max(.25, camera.position.y);
+      controls.target.y = Math.max(0, controls.target.y);
+      camera.position.y = Math.max(.12, camera.position.y);
     };
     controls.addEventListener("change", constrainCamera);
     let automaticFrame=true;
