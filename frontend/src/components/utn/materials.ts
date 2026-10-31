@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 /** Subtle metric-scale surface variation, without stretching image textures
  * across long facades. This is illustrative wear, not a mapped damage survey. */
-export function surface(color: number, kind: "grass" | "concrete" | "plaster") {
+export function surface(color: number, kind: "grass" | "pitch" | "concrete" | "plaster") {
   const material = new THREE.MeshStandardMaterial({color,roughness:1});
   material.customProgramCacheKey = () => `utn-surface-${kind}`;
   material.onBeforeCompile = shader => {
@@ -18,9 +18,13 @@ export function surface(color: number, kind: "grass" | "concrete" | "plaster") {
           mix(mix(utnHash(i+vec3(0,0,1)),utnHash(i+vec3(1,0,1)),f.x),
           mix(utnHash(i+vec3(0,1,1)),utnHash(i+vec3(1,1,1)),f.x),f.y),f.z);
       }\n` + shader.fragmentShader;
-    const variation = kind === "grass"
+    const variation = kind === "pitch"
+      ? `float grain=utnNoise(utnWorld*35.0);
+         float patches=utnNoise(utnWorld*.35);
+         diffuseColor.rgb *= .93 + .06*patches + .06*grain;`
+      : kind === "grass"
       ? `float patches=utnNoise(utnWorld*.55); float grain=utnNoise(utnWorld*35.0);
-         diffuseColor.rgb *= .76 + .32*patches + .18*grain;
+         diffuseColor.rgb *= .84 + .18*patches + .1*grain;
          diffuseColor.rgb = mix(diffuseColor.rgb,vec3(.24,.22,.12),smoothstep(.7,.9,patches)*.3);`
       : `float patches=utnNoise(utnWorld*2.3); float grain=utnNoise(utnWorld*45.0);
          diffuseColor.rgb *= .88 + .14*patches + .08*grain;`;

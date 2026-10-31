@@ -15,3 +15,7 @@ Pendiente: confirmar altura y ancho de torre, separación respecto del galpón 2
 Corrección de orientación según foto desde la cancha: cemento al inicio del galpón, ladrillo hacia el fondo. El panel lateral del laboratorio recorre todo el ancho de su extremo (~18 m), paralelo al pasillo. Su altura/profundidad siguen aproximadas. La vista «Desde la cancha» reproduce este sentido de observación.
 
 Se retiró el primer banco junto a la salida del pasillo, manteniendo los cinco restantes en sus posiciones. El mapa muestra únicamente el control Zoom +, además de la navegación con mouse.
+
+## Revisión visual de materiales
+
+Se verificó en navegador la escena y el control Zoom + sin errores WebGL registrados. Se ajustaron luz y sombras, césped continuo, variación superficial de hormigón/revoque, divisiones de ventanas, ventana lateral enrejada del galpón y geometría ondulada de su cubierta. Se retiraron bordes blancos de sectores porque el KML no implica líneas pintadas. La variación superficial es ilustrativa: no representa un relevamiento de manchas o daños. Alturas, detalles ocultos, torre fuera del KML y bancos siguen siendo aproximaciones.

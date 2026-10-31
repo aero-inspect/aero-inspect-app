@@ -230,6 +230,7 @@ export function Home({
         ) : isProfilePath ? (
           <ProfileView user={user} setUser={setUser} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onViewActivity={() => navigateTo("/actividad-reciente")} onLogout={onLogout} />
         ) : isRegisterAssetPath && (userCanConsultAssets || user.role === "Jefe de Planta") ? (
+          selectedPlant.id === UTN_PLANT.id ? <MisActivosView initialCreate assets={assets} onBack={() => navigateTo("/mis-activos")} onDeleteAsset={() => {}} onRegisterAsset={() => {}} onUpdateAsset={() => {}} plant={selectedPlant} /> :
           <RegistrarActivoView assets={assets} onBack={() => navigateTo("/mis-activos")} onCreateAsset={(asset) => setAssets((current) => [...current, { ...asset, id: Date.now(), plantId: selectedPlant.id }])} onGoHome={() => navigateTo("/")} onViewAssets={() => navigateTo("/mis-activos")} plant={selectedPlant} />
         ) : isRoleMgmtPath && user.role === "Jefe de Planta" ? (
           <RoleManagementView user={user} onBack={() => navigateTo("/perfil")} />

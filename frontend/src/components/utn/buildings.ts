@@ -130,10 +130,16 @@ export function buildUtnBuildings(project: Projection) {
   box(shell,.85,.35,.08,split-.65,2.5,-.05,glass);
   for(let x=split-1.05;x<split-.2;x+=.12)box(shell,.025,.35,.1,x,2.5,-.1,rust);
   // Slightly pitched corrugated roof behind the taller plaster parapet.
-  const sheet=box(shell,sw+.2,.08,depth+.45,sw/2,3.12,depth/2,roof);sheet.rotation.x=.035;
-  for(let x=0;x<sw;x+=.22) {
-    const rib=box(shell,.035,.04,depth+.45,x,3.18,depth/2,roof);rib.rotation.x=.035;
+  const roofGeometry=new THREE.PlaneGeometry(sw+.2,depth+.45,Math.ceil(sw/.055),1);
+  const vertices=roofGeometry.attributes.position;
+  for(let i=0;i<vertices.count;i++) {
+    const x=vertices.getX(i),z=vertices.getY(i);
+    vertices.setXYZ(i,x,3.12+Math.sin(x/.22*Math.PI*2)*.028-z*.035,z);
   }
+  roofGeometry.computeVertexNormals();
+  const sheetMaterial=roof.clone();sheetMaterial.side=THREE.DoubleSide;
+  const sheet=new THREE.Mesh(roofGeometry,sheetMaterial);
+  sheet.position.set(sw/2,0,depth/2);sheet.castShadow=true;sheet.receiveShadow=true;shell.add(sheet);
   box(shell,.34,.2,.25,start+opening,2.9,-.18,roof);
   box(shell,.025,.8,.025,start+opening,3.4,-.15,rust);
   // Small barred window in the cement end wall, visible from the pitch.

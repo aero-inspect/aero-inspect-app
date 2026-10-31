@@ -168,11 +168,13 @@ function formatDateTime(iso?: string) {
 }
 
 export function MisActivosView({
+  initialCreate = false,
   assets: fallbackAssets,
   onDeleteAsset,
   selectedAssetId,
   plant
 }: {
+  initialCreate?: boolean;
   assets: Asset[];
   onBack: () => void;
   onDeleteAsset: (assetId: number) => void;
@@ -190,7 +192,7 @@ export function MisActivosView({
   const [openFilter, setOpenFilter] = useState<"type" | "status" | null>(null);
   const [openAssetFormSelect, setOpenAssetFormSelect] = useState<"create-type" | "create-status" | "edit-type" | "edit-status" | null>(null);
   const [isReadingDocument, setIsReadingDocument] = useState(false);
-  const [createAsset, setCreateAsset] = useState(false);
+  const [createAsset, setCreateAsset] = useState(initialCreate);
   const [assetCreated, setAssetCreated] = useState(false);
   const [detailAsset, setDetailAsset] = useState<AssetDetailRow | null>(null);
   const [isEditingDetail, setIsEditingDetail] = useState(false);
