@@ -320,8 +320,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
             <ArrowLeft size={19} />
           </button>
           <div>
-            <h1>Monitorear misión</h1>
-            <p>Seguimiento en vivo de las inspecciones a los activos.</p>
+            <h1 data-page-title="true">Monitorear misión</h1>
           </div>
         </div>
         <AppTopActions />

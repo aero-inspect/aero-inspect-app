@@ -48,8 +48,7 @@ export function ReporteDetalleView({ onBack }: ReporteDetalleViewProps) {
     <section className="report-detail-dashboard">
       <header className="report-detail-topbar">
         <div>
-          <h1>Reportes</h1>
-          <p>Visualización de reportes de tus misiones.</p>
+          <h1 data-page-title="true">Reportes</h1>
         </div>
         <AppTopActions />
       </header>

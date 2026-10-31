@@ -160,8 +160,7 @@ export function InspeccionManualView({
             <ArrowLeft size={19} />
           </button>
           <div>
-            <h1>Inspección manual</h1>
-            <p>Volá con la transmisora y el dron graba el recorrido para repetirlo después.</p>
+            <h1 data-page-title="true">Inspección manual</h1>
           </div>
         </div>
         <AppTopActions />

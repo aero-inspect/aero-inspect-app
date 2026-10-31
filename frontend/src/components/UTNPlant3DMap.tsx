@@ -8,6 +8,7 @@ import { UTN_PLANT } from "../data/plants";
 import { BACKEND_ASSET_TYPE_LABELS } from "../api/constants";
 import { buildPitchMarkings } from "./utn/pitch";
 import { surface } from "./utn/materials";
+import { buildSpaceTwo } from "./utn/spaceTwo";
 import { buildUtnBuildings } from "./utn/buildings";
 import { UTN_FOOTPRINTS } from "../data/utnFootprints";
 
@@ -42,14 +43,25 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
-    renderer.domElement.setAttribute("aria-label", "UTN Lugano: cancha y dos arcos georreferenciados, laboratorio, galpón único y bancos de cemento");
+    renderer.domElement.setAttribute("aria-label", "UTN Lugano: dos espacios de césped, dos canchas con cuatro arcos, laboratorio, galpones y bancos de cemento");
     container.appendChild(renderer.domElement);
     const scene = new THREE.Scene(); scene.background = new THREE.Color("#dce6ec");
     const camera = new THREE.PerspectiveCamera(45,1,.1,1000);
     const controls = new OrbitControls(camera,renderer.domElement);
-    controls.enableDamping = true; controls.minDistance=3; controls.maxDistance=350; controls.maxPolarAngle=Math.PI/2-.02;
+    controls.enableDamping = true; controls.minDistance=.65; controls.maxDistance=350; controls.maxPolarAngle=Math.PI/2-.02;
+    controls.zoomToCursor = true;
+    controls.screenSpacePanning = false;
+    // Keep both the orbit target and the camera above the ground after pan/zoom.
+    const constrainCamera = () => {
+      controls.target.y = Math.max(.05, controls.target.y);
+      camera.position.y = Math.max(.25, camera.position.y);
+    };
+    controls.addEventListener("change", constrainCamera);
+    let automaticFrame=true;
+    controls.addEventListener("start",()=>{automaticFrame=false;});
     camera.position.set(65,80,-95);controls.target.set(-12,0,8);controls.update();
     zoomIn.current = () => {
+      automaticFrame=false;
       const offset = camera.position.clone().sub(controls.target);
       offset.setLength(Math.max(controls.minDistance, offset.length() * .8));
       camera.position.copy(controls.target).add(offset);controls.update();
@@ -63,18 +75,19 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(270,270),grass);
     ground.rotation.x=-Math.PI/2; ground.position.y=-.025; ground.receiveShadow=true; scene.add(ground);
     const areas: THREE.Mesh[]=[];
-    for (const [name, ring] of Object.entries(UTN_FOOTPRINTS)) {
+    for (const [name, ring] of Object.entries(UTN_FOOTPRINTS).sort(([a],[b])=>Number(b==="Espacio 2")-Number(a==="Espacio 2"))) {
       // User confirmed Galpon and Galpon2 refer to the same building.
       if (name.startsWith("Arco") || name === "Galpon2") continue;
       const points=ring.map(local);
       const shape=new THREE.Shape(points.map(p=>new THREE.Vector2(p.x,-p.z)));
       const color=name==="Cancha 1"?0x6e9154:name==="Pasillo abierto"?0x77915a:name.includes("descanso")?0xa4b68a:0x8999a5;
-      const mesh=new THREE.Mesh(new THREE.ShapeGeometry(shape),name==="Cancha 1" ? pitchGrass : name==="Pasillo abierto" || name.includes("descanso") ? grass : new THREE.MeshStandardMaterial({color,side:THREE.DoubleSide,roughness:1}));
-      mesh.rotation.x=-Math.PI/2; mesh.position.y=.005; mesh.receiveShadow=true; scene.add(mesh); areas.push(mesh);
+      const mesh=new THREE.Mesh(new THREE.ShapeGeometry(shape),name.startsWith("Cancha") ? pitchGrass : name==="Pasillo abierto" || name==="Espacio 2" || name.includes("descanso") ? grass : new THREE.MeshStandardMaterial({color,side:THREE.DoubleSide,roughness:1}));
+      mesh.rotation.x=-Math.PI/2; mesh.position.y=name==="Espacio 2" ? .001 : .005; mesh.receiveShadow=true; scene.add(mesh); areas.push(mesh);
       // KML sectors delimit geometry; they are not painted white lines on site.
     }
     scene.add(buildPitchMarkings(local));
-    const buildings=buildUtnBuildings(local);scene.add(buildings);
+    scene.add(buildPitchMarkings(local,true));
+    const buildings=buildUtnBuildings(local);buildings.add(buildSpaceTwo(local));scene.add(buildings);
     const assetLayer=new THREE.Group();scene.add(assetLayer);
     let labels: Array<{button:HTMLButtonElement;position:THREE.Vector3}>=[];
     let lastFocus: string | null | undefined;
@@ -102,7 +115,7 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
         button.onclick=()=>{const current=assetProps.current;if(current.assetSelection)current.assetSelection.onSelect(asset.idAsset);else current.onViewAsset?.(asset.idAsset);};
         container.appendChild(button);labels.push({button,position:position.clone().add(new THREE.Vector3(0,.75,0))});
         if(asset.code===props.focusedAssetCode && lastFocus!==asset.code) {
-          controls.target.copy(position);camera.position.copy(position).add(new THREE.Vector3(6,5,6));lastFocus=asset.code;
+          automaticFrame=false;controls.target.copy(position);camera.position.copy(position).add(new THREE.Vector3(6,5,6));lastFocus=asset.code;
         }
       }
     };
@@ -115,7 +128,7 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize()); mesh.castShadow=true; scene.add(mesh);
     }
     for (const [name,ring] of Object.entries(UTN_FOOTPRINTS)) {
-      if (!name.startsWith("Arco")) continue;
+      if (!name.startsWith("Arco") || name.includes("cancha 2")) continue;
       const p=ring.map(local);
       // Average the short sides of each goal footprint to place the posts.
       const shortest=p.reduce((best,a,i)=>a.distanceTo(p[(i+1)%4])<p[best].distanceTo(p[(best+1)%4])?i:best,0);
@@ -137,9 +150,26 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       select.current({latitude:String(lat0-hit.point.z/110940),longitude:String(lon0+hit.point.x/lonScale)});
     };
     renderer.domElement.addEventListener("pointerdown",start);renderer.domElement.addEventListener("pointerup",pick);
-    const observer=new ResizeObserver(()=>{const w=container.clientWidth,h=container.clientHeight;renderer.setSize(w,h);camera.aspect=w/Math.max(h,1);camera.updateProjectionMatrix();});observer.observe(container);
+    const bounds=new THREE.Box3().setFromPoints(Object.values(UTN_FOOTPRINTS).flatMap(ring=>ring.map(local)));
+    bounds.max.y=11;
+    const corners: THREE.Vector3[]=[];
+    for(const x of [bounds.min.x,bounds.max.x])for(const y of [0,11])for(const z of [bounds.min.z,bounds.max.z])corners.push(new THREE.Vector3(x,y,z));
+    const observer=new ResizeObserver(()=>{
+      const w=container.clientWidth,h=container.clientHeight;if(!w || !h)return;
+      renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();
+      if(automaticFrame) {
+        controls.target.copy(bounds.getCenter(new THREE.Vector3()));
+        const direction=select.current ? new THREE.Vector3(0,1,.001) : new THREE.Vector3(.65,.8,-.95).normalize();
+        for(let distance=60;distance<=350;distance*=1.1) {
+          camera.position.copy(controls.target).addScaledVector(direction,distance);
+          camera.lookAt(controls.target);camera.updateMatrixWorld();
+          if(corners.every(c=>{const p=c.clone().project(camera);return Math.abs(p.x)<.88 && Math.abs(p.y)<.88;}))break;
+        }
+        controls.update();
+      }
+    });observer.observe(container);
     renderer.setAnimationLoop(()=>{
-      controls.update();camera.updateMatrixWorld();
+      controls.update();constrainCamera();camera.updateMatrixWorld();
       for(const label of labels) {
         const p=label.position.clone().project(camera);
         label.button.hidden=p.z < -1 || p.z > 1 || Math.abs(p.x)>1 || Math.abs(p.y)>1;
@@ -151,8 +181,8 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
     });
     return ()=>{refreshAssets.current=()=>{};labels.forEach(l=>l.button.remove());markerRef.current=null;observer.disconnect();renderer.setAnimationLoop(null);controls.dispose();renderer.domElement.removeEventListener("pointerdown",start);renderer.domElement.removeEventListener("pointerup",pick);scene.traverse(o=>{if(o instanceof THREE.Mesh||o instanceof THREE.Line){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});renderer.dispose();renderer.domElement.remove();};
   },[]);
-  return <section style={{position:"relative",width:"100%",minHeight:500,background:"#dce6ec",borderRadius:16,overflow:"hidden"}}>
-    <div ref={host} style={{height:"min(70vh, 720px)",minHeight:500}} />
+  return <section className="utn-map" style={{position:"relative",width:"100%",height:"100%",minHeight:360,background:"#dce6ec",borderRadius:16,overflow:"hidden"}}>
+    <div ref={host} style={{height:"100%",minHeight:360}} />
     <button type="button" aria-label="Acercar mapa" title="Zoom +" onClick={()=>zoomIn.current()}
       style={{position:"absolute",top:16,right:16,width:44,height:44,border:"1px solid #d6dce2",borderRadius:10,background:"white",color:"#233b55",fontSize:28,cursor:"pointer",boxShadow:"0 2px 8px #0002"}}>+</button>
     {error && <p role="alert" style={{position:"absolute",bottom:16,left:16}}>No se pudo iniciar la vista 3D.</p>}

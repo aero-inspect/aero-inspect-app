@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Package, AlertTriangle, CheckCircle, Clock, ArrowRight, TrendingUp, Activity } from "lucide-react";
 import type { Asset, Plant, InspectionMission, Anomaly } from "../types";
 import { MOCK_ANOMALIES } from "../data/mockAnomalies";
@@ -33,8 +33,7 @@ export function JefePlantaView({
       <header className="dashboard-header">
         <div>
           <p className="eyebrow">Dashboard del Jefe de Planta</p>
-          <h1>{plant.name}</h1>
-          <p className="dashboard-subtitle">{plant.province}</p>
+          <h1 data-page-title="true">{plant.name}</h1>
         </div>
       </header>
       <div className="stats-grid-clean">

@@ -421,8 +421,7 @@ export function MisMisionesView({
     <section className="missions-dashboard">
       <header className="missions-topbar">
         <div>
-          <h1>Misiones</h1>
-          <p>Gestiona y monitorea las misiones de inspección.</p>
+          <h1 data-page-title="true">Misiones</h1>
         </div>
         <AppTopActions />
       </header>

@@ -64,8 +64,7 @@ export function ReportesView({ assets, onCreateReport, onViewReport }: { assets:
     <section className="reports-dashboard">
       <header className="reports-topbar">
         <div>
-          <h1>Reportes</h1>
-          <p>Consulta y gestiona los activos gestionados en la planta</p>
+          <h1 data-page-title="true">Reportes</h1>
         </div>
 
         <AppTopActions />

@@ -1,9 +1,9 @@
-﻿import { Fragment, Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Fragment, Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, ChevronLeft, ChevronRight, UsersRound } from "lucide-react";
-import type { CSSProperties, Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { MockUser, InspectionMission, Asset, Plant, SessionUser } from "../types";
 import type { BackendAsset, BackendMission } from "../api/types";
-import { getAssets, getMissions } from "../api/client";
+import { getAssets, getMissions, getReports } from "../api/client";
 import { canConsultAssets, getRoleHomeTitle } from "../utils/helpers";
 import { DRONE_OPERATION_ROLES } from "../constants";
 import { AssetsOverviewMap } from "../components/AssetsOverviewMap";
@@ -27,11 +27,11 @@ import { TemporaryManualAnalysisShortcut } from "../components/TemporaryManualAn
 import { ReporteDetalleRealView } from "./ReporteDetalleReal";
 import { CentroAyudaView } from "./CentroAyuda";
 import { ActividadRecienteView } from "./ActividadReciente";
-import { AppTopActions, DroneGlyph } from "../components/AppTopActions";
+import { AppTopActions, SharedHeaderContext, DroneGlyph } from "../components/AppTopActions";
 import { LoadingState } from "../components/LoadingState";
 import sidebarLogo from "../assets/aeroinspect-sidebar-logo.png";
 
-import { PLANTS, UTN_PLANT, LUJAN_PLANT, PLANT_STORAGE_KEY, loadSelectedPlant } from "../data/plants";
+import { PLANTS, UTN_PLANT, PLANT_STORAGE_KEY, loadSelectedPlant } from "../data/plants";
 import { PlantContext } from "../data/PlantContext";
 import { ActivityProvider } from "../data/ActivityContext";
 import { setApiPlant } from "../api/client";
@@ -74,7 +74,7 @@ export function Home({
 }) {
   const [reportCaptureAssetId, setReportCaptureAssetId] = useState<number | null>(null);
   const [selectedPlant, setSelectedPlant] = useState(loadSelectedPlant);
-  const isLujan = selectedPlant.id === LUJAN_PLANT.id;
+
   const assets = allAssets.filter(asset => asset.plantId === selectedPlant.id);
   const missions = allMissions.filter(mission => assets.some(asset => asset.id === mission.assetId));
   const isRegisterAssetPath = currentPath === "/registro-activo";
@@ -109,6 +109,7 @@ export function Home({
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const sidebarRoleLabel = user.role === "Técnico de Mantenimiento" ? "Técnico de Mantenimiento" : user.role;
   return (
+    <SharedHeaderContext.Provider value={true}>
     <PlantContext.Provider value={selectedPlant}>
     <ActivityProvider key={`${user.username}:${selectedPlant.id}`} username={user.username} plantId={selectedPlant.id} token={user.token}>
     <main className={isSidebarCollapsed ? "home-shell-no-header sidebar-collapsed" : "home-shell-no-header"}>
@@ -120,51 +121,51 @@ export function Home({
           <img className="sidebar-brand-logo" src={sidebarLogo} alt="AeroInspect" />
         </div>
         <nav className="nav-list" aria-label="Principal">
-          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isManualInspectionPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isReportDetailRealPath && !isRoleMgmtPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} type="button">
+          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isManualInspectionPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isReportDetailRealPath && !isRoleMgmtPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} aria-label="Inicio" title="Inicio" type="button">
             <HomeIcon size={20} />
             {!isSidebarCollapsed && <span>Inicio</span>}
           </button>
 
           {userCanConsultAssets && (
-            <button className={isRegisterAssetPath || isAssetsPath ? "active" : undefined} onClick={() => navigateTo("/mis-activos")} type="button">
+            <button className={isRegisterAssetPath || isAssetsPath ? "active" : undefined} onClick={() => navigateTo("/mis-activos")} aria-label="Activos" title="Activos" type="button">
               <Package size={20} />
               {!isSidebarCollapsed && <span>Activos</span>}
             </button>
           )}
 
           {DRONE_OPERATION_ROLES.includes(user.role) && (
-            <button className={isDronePath ? "active" : undefined} onClick={() => navigateTo("/dron")} type="button">
+            <button className={isDronePath ? "active" : undefined} onClick={() => navigateTo("/dron")} aria-label="Drones" title="Drones" type="button">
               <DroneGlyph />
               {!isSidebarCollapsed && <span>Drones</span>}
             </button>
           )}
 
           {user.role === "Jefe de Planta" && (
-            <button className={isDronesAbmPath ? "active" : undefined} onClick={() => navigateTo("/gestion-drones")} type="button">
+            <button className={isDronesAbmPath ? "active" : undefined} onClick={() => navigateTo("/gestion-drones")} aria-label="Gestión de Drones" title="Gestión de Drones" type="button">
               <DroneGlyph />
               {!isSidebarCollapsed && <span>Gestión de Drones</span>}
             </button>
           )}
 
           {(userCanConsultAssets || user.role === "Técnico de Mantenimiento") && (
-            <button className={isMissionsPath || isMissionPath || isGeneratePlanPath || isManualInspectionPath ? "active" : undefined} onClick={() => navigateTo("/mis-misiones")} type="button">
+            <button className={isMissionsPath || isMissionPath || isGeneratePlanPath || isManualInspectionPath ? "active" : undefined} onClick={() => navigateTo("/mis-misiones")} aria-label="Misiones" title="Misiones" type="button">
               <Plane size={20} />
               {!isSidebarCollapsed && <span>Misiones</span>}
             </button>
           )}
 
-          <button className={isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath ? "active" : undefined} onClick={() => navigateTo("/reportes")} type="button">
+          <button className={isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath ? "active" : undefined} onClick={() => navigateTo("/reportes")} aria-label="Reportes" title="Reportes" type="button">
             <CheckCircle2 size={20} />
             {!isSidebarCollapsed && <span>Reportes</span>}
           </button>
           {user.role === "Jefe de Planta" && (
-            <button className={isRoleMgmtPath ? "active" : undefined} onClick={() => navigateTo("/gestion-roles")} type="button">
+            <button className={isRoleMgmtPath ? "active" : undefined} onClick={() => navigateTo("/gestion-roles")} aria-label="Gestión de personal" title="Gestión de personal" type="button">
               <UsersRound size={20} />
               {!isSidebarCollapsed && <span>Gestión de personal</span>}
             </button>
           )}
         </nav>
-        <button className="sidebar-user" onClick={() => navigateTo("/perfil")} type="button">
+        <button className="sidebar-user" aria-label="Mi perfil" onClick={() => navigateTo("/perfil")} type="button">
           {currentProfileImage ? (
             <img className="sidebar-user-avatar" src={currentProfileImage} alt="Foto de perfil" />
           ) : (
@@ -184,8 +185,8 @@ export function Home({
       </aside>
 
       <section key={selectedPlant.id} className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isManualInspectionPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isRoleMgmtPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
-        {currentPath === "/" && <div className="plant-switcher">
-          <label htmlFor="selected-plant">Cambiar planta
+        <header className="shared-app-header"><AppTopActions shared><div className="plant-switcher">
+          <label htmlFor="selected-plant"><span className="sr-only">Cambiar planta</span>
             <select id="selected-plant" value={selectedPlant.id} onChange={(event) => {
               const next = PLANTS.find(plant => plant.id === event.target.value);
               if (!next) return;
@@ -202,14 +203,13 @@ export function Home({
               {PLANTS.map(plant => <option key={plant.id} value={plant.id}>{plant.name}</option>)}
             </select>
           </label>
-          <small>{selectedPlant.id === UTN_PLANT.id ? "Campus UTN · Villa Lugano, CABA" : isLujan ? "Terreno de pruebas · Luján, Buenos Aires" : "Planta de acopio · Bragado, Buenos Aires"}</small>
-        </div>}
+
+        </div></AppTopActions></header>
         {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isManualInspectionPath && !isHelpPath && !isActivityPath && user.role !== "Técnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">
             <div>
               <p className="eyebrow">Bienvenida, {user.name}</p>
-              <h1>{getRoleHomeTitle(user.role)}</h1>
-              <p className="role-label">Rol: {user.role}</p>
+              <h1 data-page-title="true">{getRoleHomeTitle(user.role)}</h1>
             </div>
             <button
               className="ghost-button"
@@ -230,8 +230,7 @@ export function Home({
         ) : isProfilePath ? (
           <ProfileView user={user} setUser={setUser} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onViewActivity={() => navigateTo("/actividad-reciente")} onLogout={onLogout} />
         ) : isRegisterAssetPath && (userCanConsultAssets || user.role === "Jefe de Planta") ? (
-          selectedPlant.id === UTN_PLANT.id ? <MisActivosView initialCreate assets={assets} onBack={() => navigateTo("/mis-activos")} onDeleteAsset={() => {}} onRegisterAsset={() => {}} onUpdateAsset={() => {}} plant={selectedPlant} /> :
-          <RegistrarActivoView assets={assets} onBack={() => navigateTo("/mis-activos")} onCreateAsset={(asset) => setAssets((current) => [...current, { ...asset, id: Date.now(), plantId: selectedPlant.id }])} onGoHome={() => navigateTo("/")} onViewAssets={() => navigateTo("/mis-activos")} plant={selectedPlant} />
+          <MisActivosView initialCreate assets={assets} onBack={() => navigateTo("/mis-activos")} onDeleteAsset={id=>setAssets(current=>current.filter(a=>a.id!==id))} onRegisterAsset={()=>{}} onUpdateAsset={()=>{}} plant={selectedPlant} onViewAssetHistory={id=>{setReportCaptureAssetId(id);navigateTo("/reportes");}} />
         ) : isRoleMgmtPath && user.role === "Jefe de Planta" ? (
           <RoleManagementView user={user} onBack={() => navigateTo("/perfil")} />
         ) : isDronesAbmPath && user.role === "Jefe de Planta" ? (
@@ -293,7 +292,7 @@ export function Home({
         ) : isDronePath && DRONE_OPERATION_ROLES.includes(user.role) ? (
           <DroneTelemetryView />
         ) : isAssetsPath && userCanConsultAssets ? (
-          <MisActivosView assets={assets} onBack={() => navigateTo("/")} onDeleteAsset={(assetId) => setAssets((current) => current.filter((asset) => asset.id !== assetId))} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} selectedAssetId={selectedAssetId} plant={selectedPlant} />
+          <MisActivosView assets={assets} onBack={() => navigateTo("/")} onDeleteAsset={(assetId) => setAssets((current) => current.filter((asset) => asset.id !== assetId))} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} selectedAssetId={selectedAssetId} plant={selectedPlant} onViewAssetHistory={id=>{setReportCaptureAssetId(id);navigateTo("/reportes");}} />
         ) : isCreateReportPath ? (
           <CrearReporteView onBack={() => navigateTo("/reportes")} />
         ) : isReportDetailPath ? (
@@ -326,8 +325,7 @@ export function Home({
             <header className="dashboard-header">
               <div>
                 <p className="eyebrow">Bienvenido, {user.name}</p>
-                <h1>Panel de Control</h1>
-                <p className="role-label">Rol: {user.role}</p>
+                <h1 data-page-title="true">Panel de Control</h1>
               </div>
             </header>
 
@@ -463,6 +461,7 @@ export function Home({
     </main>
     </ActivityProvider>
     </PlantContext.Provider>
+    </SharedHeaderContext.Provider>
   );
 }
 
@@ -482,12 +481,12 @@ const missionStatusLabels: Record<BackendMission["status"], string> = {
   FAILED: "Fallida"
 };
 
-const missionStatusClasses: Record<BackendMission["status"], "low" | "medium" | "critical"> = {
-  PLANNED: "medium",
+const missionStatusClasses: Record<BackendMission["status"], string> = {
+  PLANNED: "planned",
   UPLOADING: "medium",
-  IN_PROGRESS: "medium",
+  IN_PROGRESS: "in-progress",
   COMPLETED: "low",
-  CANCELLED: "critical",
+  CANCELLED: "cancelled",
   FAILED: "critical"
 };
 
@@ -512,13 +511,25 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
   const [missions, setMissions] = useState<BackendMission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [pendingReviews, setPendingReviews] = useState<number | null>(null);
+  const [preview,setPreview]=useState(false);
+  const [previewHint,setPreviewHint]=useState(false);
+  const exampleMissions=useMemo<BackendMission[]>(()=>[
+    {name:"Inspección del laboratorio",status:"PLANNED",completionPercentage:0,scheduledAt:new Date(Date.now()+86400000).toISOString()},
+    {name:"Revisión del galpón",status:"IN_PROGRESS",completionPercentage:62,scheduledAt:new Date().toISOString()},
+    {name:"Control de arcos y cancha",status:"COMPLETED",completionPercentage:100,scheduledAt:new Date(Date.now()-86400000).toISOString()}
+  ].map((m,i)=>({...m,idMission:`example-${i}`,idFlightPlan:0,objective:"Ejemplo visual",droneId:"",startedAt:null,finishedAt:null,notes:null,assignedPilotUsername:null,selectedPlanWaypointIds:null,missionWaypoints:null} as BackendMission)),[]);
+  const displayMissions=preview?exampleMissions:missions;
+  const displayReviews=preview?2:pendingReviews;
+  const openMission=(id:string)=>{if(preview){setPreviewHint(true);return;}onViewMission(id);};
 
   useEffect(() => {
     let active = true;
     setIsLoading(true);
     setLoadError("");
 
-    Promise.all([getAssets(), getMissions()])
+    getReports(plant).then(items=>{if(active)setPendingReviews(new Set(items.filter(r=>r.status==="PENDING_VALIDATION").map(r=>r.idMission)).size);}).catch(()=>{if(active)setPendingReviews(null);});
+    Promise.all([getAssets(plant), getMissions(plant)])
       .then(([nextAssets, nextMissions]) => {
         if (!active) return;
         setAssets(nextAssets);
@@ -535,28 +546,37 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
     return () => {
       active = false;
     };
-  }, []);
+  }, [plant]);
 
   const latestMissions = useMemo(
-    () => [...missions].sort((left, right) => missionSortTime(right) - missionSortTime(left)).slice(0, 4),
-    [missions]
+    () => [...displayMissions].sort((left, right) => missionSortTime(right) - missionSortTime(left)).slice(0, 4),
+    [displayMissions]
   );
 
-  const completedMissions = missions.filter((mission) => mission.status === "COMPLETED").length;
-  const totalMissions = missions.length;
-  const completionPercentage = totalMissions === 0 ? 0 : Math.round((completedMissions / totalMissions) * 100);
-  const pendingMissions = totalMissions - completedMissions;
+  const nextMission = [...displayMissions].filter(m=>m.status==="IN_PROGRESS" || m.status==="PLANNED" || m.status==="UPLOADING")
+    .sort((a,b)=>Number(b.status==="IN_PROGRESS")-Number(a.status==="IN_PROGRESS") || missionSortTime(a)-missionSortTime(b))[0];
 
   return (
     <div className="tech-dashboard inspection-home">
       <div className="inspection-home-header">
         <div>
-          <h1>Inicio</h1>
-          <p>Resumen de misiones y activos de la planta.</p>
+          <h1 data-page-title="true">Inicio</h1>
         </div>
-        <AppTopActions />
+        <button className="home-preview-toggle" type="button" aria-pressed={preview} onClick={()=>{setPreview(!preview);setPreviewHint(false);}}>{preview?"Volver a datos reales":"Ver ejemplo con datos"}</button>
       </div>
-
+      {preview&&<div className="home-preview-banner" role="status"><strong>Vista de ejemplo</strong><span>Misiones e inspecciones ficticias para revisar el diseño. El mapa sigue mostrando tu planta real.</span></div>}
+      {previewHint&&<p className="home-preview-hint" role="status">Esta misión es un ejemplo visual; no tiene un vuelo ni un reporte real.</p>}
+      <div className="home-attention" aria-label="Pendientes de la planta">
+        <button type="button" onClick={()=>nextMission ? openMission(nextMission.idMission) : navigateTo("/mis-misiones")}>
+          <span>{nextMission?.status === "IN_PROGRESS" ? "En curso" : nextMission && missionSortTime(nextMission)<Date.now() ? "Misión pendiente" : "Próxima misión"}</span>
+          <strong>{!preview && isLoading ? "Cargando…" : !preview && loadError ? "No disponible" : nextMission?.name ?? "Sin misiones programadas"}</strong>
+          <small>{nextMission ? missionDisplayDate(nextMission) : "Ver misiones"} →</small>
+        </button>
+        <button type="button" onClick={()=>preview?setPreviewHint(true):navigateTo("/reportes")}>
+          <span>Inspecciones por revisar</span><strong>{displayReviews === null ? "Consultar reportes" : displayReviews === 0 ? "Sin revisiones pendientes" : `${displayReviews} ${displayReviews === 1 ? "pendiente" : "pendientes"}`}</strong>
+          <small>Ver reportes →</small>
+        </button>
+      </div>
       <div className="inspection-home-layout">
         <section className="inspection-latest-card">
           <header>
@@ -564,13 +584,13 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
             <button type="button" onClick={() => navigateTo("/mis-misiones")}>Ver todas</button>
           </header>
           <div className="inspection-latest-list">
-            {isLoading ? (
+            {!preview && isLoading ? (
               <LoadingState text="Cargando misiones..." compact />
-            ) : loadError ? (
+            ) : !preview && loadError ? (
               <p className="inspection-home-feedback error">{loadError}</p>
             ) : latestMissions.length ? (
               latestMissions.map((mission) => (
-              <button className="inspection-latest-row" key={mission.idMission} onClick={() => onViewMission(mission.idMission)} type="button">
+              <button className="inspection-latest-row" key={mission.idMission} onClick={() => openMission(mission.idMission)} type="button">
                 <span className={`inspection-severity-line ${missionStatusClasses[mission.status]}`} />
                 <span className="inspection-latest-name">
                   <strong>{mission.name}</strong>
@@ -585,36 +605,18 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
               </button>
               ))
             ) : (
-              <p className="inspection-home-feedback">Todavía no hay misiones registradas.</p>
+              <div className="inspection-empty"><p>Todavía no hay misiones en esta planta.</p><button type="button" onClick={()=>navigateTo("/mis-misiones")}>Ir a misiones →</button></div>
             )}
           </div>
         </section>
 
-        <section className="inspection-map-card">
-          <h2>Mapa de la planta</h2>
+        <section className="inspection-map-card" aria-label={`Vista de ${plant.name}`}>
           <div className="inspection-map-shell">
             <AssetsOverviewMap assets={assets} onViewAsset={onViewAsset} plant={plant} />
           </div>
         </section>
 
-        <section className="inspection-progress-card">
-          <h2>Progreso semanal</h2>
-          <div className="weekly-progress-content">
-            <div
-              className="weekly-progress-ring"
-              style={{ "--mission-progress": `${completionPercentage}%` } as CSSProperties}
-              aria-label={`${completionPercentage}% completado`}
-            >
-              <span>{completionPercentage}%</span>
-            </div>
-            <div className="weekly-progress-copy">
-              <p>Misiones completadas</p>
-              <strong>{completedMissions} de {totalMissions}</strong>
-              <div className="weekly-progress-bar"><span style={{ width: `${completionPercentage}%` }} /></div>
-              <small>{pendingMissions} pendientes o en curso</small>
-            </div>
-          </div>
-        </section>
+
       </div>
     </div>
   );

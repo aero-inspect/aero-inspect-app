@@ -3,9 +3,9 @@ import { UTN_FOOTPRINTS } from "../../data/utnFootprints";
 
 /** Painted markings fitted to the supplied four-corner pitch. Dimensions are
  * a visual reconstruction, not a surveyed or certified sporting layout. */
-export function buildPitchMarkings(project: (p: readonly number[]) => THREE.Vector3) {
+export function buildPitchMarkings(project: (p: readonly number[]) => THREE.Vector3, second = false) {
   const group=new THREE.Group();group.name="Líneas de cancha";
-  const p=UTN_FOOTPRINTS["Cancha 1"].map(project);
+  const p=UTN_FOOTPRINTS[second ? "Cancha 2" : "Cancha 1"].map(project);
   const width=(p[0].distanceTo(p[1])+p[3].distanceTo(p[2]))/2;
   const length=(p[0].distanceTo(p[3])+p[1].distanceTo(p[2]))/2;
   const paint=new THREE.MeshStandardMaterial({color:0xf4f2e8,roughness:1,depthWrite:false});
@@ -32,7 +32,7 @@ export function buildPitchMarkings(project: (p: readonly number[]) => THREE.Vect
   line(0,0,width,0);line(width,0,width,length);
   line(width,length,0,length);line(0,length,0,0);
   line(0,length/2,width,length/2);arc(width/2,length/2,Math.min(9.15,width*.18));spot(width/2,length/2);
-  const goals=[UTN_FOOTPRINTS["Arco 2 cancha 1"],UTN_FOOTPRINTS["Arco chancha 1"]];
+  const goals=second ? [UTN_FOOTPRINTS["Arco 2 cancha 2"],UTN_FOOTPRINTS["Arco 1 cancha 2"]] : [UTN_FOOTPRINTS["Arco 2 cancha 1"],UTN_FOOTPRINTS["Arco chancha 1"]];
   goals.forEach((ring,end)=>{
     const center=ring.map(project).reduce((a,b)=>a.add(b),new THREE.Vector3()).multiplyScalar(.25);
     const a=end===0?p[0]:p[3],b=end===0?p[1]:p[2],edge=b.clone().sub(a);

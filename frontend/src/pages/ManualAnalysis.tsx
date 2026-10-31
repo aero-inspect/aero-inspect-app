@@ -211,8 +211,7 @@ export function ManualAnalysisView({ onBack, onViewReport }: { onBack: () => voi
       <header className="real-report-topbar">
         <div>
           <button className="real-report-back" onClick={onBack} type="button">&larr; Volver a reportes</button>
-          <h1>Módulo de IA</h1>
-          <p>Carga manual temporal · Asigná las fotos a los activos del recorrido y analizá la inspección.</p>
+          <h1 data-page-title="true">Módulo de IA</h1>
         </div>
         <AppTopActions />
       </header>

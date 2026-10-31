@@ -1,1021 +1,153 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
-import {
-  AlertTriangle,
-  CalendarClock,
-  CalendarDays,
-  Box,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  Pencil,
-  Plus,
-  Search,
-  Trash2,
-  Upload,
-  X
-} from "lucide-react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { ArrowLeft, Plus, Search, MoreHorizontal, MapPin, Upload, X, Pencil } from "lucide-react";
 import type { Asset, Plant } from "../types";
-import type { BackendAsset, BackendAssetStatus, BackendAssetType } from "../api/types";
-import { createAsset as createBackendAsset, deleteAsset as deleteBackendAsset, getAssets, updateAsset as updateBackendAsset } from "../api/client";
+import type { BackendAsset, BackendAssetStatus, BackendAssetType, BackendReport, CreateAssetPayload } from "../api/types";
+import { createAsset, deleteAsset, getAssets, updateAsset, getReports } from "../api/client";
 import { AssetsOverviewMap } from "../components/AssetsOverviewMap";
-import { SelectedPlant3DMap as BragadoPlant3DMap } from "../components/SelectedPlant3DMap";
-import { AppTopActions } from "../components/AppTopActions";
-import { LoadingState } from "../components/LoadingState";
-import { ASSET_TYPE_OPTIONS, assetTypesForPlant } from "../data/assetTypes";
-
+import { assetTypesForPlant, ASSET_TYPE_OPTIONS } from "../data/assetTypes";
 import { AssetDocumentInput, AssetDocumentLink } from "../components/AssetDocumentInput";
 
-type AssetStatus = "Activo" | "En mantenimiento" | "Fuera de servicio" | "Sin confirmar";
-type AssetDetailRow = Asset & { displayName: string; displayType: string; displayStatus: AssetStatus; tone: "warning" | "ok" | "danger" };
+const STATUSES: Record<BackendAssetStatus,string> = { ACTIVE:"Activo", MAINTENANCE:"En mantenimiento", OUT_OF_SERVICE:"Fuera de servicio", UNCONFIRMED:"Sin confirmar" };
+const REPORT_STATUS: Record<BackendReport["status"],string> = {PROCESSING:"Procesando",PENDING_VALIDATION:"Pendiente de validación",VALIDATED:"Validada",REJECTED:"Descartada"};
+const typeName=(type:BackendAssetType)=>ASSET_TYPE_OPTIONS.find(t=>t.value===type)?.label ?? type;
+const dateLabel=(date:string|null)=>date ? new Date(date).toLocaleDateString("es-AR") : "Sin registrar";
+const coordinates=(asset:{latitude:number;longitude:number})=>`${asset.latitude.toFixed(6)}, ${asset.longitude.toFixed(6)}`;
+const documents=(asset:BackendAsset)=>asset.documents ?? (asset.documentName && asset.documentData ? [{name:asset.documentName,data:asset.documentData}] : []);
 
-type AssetFormState = {
-  documents: import("../api/types").AssetDocument[];
-  name: string;
-  type: BackendAssetType | "";
-  locationDetail: string;
-  status: BackendAssetStatus | "";
-  latitude: string;
-  longitude: string;
-  lastMaintenanceAt: string;
-  code: string;
-  description: string;
-  imageName: string | null;
-  imageData: string | null;
-  documentName: string | null;
-  documentData: string | null;
-};
-
-type AssetRequiredField = "name" | "type" | "locationDetail" | "status" | "latitude" | "longitude" | "code";
-
-const WEEK_DAYS = ["L", "M", "M", "J", "V", "S", "D"];
-
-function toDateInputValue(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}T00:00`;
-}
-
-function toDateTimeLocalInputValue(value: string) {
-  if (!value) return "";
-  const date = new Date(value);
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 16);
-}
-
-function formatMaintenanceLabel(value: string) {
-  if (!value) return "Seleccione fecha";
-  return new Date(value).toLocaleDateString("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric"
-  });
-}
-
-function monthLabel(date: Date) {
-  return date.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
-}
-
-function buildCalendarDays(monthDate: Date) {
-  const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-  const mondayOffset = (firstDay.getDay() + 6) % 7;
-  const firstVisibleDay = new Date(firstDay);
-  firstVisibleDay.setDate(firstDay.getDate() - mondayOffset);
-
-  return Array.from({ length: 42 }, (_, index) => {
-    const day = new Date(firstVisibleDay);
-    day.setDate(firstVisibleDay.getDate() + index);
-    return day;
-  });
-}
-
-function sameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
-const EMPTY_FORM: AssetFormState = {
-  name: "",
-  type: "",
-  locationDetail: "",
-  status: "",
-  latitude: "",
-  longitude: "",
-  lastMaintenanceAt: "",
-  code: "",
-  description: "",
-  imageName: null,
-  imageData: null,
-  documentName: null,
-  documentData: null,
-  documents: []
-};
-
-
-const ASSET_STATUS_OPTIONS: Array<{ value: BackendAssetStatus; label: AssetStatus }> = [
-  { value: "MAINTENANCE", label: "En mantenimiento" },
-  { value: "ACTIVE", label: "Activo" },
-  { value: "OUT_OF_SERVICE", label: "Fuera de servicio" },
-  { value: "UNCONFIRMED", label: "Sin confirmar" }
-];
-
-function backendTypeToDisplay(type: BackendAssetType) {
-  return ASSET_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? "Silo";
-}
-
-function backendStatusToDisplay(status: BackendAssetStatus): AssetStatus {
-  return ASSET_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? "Activo";
-}
-
-function statusTone(status: AssetStatus): "warning" | "ok" | "danger" {
-  if (status === "En mantenimiento") return "warning";
-  if (status === "Fuera de servicio") return "danger";
-  return "ok";
-}
-
-function backendAssetToAsset(asset: BackendAsset, plantId: string): AssetDetailRow {
-  const displayStatus = backendStatusToDisplay(asset.status);
-  const displayType = backendTypeToDisplay(asset.type);
-  return {
-    id: asset.idAsset,
-    name: asset.name,
-    type: displayType,
-    status: displayStatus,
-    latitude: String(asset.latitude),
-    longitude: String(asset.longitude),
-    description: asset.description ?? "",
-    code: asset.code,
-    locationDetail: asset.locationDetail ?? "",
-    createdAt: asset.createdAt ?? undefined,
-    lastMaintenanceAt: asset.lastMaintenanceAt ?? undefined,
-    imageName: asset.imageName ?? undefined,
-    imagePreview: asset.imageData ?? undefined,
-    documentName: asset.documentName ?? undefined,
-    documentData: asset.documentData ?? undefined,
-    documents: asset.documents ?? (asset.documentName && asset.documentData ? [{ name: asset.documentName, data: asset.documentData }] : []),
-    plantId,
-    displayName: asset.name,
-    displayType,
-    displayStatus,
-    tone: statusTone(displayStatus)
-  };
-}
-
-function formatDateTime(iso?: string) {
-  if (!iso) return "-";
-  return new Date(iso).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
-}
-
-export function MisActivosView({
-  initialCreate = false,
-  assets: fallbackAssets,
-  onDeleteAsset,
-  selectedAssetId,
-  plant
-}: {
-  initialCreate?: boolean;
-  assets: Asset[];
-  onBack: () => void;
-  onDeleteAsset: (assetId: number) => void;
-  onRegisterAsset: () => void;
-  onUpdateAsset: (asset: Asset) => void;
-  selectedAssetId?: number | null;
-  plant: Plant;
+export function MisActivosView({initialCreate=false, selectedAssetId, plant, onDeleteAsset, onViewAssetHistory}: {
+  initialCreate?:boolean; selectedAssetId?:number|null; plant:Plant; assets:Asset[];
+  onBack:()=>void; onDeleteAsset:(id:number)=>void; onRegisterAsset:()=>void; onUpdateAsset:(asset:Asset)=>void;
+  onViewAssetHistory?:(id:number)=>void;
 }) {
-  const assetTypeOptions = assetTypesForPlant(plant.id);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("Todos");
-  const [statusFilter, setStatusFilter] = useState<string>("Todos");
-  const [mapSelectedAssetId, setMapSelectedAssetId] = useState<number | null>(null);
-  const [mapHoveredAssetId, setMapHoveredAssetId] = useState<number | null>(null);
-  const [openFilter, setOpenFilter] = useState<"type" | "status" | null>(null);
-  const [openAssetFormSelect, setOpenAssetFormSelect] = useState<"create-type" | "create-status" | "edit-type" | "edit-status" | null>(null);
-  const [isReadingDocument, setIsReadingDocument] = useState(false);
-  const [createAsset, setCreateAsset] = useState(initialCreate);
-  const [assetCreated, setAssetCreated] = useState(false);
-  const [detailAsset, setDetailAsset] = useState<AssetDetailRow | null>(null);
-  const [isEditingDetail, setIsEditingDetail] = useState(false);
-  const [detailEditForm, setDetailEditForm] = useState<AssetFormState>(EMPTY_FORM);
-  const [deleteAsset, setDeleteAsset] = useState<AssetDetailRow | null>(null);
-  const [backendAssets, setBackendAssets] = useState<BackendAsset[] | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [form, setForm] = useState<AssetFormState>(EMPTY_FORM);
-  const [formErrors, setFormErrors] = useState<Partial<Record<AssetRequiredField, boolean>>>({});
-  const [isCoordinatePickerOpen, setIsCoordinatePickerOpen] = useState(false);
-  const [pendingLocation, setPendingLocation] = useState<{ latitude: string; longitude: string } | undefined>();
-  const [isMaintenancePickerOpen, setIsMaintenancePickerOpen] = useState(false);
-  const [visibleMaintenanceDate, setVisibleMaintenanceDate] = useState(new Date());
-
-  const loadAssets = () => {
-    setLoadError(null);
-    getAssets()
-      .then(setBackendAssets)
-      .catch((error: unknown) => setLoadError(error instanceof Error ? error.message : "No se pudieron cargar los activos."));
+  const [assets,setAssets]=useState<BackendAsset[]>([]);
+  const [loading,setLoading]=useState(true),[error,setError]=useState("");
+  const [search,setSearch]=useState(""),[type,setType]=useState("Todos"),[status,setStatus]=useState("Todos");
+  const [selectedId,setSelectedId]=useState<number|null>(selectedAssetId??null);
+  const [mode,setMode]=useState<"list"|"create"|"detail"|"edit">(initialCreate?"create":selectedAssetId?"detail":"list");
+  const [notice,setNotice]=useState("");
+  const [deleting,setDeleting]=useState<BackendAsset|null>(null),[busyDelete,setBusyDelete]=useState(false),[deleteError,setDeleteError]=useState("");
+  const [menuId,setMenuId]=useState<number|null>(null);
+  useEffect(()=>{
+    if(menuId===null)return;
+    const outside=(event:MouseEvent)=>{if(!(event.target instanceof Element)||!event.target.closest(".asset-more-wrap"))setMenuId(null);};
+    const escape=(event:KeyboardEvent)=>{if(event.key==="Escape")setMenuId(null);};
+    document.addEventListener("click",outside);document.addEventListener("keydown",escape);
+    return()=>{document.removeEventListener("click",outside);document.removeEventListener("keydown",escape);};
+  },[menuId]);
+  const [history,setHistory]=useState<BackendReport[]>([]),[historyLoading,setHistoryLoading]=useState(false),[historyError,setHistoryError]=useState("");
+  const selected=assets.find(a=>a.idAsset===selectedId);
+  const load=()=>{setLoading(true);setError("");getAssets(plant).then(setAssets).catch(e=>setError(e.message)).finally(()=>setLoading(false));};
+  useEffect(()=>{let active=true;setLoading(true);setError("");getAssets(plant).then(items=>{if(active)setAssets(items);}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[plant]);
+  useEffect(()=>{if(selectedAssetId){setSelectedId(selectedAssetId);setMode("detail");}},[selectedAssetId]);
+  useEffect(()=>{if(initialCreate)setMode("create");},[initialCreate]);
+  useEffect(()=>{
+    if(mode!=="detail" || !selectedId)return;
+    let active=true;setHistoryLoading(true);setHistoryError("");setHistory([]);
+    getReports(plant).then(items=>{if(active)setHistory(items.filter(r=>r.idAsset===selectedId).sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)));})
+      .catch(e=>{if(active)setHistoryError(e.message);}).finally(()=>{if(active)setHistoryLoading(false);});
+    return()=>{active=false;};
+  },[selectedId,mode,plant]);
+  const visible=useMemo(()=>assets.filter(a=>(type==="Todos"||typeName(a.type)===type)&&(status==="Todos"||STATUSES[a.status]===status)&&`${a.name} ${a.code} ${typeName(a.type)}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())),[assets,type,status,search]);
+  useEffect(()=>{if(selectedId && mode==="list" && !visible.some(a=>a.idAsset===selectedId))setSelectedId(null);},[visible,selectedId,mode]);
+  const save=(asset:BackendAsset)=>{
+    const created=mode==="create";
+    setAssets(current=>created?[...current,asset]:current.map(a=>a.idAsset===asset.idAsset?asset:a));
+    setSelectedId(asset.idAsset);setSearch("");setType("Todos");setStatus("Todos");setMode(created?"list":"detail");
+    setNotice(created?`${asset.name} se creó y quedó ubicado en el mapa.`:"Cambios guardados.");
   };
+  const remove=async()=>{if(!deleting)return;setBusyDelete(true);setDeleteError("");try{
+    await deleteAsset(deleting.idAsset);onDeleteAsset(deleting.idAsset);setAssets(items=>items.filter(a=>a.idAsset!==deleting.idAsset));setDeleting(null);setSelectedId(null);setMode("list");setNotice("Activo eliminado.");
+  }catch(e){setDeleteError(e instanceof Error?e.message:"No se pudo eliminar el activo.");}finally{setBusyDelete(false);}};
+  const askDelete=(asset:BackendAsset)=>{setDeleting(asset);setMenuId(null);setDeleteError("");};
+  const openDetail=(asset:BackendAsset)=>{setSelectedId(asset.idAsset);setMode("detail");setMenuId(null);};
+  const menu=(asset:BackendAsset)=><div className="asset-more-wrap" onClick={e=>e.stopPropagation()}>
+    <button className="asset-icon-button" type="button" aria-label={`Más opciones de ${asset.name}`} aria-expanded={menuId===asset.idAsset} onClick={()=>setMenuId(menuId===asset.idAsset?null:asset.idAsset)}><MoreHorizontal size={20}/></button>
+    {menuId===asset.idAsset&&<div className="asset-more-menu"><button type="button" onClick={()=>{setSelectedId(asset.idAsset);setMode("edit");setMenuId(null);}}>Editar activo</button><button type="button" className="danger-text" onClick={()=>askDelete(asset)}>Eliminar activo</button></div>}
+  </div>;
 
-  useEffect(() => {
-    loadAssets();
-  }, []);
-
-  const plantAssets = useMemo<AssetDetailRow[]>(() => {
-    if (backendAssets) return backendAssets.map(asset => backendAssetToAsset(asset, plant.id));
-    return fallbackAssets
-      .filter((asset) => asset.plantId === plant.id)
-      .map((asset) => {
-        const displayStatus = asset.status ?? "Activo";
-        return {
-          ...asset,
-          displayName: asset.name,
-          displayType: asset.type,
-          displayStatus,
-          tone: statusTone(displayStatus)
-        };
-      });
-  }, [backendAssets, fallbackAssets, plant.id]);
-
-  const visibleAssets = useMemo<AssetDetailRow[]>(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    return plantAssets.filter((asset) =>
-      (typeFilter === "Todos" || asset.displayType === typeFilter) &&
-      (statusFilter === "Todos" || asset.displayStatus === statusFilter) &&
-      (!normalizedSearch ||
-        asset.displayName.toLowerCase().includes(normalizedSearch) ||
-        asset.displayType.toLowerCase().includes(normalizedSearch) ||
-        asset.displayStatus.toLowerCase().includes(normalizedSearch))
-    );
-  }, [plantAssets, searchTerm, statusFilter, typeFilter]);
-
-  useEffect(() => {
-    if (selectedAssetId == null || !plantAssets.length) return;
-    const selectedAsset = plantAssets.find((asset) => asset.id === selectedAssetId);
-    if (selectedAsset) setDetailAsset(selectedAsset);
-  }, [plantAssets, selectedAssetId]);
-
-  const createTypeLabel = form.type
-    ? ASSET_TYPE_OPTIONS.find((option) => option.value === form.type)?.label ?? "-"
-    : "-";
-  const createStatusLabel = form.status
-    ? ASSET_STATUS_OPTIONS.find((option) => option.value === form.status)?.label ?? "-"
-    : "-";
-
-  const updateForm = (field: keyof AssetFormState, value: string | null) => {
-    setForm((current) => ({ ...current, [field]: value }));
-    if (field in formErrors) setFormErrors((current) => ({ ...current, [field as AssetRequiredField]: false }));
-  };
-
-  const selectedFormLocation = form.latitude && form.longitude
-    ? { latitude: form.latitude, longitude: form.longitude }
-    : undefined;
-  const selectedMaintenanceDate = form.lastMaintenanceAt ? new Date(form.lastMaintenanceAt) : null;
-  const maintenanceCalendarDays = buildCalendarDays(visibleMaintenanceDate);
-
-  const handleSelectMaintenanceDate = (date: Date) => {
-    const nextDate = new Date(date);
-    nextDate.setHours(0, 0, 0, 0);
-    updateForm("lastMaintenanceAt", toDateInputValue(nextDate));
-    setVisibleMaintenanceDate(nextDate);
-    setIsMaintenancePickerOpen(false);
-  };
-
-  const openCoordinatePicker = () => {
-    setPendingLocation(selectedFormLocation);
-    setIsCoordinatePickerOpen(true);
-  };
-
-  const confirmCoordinates = () => {
-    if (!pendingLocation) return;
-    setForm((current) => ({
-      ...current,
-      latitude: pendingLocation.latitude,
-      longitude: pendingLocation.longitude
-    }));
-    setFormErrors((current) => ({ ...current, latitude: false, longitude: false }));
-    setIsCoordinatePickerOpen(false);
-  };
-
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setForm((current) => ({
-        ...current,
-        imageName: file.name,
-        imageData: typeof reader.result === "string" ? reader.result : null
-      }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleCreateAsset = async () => {
-    if (isReadingDocument) return;
-    const requiredErrors: Partial<Record<AssetRequiredField, boolean>> = {
-      name: !form.name.trim(),
-      code: !form.code.trim(),
-      type: !form.type,
-      status: !form.status,
-      latitude: !form.latitude.trim(),
-      longitude: !form.longitude.trim()
-    };
-    if (Object.values(requiredErrors).some(Boolean)) {
-      setFormErrors(requiredErrors);
-      setSaveError(null);
-      return;
-    }
-    if (!form.type || !form.status) return;
-
-    setIsSaving(true);
-    setSaveError(null);
-    try {
-      const payload = {
-        name: form.name.trim(),
-        code: form.code.trim(),
-        type: form.type,
-        status: form.status,
-        locationDetail: plant.name,
-        latitude: Number(form.latitude),
-        longitude: Number(form.longitude),
-        lastMaintenanceAt: form.lastMaintenanceAt ? new Date(form.lastMaintenanceAt).toISOString() : null,
-        imageName: form.imageName,
-        imageData: form.imageData,
-        documents: form.documents,
-        description: form.description.trim() || null
-      };
-      const savedAsset = await createBackendAsset(payload);
-      setBackendAssets(current => [...(current ?? []), savedAsset]);
-      setForm(EMPTY_FORM);
-      setFormErrors({});
-      setCreateAsset(false);
-      setAssetCreated(true);
-      loadAssets();
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "No se pudo crear el activo.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDeleteAsset = async (asset: AssetDetailRow) => {
-    try {
-      await deleteBackendAsset(asset.id);
-      onDeleteAsset(asset.id);
-      setDeleteAsset(null);
-      setDetailAsset(null);
-      loadAssets();
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "No se pudo eliminar el activo.");
-    }
-  };
-
-  const beginDetailEdit = (asset: AssetDetailRow) => {
-    setDetailEditForm({
-      name: asset.displayName,
-      type: ASSET_TYPE_OPTIONS.find((option) => option.label === asset.displayType)?.value ?? "",
-      locationDetail: asset.locationDetail ?? "",
-      status: ASSET_STATUS_OPTIONS.find((option) => option.label === asset.displayStatus)?.value ?? "",
-      latitude: asset.latitude,
-      longitude: asset.longitude,
-      lastMaintenanceAt: asset.lastMaintenanceAt ?? "",
-      code: asset.code ?? "",
-      description: asset.description,
-      imageName: asset.imageName ?? null,
-      imageData: asset.imagePreview ?? null,
-      documentName: asset.documentName ?? null,
-      documentData: asset.documentData ?? null,
-      documents: asset.documents ?? (asset.documentName && asset.documentData ? [{ name: asset.documentName, data: asset.documentData }] : [])
-    });
-    setSaveError(null);
-    setIsEditingDetail(true);
-  };
-
-  const updateDetailEditForm = (field: keyof AssetFormState, value: string | null) => {
-    setDetailEditForm((current) => ({ ...current, [field]: value }));
-  };
-
-  const handleDetailImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setDetailEditForm((current) => ({
-        ...current,
-        imageName: file.name,
-        imageData: typeof reader.result === "string" ? reader.result : null
-      }));
-    };
-    reader.readAsDataURL(file);
-    event.target.value = "";
-  };
-
-  const handleUpdateAsset = async () => {
-    if (isReadingDocument) return;
-    if (!detailAsset || !detailEditForm.type || !detailEditForm.status) return;
-    if (!detailEditForm.name.trim() || !detailEditForm.code.trim() || !detailEditForm.locationDetail.trim() || !detailEditForm.latitude.trim() || !detailEditForm.longitude.trim()) {
-      setSaveError("Completá todos los campos obligatorios antes de guardar.");
-      return;
-    }
-    setIsSaving(true);
-    setSaveError(null);
-    try {
-      const updated = await updateBackendAsset(detailAsset.id, {
-        name: detailEditForm.name.trim(),
-        code: detailEditForm.code.trim(),
-        type: detailEditForm.type,
-        status: detailEditForm.status,
-        locationDetail: detailEditForm.locationDetail.trim(),
-        latitude: Number(detailEditForm.latitude),
-        longitude: Number(detailEditForm.longitude),
-        lastMaintenanceAt: detailEditForm.lastMaintenanceAt ? new Date(detailEditForm.lastMaintenanceAt).toISOString() : null,
-        imageName: detailEditForm.imageName,
-        imageData: detailEditForm.imageData,
-        documents: detailEditForm.documents,
-        description: detailEditForm.description.trim() || null
-      });
-      const nextDetail = backendAssetToAsset(updated, plant.id);
-      setBackendAssets((current) => current?.map((asset) => asset.idAsset === updated.idAsset ? updated : asset) ?? [updated]);
-      setDetailAsset(nextDetail);
-      setIsEditingDetail(false);
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "No se pudo actualizar el activo.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  if (detailAsset) {
-    return (
-      <section className="assets-dashboard asset-detail-page">
-        <header className="asset-detail-page-header">
-          <div className="asset-detail-page-title">
-            <button aria-label="Volver a Mis Activos" onClick={() => { setIsEditingDetail(false); setDetailAsset(null); }} type="button">
-              <ChevronLeft size={22} aria-hidden="true" />
-            </button>
-            <div>
-              <h1>{isEditingDetail ? "Editar activo" : detailAsset.displayName}</h1>
-              <p>{isEditingDetail ? `Modificá la información de ${detailAsset.displayName}` : "Detalle del activo de la planta"}</p>
-            </div>
-          </div>
-          <AppTopActions />
-        </header>
-
-        <div className="asset-detail-page-content">
-          <section className={`asset-detail-page-info${isEditingDetail ? " editing" : ""}`}>
-            <header>
-              <div>
-                <span>{detailAsset.displayType}</span>
-                <h2>{isEditingDetail ? "Datos del activo" : "Información del activo"}</h2>
-              </div>
-              {!isEditingDetail && <strong className={`asset-detail-status ${detailAsset.tone}`}>{detailAsset.displayStatus}</strong>}
-            </header>
-
-            {isEditingDetail ? (
-              <div className="asset-detail-inline-edit">
-                <div className="asset-detail-inline-fields">
-                  <label className="asset-edit-field"><span>Nombre *</span><input value={detailEditForm.name} onChange={(event) => updateDetailEditForm("name", event.target.value)} /></label>
-                  <label className="asset-edit-field"><span>Código *</span><input value={detailEditForm.code} onChange={(event) => updateDetailEditForm("code", event.target.value)} /></label>
-                  <label className="asset-edit-field"><span>Tipo *</span><select value={detailEditForm.type} onChange={(event) => updateDetailEditForm("type", event.target.value)}>{assetTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                  <label className="asset-edit-field"><span>Estado *</span><select value={detailEditForm.status} onChange={(event) => updateDetailEditForm("status", event.target.value)}>{ASSET_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                  <label className="asset-edit-field full"><span>Ubicación *</span><input value={detailEditForm.locationDetail} onChange={(event) => updateDetailEditForm("locationDetail", event.target.value)} /></label>
-                  <label className="asset-edit-field"><span>Latitud *</span><input value={detailEditForm.latitude} onChange={(event) => updateDetailEditForm("latitude", event.target.value)} /></label>
-                  <label className="asset-edit-field"><span>Longitud *</span><input value={detailEditForm.longitude} onChange={(event) => updateDetailEditForm("longitude", event.target.value)} /></label>
-                  <label className="asset-edit-field full"><span>Último mantenimiento</span><input type="datetime-local" value={toDateTimeLocalInputValue(detailEditForm.lastMaintenanceAt)} onChange={(event) => updateDetailEditForm("lastMaintenanceAt", event.target.value)} /></label>
-                  <label className="asset-edit-field asset-detail-inline-description full"><span>Descripción</span><textarea value={detailEditForm.description} onChange={(event) => updateDetailEditForm("description", event.target.value)} /></label>
-                </div>
-                <div className="asset-detail-inline-image">
-                  <span>Imagen del activo</span>
-                  {detailEditForm.imageData ? (
-                    <img className="asset-detail-photo" src={detailEditForm.imageData} alt={detailEditForm.imageName ?? detailEditForm.name} />
-                  ) : (
-                    <div className="asset-detail-photo asset-detail-photo-empty">Sin imagen cargada</div>
-                  )}
-                  <div className="asset-detail-image-actions">
-                    <label className="asset-detail-image-upload">
-                      <Upload size={15} aria-hidden="true" />
-                      {detailEditForm.imageData ? "Subir otra imagen" : "Subir imagen"}
-                      <input accept="image/png,image/jpeg,image/webp" onChange={handleDetailImageChange} type="file" />
-                    </label>
-                    {detailEditForm.imageData && <button onClick={() => setDetailEditForm((current) => ({ ...current, imageName: null, imageData: null }))} type="button">Quitar</button>}
-                  </div>
-                  <p>{detailEditForm.imageName ?? "JPG, PNG o WebP"}</p>
-                  <AssetDocumentInput onReadingChange={setIsReadingDocument} documents={detailEditForm.documents} disabled={isSaving || isReadingDocument} onChange={documents => setDetailEditForm(current => ({ ...current, documents }))} />
-                </div>
-              </div>
-            ) : (
-              <div className="asset-detail-page-body">
-                <div className="asset-detail-data">
-                  <AssetDetailField label="Ubicación" value={detailAsset.locationDetail || "-"} />
-                  <AssetDetailField label="Coordenadas" value={`${detailAsset.latitude}, ${detailAsset.longitude}`} />
-                  <AssetDetailField label="Descripción" value={detailAsset.description || "-"} />
-                  <div className="asset-detail-divider" />
-                  <AssetDetailField label="Fecha de creación" value={formatDateTime(detailAsset.createdAt)} />
-                  <AssetDetailField label="Último mantenimiento" value={formatDateTime(detailAsset.lastMaintenanceAt)} />
-                  <AssetDetailField label="Código" value={detailAsset.code || "-"} />
-                  <AssetDocumentLink documents={detailAsset.documents ?? []} />
-                </div>
-
-                <div className="asset-detail-image-area">
-                  <span>Imagen</span>
-                  {detailAsset.imagePreview ? (
-                    <img className="asset-detail-photo" src={detailAsset.imagePreview} alt={detailAsset.imageName ?? detailAsset.displayName} />
-                  ) : (
-                    <div className="asset-detail-photo asset-detail-photo-empty" aria-label="Sin imagen cargada">Sin imagen cargada</div>
-                  )}
-                  <p>Registro visual del activo seleccionado.</p>
-                </div>
-              </div>
-            )}
-
-            <footer className="asset-detail-page-actions">
-              {saveError && <span className="asset-detail-save-error" role="alert">{saveError}</span>}
-              {isEditingDetail ? <>
-                <button className="asset-detail-edit-button" onClick={() => { setIsEditingDetail(false); setSaveError(null); }} type="button">Cancelar</button>
-                <button className="asset-detail-save-button" disabled={isSaving || isReadingDocument} onClick={handleUpdateAsset} type="button">{isSaving ? "Guardando..." : "Guardar cambios"}</button>
-              </> : <>
-                <button className="asset-detail-edit-button" onClick={() => beginDetailEdit(detailAsset)} type="button"><Pencil size={15} aria-hidden="true" />Editar activo</button>
-                <button className="asset-detail-delete-button" onClick={() => setDeleteAsset(detailAsset)} type="button">Eliminar activo</button>
-              </>}
-            </footer>
-          </section>
-
-          <section className="asset-detail-page-map" aria-label={`Ubicación de ${detailAsset.displayName}`}>
-            <header>
-              <h2>Ubicación en la planta</h2>
-              <p>Activo seleccionado</p>
-            </header>
-            <div className="asset-detail-map-frame">
-              <BragadoPlant3DMap
-                assets={backendAssets ?? []}
-                focusedAssetCode={detailAsset.code}
-                assetSelection={{
-                  assets: backendAssets ?? [],
-                  selectedIds: [detailAsset.id],
-                  route: [],
-                  onSelect: () => undefined
-                }}
-              />
-            </div>
-          </section>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="assets-dashboard">
-      <header className="assets-dashboard-header">
-        <div>
-          <h1>Mis Activos</h1>
-          <p>Consulta y gestiona los activos gestionados en la planta</p>
-        </div>
-        <AppTopActions />
+  return <section className="asset-workspace">
+    {mode==="create" || mode==="edit" && selected ? <AssetEditor key={mode+String(selectedId)} plant={plant} asset={mode==="edit"?selected:undefined} assets={assets} onCancel={()=>setMode(mode==="edit"?"detail":"list")} onSaved={save}/> : <>
+      <header className="asset-workspace-heading">
+        <div>{mode==="detail"&&<button className="asset-back" type="button" onClick={()=>setMode("list")}><ArrowLeft size={16}/>Todos los activos</button>}<h1 data-page-title="true">{mode==="detail"?(selected?.name??"Activo"):"Activos"}</h1>{mode==="detail"&&<p>{selected?.code??""} · {selected?typeName(selected.type):""}</p>}</div>
+        {mode==="list"?<button className="asset-primary" type="button" onClick={()=>{setMode("create");setNotice("");}}><Plus size={17}/>Nuevo activo</button>:selected&&<div className="asset-heading-actions"><button className="asset-secondary" type="button" onClick={()=>setMode("edit")}><Pencil size={16}/>Editar activo</button>{menu(selected)}</div>}
       </header>
-
-      <div className="assets-dashboard-actions">
-        <label className="assets-search assets-header-search">
-          <Search size={14} aria-hidden="true" />
-          <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar activo..." value={searchTerm} />
-        </label>
-        <button className="assets-new-button" onClick={() => { setFormErrors({}); setSaveError(null); setVisibleMaintenanceDate(new Date()); setCreateAsset(true); }} type="button">
-          <Plus size={16} aria-hidden="true" />
-          Nuevo Activo
-        </button>
-      </div>
-
-      {loadError && <p className="assets-empty-message">{loadError}</p>}
-
-      <section className="assets-main-layout">
-        <section className="assets-list-card">
-          <h2>Todos los activos</h2>
-          <div className="assets-list-filters">
-            <button
-              className={typeFilter === "Todos" && statusFilter === "Todos" ? "assets-filter-pill active" : "assets-filter-pill"}
-              onClick={() => {
-                setTypeFilter("Todos");
-                setStatusFilter("Todos");
-                setOpenFilter(null);
-              }}
-              type="button"
-            >
-              Todos
-            </button>
-            <div className={typeFilter === "Todos" ? "assets-filter-select" : "assets-filter-select selected"}>
-              <button onClick={() => setOpenFilter((current) => current === "type" ? null : "type")} type="button">
-                {typeFilter === "Todos" ? "Tipo" : typeFilter}
-              </button>
-              <ChevronDown size={14} aria-hidden="true" />
-              {openFilter === "type" && (
-                <div className="assets-filter-menu">
-                  {assetTypeOptions.map((option) => (
-                    <button
-                      className={typeFilter === option.label ? "selected" : undefined}
-                      key={option.value}
-                      onClick={() => {
-                        setTypeFilter(option.label);
-                        setOpenFilter(null);
-                      }}
-                      type="button"
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className={statusFilter === "Todos" ? "assets-filter-select" : "assets-filter-select selected"}>
-              <button onClick={() => setOpenFilter((current) => current === "status" ? null : "status")} type="button">
-                {statusFilter === "Todos" ? "Estado" : statusFilter}
-              </button>
-              <ChevronDown size={14} aria-hidden="true" />
-              {openFilter === "status" && (
-                <div className="assets-filter-menu">
-                {ASSET_STATUS_OPTIONS.map((option) => (
-                  <button
-                    className={statusFilter === option.label ? "selected" : undefined}
-                    key={option.value}
-                    onClick={() => {
-                      setStatusFilter(option.label);
-                      setOpenFilter(null);
-                    }}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="assets-list-table-wrap">
-            <div className="assets-list-table-head" aria-hidden="true">
-              <span>Nombre</span>
-              <span>Activo</span>
-              <span>Estado</span>
-              <span>Acciones</span>
-            </div>
-            {backendAssets === null && !loadError && <LoadingState text="Cargando activos..." compact />}
-            {backendAssets !== null && visibleAssets.length === 0 && (
-              <p className="assets-empty-message">
-                {plantAssets.length === 0
-                  ? 'No hay activos creados todavía. Empezá por crear uno desde "Nuevo Activo".'
-                  : "No hay activos que coincidan con el filtro seleccionado."}
-              </p>
-            )}
-            {visibleAssets.map((asset) => (
-              <article
-                className={`assets-row ${asset.tone}${(mapHoveredAssetId ?? mapSelectedAssetId) === asset.id ? " map-focused" : ""}`}
-                key={asset.id}
-                onClick={() => setMapSelectedAssetId(asset.id)}
-                onMouseEnter={() => setMapHoveredAssetId(asset.id)}
-                onMouseLeave={() => setMapHoveredAssetId(null)}
-                tabIndex={0}
-              >
-                <strong>{asset.displayName}</strong>
-                <span>{asset.displayType}</span>
-                <em>{asset.displayStatus}</em>
-                <div className="assets-row-actions">
-                  <button aria-label={`Ver ${asset.displayName}`} onClick={(event) => { event.stopPropagation(); setDetailAsset(asset); }} type="button">
-                    <Eye size={15} aria-hidden="true" />
-                  </button>
-                  <button aria-label={`Eliminar ${asset.displayName}`} onClick={(event) => { event.stopPropagation(); setDeleteAsset(asset); }} type="button">
-                    <Trash2 size={15} aria-hidden="true" />
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <footer className="assets-list-footer">
-            <span>
-              {plantAssets.length === 0 ? "Mostrando 0 de 0 activos" : `Mostrando ${visibleAssets.length} de ${plantAssets.length} activos`}
-            </span>
-          </footer>
+      {notice&&<div className="asset-notice" role="status"><span>{notice}</span>{mode==="list"&&selected&&<button type="button" onClick={()=>openDetail(selected)}>Ver activo</button>}<button type="button" aria-label="Cerrar aviso" onClick={()=>setNotice("")}><X size={16}/></button></div>}
+      {error&&<div className="asset-feedback" role="alert">{error} <button type="button" onClick={load}>Reintentar</button></div>}
+      {mode==="detail"? selected?<>
+        <div className="asset-detail-layout-v2">
+          <section className="asset-detail-summary">
+            <span className={`asset-status status-${selected.status}`}>{STATUSES[selected.status]}</span>
+            {selected.imageData?<img className="asset-reference-photo" src={selected.imageData} alt={selected.name}/>:<div className="asset-no-photo">Sin fotografía de referencia</div>}
+            <dl><div><dt>Ubicación</dt><dd>{selected.locationDetail||plant.name}</dd></div><div><dt>Descripción</dt><dd>{selected.description||"Sin descripción"}</dd></div><div><dt>Último mantenimiento</dt><dd>{dateLabel(selected.lastMaintenanceAt)}</dd></div><div><dt>Creado el</dt><dd>{dateLabel(selected.createdAt)}</dd></div></dl>
+            <details className="asset-additional"><summary>Coordenadas y documentación</summary><p className="asset-mono">{coordinates(selected)}</p><AssetDocumentLink documents={documents(selected)}/></details>
+          </section>
+          <div className="asset-detail-map-v2"><AssetsOverviewMap assets={assets} focusedAssetCode={selected.code} plant={plant}/></div>
+        </div>
+        <section className="asset-history"><header><div><h2>Historial de inspecciones</h2><p>Resultados registrados para este activo.</p></div>{onViewAssetHistory&&<button className="asset-secondary" type="button" onClick={()=>onViewAssetHistory(selected.idAsset)}>Ver capturas y reportes →</button>}</header>
+          {historyLoading?<p role="status">Cargando historial…</p>:historyError?<p role="alert">{historyError}</p>:history.length?<div className="asset-history-list">{history.map(r=><article key={r.idReport}><div><strong>{r.title||r.missionName}</strong><small>{dateLabel(r.createdAt)} · {r.photos.length} evidencias</small></div><span>{REPORT_STATUS[r.status]}</span><span>{r.findingsCount} hallazgos</span></article>)}</div>:<p className="asset-muted">Este activo todavía no tiene inspecciones registradas.</p>}
         </section>
-
-        <section className="assets-map-card" aria-label="Mapa de activos">
-          <AssetsOverviewMap
-            assets={backendAssets ?? []}
-            filters={{ type: typeFilter, status: statusFilter, search: searchTerm }}
-            onViewAsset={(idAsset) => {
-              const found = plantAssets.find((asset) => asset.id === idAsset);
-              if (found) setDetailAsset(found);
-            }}
-            focusedAssetCode={plantAssets.find((asset) => asset.id === (mapHoveredAssetId ?? mapSelectedAssetId))?.code ?? null}
-            plant={plant}
-          />
-        </section>
-      </section>
-
-      {createAsset && (
-        <div className="asset-detail-modal-backdrop" role="presentation">
-          <section aria-modal="true" className="asset-edit-modal asset-create-modal" role="dialog">
-            <header className="asset-edit-modal-header">
-              <div className="asset-edit-title-wrap">
-                <span className="asset-detail-modal-icon">
-                  <Box size={24} aria-hidden="true" />
-                </span>
-                <h2>Crear Activo</h2>
-              </div>
-              <button aria-label="Cerrar creación" className="asset-detail-close" onClick={() => { setFormErrors({}); setSaveError(null); setCreateAsset(false); }} type="button">
-                <X size={20} aria-hidden="true" />
-              </button>
-            </header>
-
-            <div className="asset-edit-modal-body">
-              <div className="asset-edit-form-grid">
-                <label className="asset-edit-field full">
-                  <span>Nombre *</span>
-                  <input aria-label="Nombre" className={formErrors.name ? "field-invalid" : undefined} onChange={(event) => updateForm("name", event.target.value)} value={form.name} />
-                </label>
-
-                <div className="asset-edit-field full">
-                  <span>Tipo *</span>
-                  <div className={[form.type ? "asset-form-select selected" : "asset-form-select", formErrors.type ? "field-invalid" : ""].filter(Boolean).join(" ")}>
-                    <button onClick={() => setOpenAssetFormSelect((current) => current === "create-type" ? null : "create-type")} type="button">
-                      {createTypeLabel}
-                    </button>
-                    <ChevronDown size={14} aria-hidden="true" />
-                    {openAssetFormSelect === "create-type" && (
-                      <div className="assets-filter-menu">
-                        {assetTypeOptions.map((option) => (
-                          <button
-                            className={form.type === option.value ? "selected" : undefined}
-                            key={option.value}
-                            onClick={() => {
-                              updateForm("type", option.value);
-                              setOpenAssetFormSelect(null);
-                            }}
-                            type="button"
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="asset-edit-field full">
-                  <span>Estado *</span>
-                  <div className={[form.status ? "asset-form-select selected" : "asset-form-select", formErrors.status ? "field-invalid" : ""].filter(Boolean).join(" ")}>
-                    <button onClick={() => setOpenAssetFormSelect((current) => current === "create-status" ? null : "create-status")} type="button">
-                      {createStatusLabel}
-                    </button>
-                    <ChevronDown size={14} aria-hidden="true" />
-                    {openAssetFormSelect === "create-status" && (
-                      <div className="assets-filter-menu">
-                        {ASSET_STATUS_OPTIONS.map((option) => (
-                          <button
-                            className={form.status === option.value ? "selected" : undefined}
-                            key={option.value}
-                            onClick={() => {
-                              updateForm("status", option.value);
-                              setOpenAssetFormSelect(null);
-                            }}
-                            type="button"
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="asset-edit-field full">
-                  <span>Coordenadas *</span>
-                  <div className="asset-coordinate-picker">
-                    <button className={formErrors.latitude || formErrors.longitude ? "asset-coordinate-button field-invalid" : "asset-coordinate-button"} onClick={openCoordinatePicker} type="button">
-                      Seleccionar coordenadas
-                    </button>
-                    <div className="asset-edit-coordinates">
-                      <input aria-label="Latitud" readOnly placeholder="Latitud" value={form.latitude} />
-                      <input aria-label="Longitud" readOnly placeholder="Longitud" value={form.longitude} />
-                    </div>
-                  </div>
-                </div>
-
-                <label className="asset-edit-field full">
-                  <span>Último mantenimiento*</span>
-                  <div className={form.lastMaintenanceAt ? "mission-date-input asset-maintenance-date-input selected" : "mission-date-input asset-maintenance-date-input"}>
-                    <button
-                      aria-expanded={isMaintenancePickerOpen}
-                      onClick={() => setIsMaintenancePickerOpen((open) => !open)}
-                      type="button"
-                    >
-                      {formatMaintenanceLabel(form.lastMaintenanceAt)}
-                    </button>
-                    <CalendarClock size={15} aria-hidden="true" />
-                    {isMaintenancePickerOpen && (
-                      <div className="mission-date-popover asset-maintenance-date-popover">
-                        <div className="mission-calendar-panel">
-                          <div className="mission-calendar-header">
-                            <button
-                              aria-label="Mes anterior"
-                              onClick={() => setVisibleMaintenanceDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
-                              type="button"
-                            >
-                              <ChevronLeft size={14} />
-                            </button>
-                            <strong>{monthLabel(visibleMaintenanceDate)}</strong>
-                            <button
-                              aria-label="Mes siguiente"
-                              onClick={() => setVisibleMaintenanceDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
-                              type="button"
-                            >
-                              <ChevronRight size={14} />
-                            </button>
-                          </div>
-                          <div className="mission-calendar-weekdays">
-                            {WEEK_DAYS.map((day, index) => (
-                              <span key={`${day}-${index}`}>{day}</span>
-                            ))}
-                          </div>
-                          <div className="mission-calendar-grid">
-                            {maintenanceCalendarDays.map((day) => (
-                              <button
-                                className={[
-                                  day.getMonth() !== visibleMaintenanceDate.getMonth() ? "muted" : "",
-                                  selectedMaintenanceDate && sameDay(day, selectedMaintenanceDate) ? "selected" : "",
-                                  sameDay(day, new Date()) ? "today" : ""
-                                ].filter(Boolean).join(" ")}
-                                key={day.toISOString()}
-                                onClick={() => handleSelectMaintenanceDate(day)}
-                                type="button"
-                              >
-                                {day.getDate()}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </label>
-              </div>
-
-              <div className="asset-edit-side">
-                <div className="asset-edit-image-area asset-create-image-area">
-                  <span>Imagen</span>
-                  <label className={form.imageData ? "asset-create-upload has-preview" : "asset-create-upload"} aria-label="Subir imagen">
-                    {form.imageData ? (
-                      <img className="asset-create-preview" src={form.imageData} alt={form.imageName ?? "Imagen del activo"} />
-                    ) : (
-                      <Upload size={24} aria-hidden="true" />
-                    )}
-                    <input accept="image/*" hidden onChange={handleImageChange} type="file" />
-                  </label>
-                  <p>{form.imageName || "Registro visual del activo seleccionado."}</p>
-
-                </div>
-
-                  <AssetDocumentInput onReadingChange={setIsReadingDocument} documents={form.documents} disabled={isSaving || isReadingDocument} onChange={documents => setForm(current => ({ ...current, documents }))} />
-
-                <label className="asset-edit-field asset-edit-description">
-                  <span>Descripción</span>
-                  <textarea aria-label="Descripción" onChange={(event) => updateForm("description", event.target.value)} value={form.description} />
-                </label>
-              </div>
-            </div>
-
-            <footer className="asset-edit-modal-footer">
-              <label className="asset-edit-field asset-edit-code-bottom">
-                <span>Código *</span>
-                <input aria-label="Código" className={formErrors.code ? "field-invalid" : undefined} onChange={(event) => updateForm("code", event.target.value)} value={form.code} />
-              </label>
-              <div className="asset-edit-actions">
-                <button className="asset-edit-cancel" onClick={() => { setFormErrors({}); setSaveError(null); setCreateAsset(false); }} type="button">
-                  Cancelar
-                </button>
-                {saveError && <p className="assets-empty-message assets-form-error">{saveError}</p>}
-                <button
-                  className="asset-edit-save"
-                  disabled={isSaving || isReadingDocument}
-                  onClick={handleCreateAsset}
-                  type="button"
-                >
-                  {isSaving ? "Guardando..." : "Guardar"}
-                </button>
-              </div>
-            </footer>
+      </>:<p role="status">{loading?"Cargando activo…":"No se encontró el activo en esta planta."}</p>:<>
+        <div className="asset-toolbar"><label className="asset-search"><Search size={18}/><input aria-label="Buscar activos" placeholder="Buscar por nombre o código" value={search} onChange={e=>setSearch(e.target.value)}/></label><label><span className="sr-only">Tipo de activo</span><select aria-label="Tipo de activo" value={type} onChange={e=>setType(e.target.value)}><option value="Todos">Todos los tipos</option>{assetTypesForPlant(plant.id).map(t=><option key={t.value}>{t.label}</option>)}</select></label><label><span className="sr-only">Estado del activo</span><select aria-label="Estado del activo" value={status} onChange={e=>setStatus(e.target.value)}><option value="Todos">Todos los estados</option>{Object.values(STATUSES).map(s=><option key={s}>{s}</option>)}</select></label>{(search||type!=="Todos"||status!=="Todos")&&<button className="asset-text-button" type="button" onClick={()=>{setSearch("");setType("Todos");setStatus("Todos");}}>Limpiar filtros</button>}</div>
+        <div className="asset-list-map-layout">
+          <section className="asset-directory" aria-label="Listado de activos">
+            <div className="asset-directory-head"><span>Activo</span><span>Estado</span><span className="sr-only">Acciones</span></div>
+            {loading?<p role="status">Cargando activos…</p>:visible.length?visible.map(asset=><article className={`asset-directory-row${selectedId===asset.idAsset?" selected":""}`} key={asset.idAsset} tabIndex={0} aria-label={`Ubicar ${asset.name} en el mapa`} onClick={()=>setSelectedId(asset.idAsset)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==="Enter"||e.key===" ")){e.preventDefault();setSelectedId(asset.idAsset);}}}>
+              <div><button className="asset-name-link" type="button" onClick={e=>{e.stopPropagation();openDetail(asset);}}>{asset.name}</button><small>{asset.code} · {typeName(asset.type)}</small></div><span className={`asset-status status-${asset.status}`}>{STATUSES[asset.status]}</span>{menu(asset)}
+            </article>):<div className="asset-directory-empty"><h2>{assets.length?"Sin coincidencias":"Todavía no hay activos"}</h2><p>{assets.length?"Probá con otro nombre o quitá los filtros.":"Creá el primero y marcá su ubicación en el mapa."}</p></div>}
+            <p className="asset-directory-count">{visible.length} {visible.length===1?"activo":"activos"}{visible.length!==assets.length?` de ${assets.length}`:""}</p>
           </section>
+          <section className="asset-directory-map" aria-label="Ubicación de activos"><div className="asset-map-context"><MapPin size={15}/><span>{selected?`${selected.name} · ${selected.code}`:"Seleccioná una fila para ubicar el activo"}</span>{selected&&<button type="button" onClick={()=>openDetail(selected)}>Ver ficha →</button>}</div><div className="asset-map-canvas"><AssetsOverviewMap assets={assets} filters={{type,status,search}} onViewAsset={setSelectedId} focusedAssetCode={selected?.code??null} plant={plant}/></div></section>
         </div>
-      )}
-      {isCoordinatePickerOpen && (
-        <div className="asset-detail-modal-backdrop" role="presentation">
-          <section aria-modal="true" className="asset-coordinate-modal" role="dialog">
-            <header className="asset-edit-modal-header">
-              <div className="asset-edit-title-wrap">
-                <span className="asset-detail-modal-icon">
-                  <Box size={24} aria-hidden="true" />
-                </span>
-                <h2>Seleccionar coordenadas</h2>
-              </div>
-              <button aria-label="Cerrar mapa" className="asset-detail-close" onClick={() => setIsCoordinatePickerOpen(false)} type="button">
-                <X size={20} aria-hidden="true" />
-              </button>
-            </header>
-
-            <div className="asset-coordinate-map-frame">
-              <AssetsOverviewMap
-                assets={backendAssets ?? []}
-                onSelect={setPendingLocation}
-                plant={plant}
-                selectedLocation={pendingLocation}
-              />
-            </div>
-
-            <footer className="asset-coordinate-modal-footer">
-              <div className="asset-coordinate-selected">
-                {pendingLocation ? (
-                  <>
-                    <strong>Punto seleccionado</strong>
-                    <span>{pendingLocation.latitude}, {pendingLocation.longitude}</span>
-                  </>
-                ) : (
-                  <strong>Seleccioná un punto en el mapa</strong>
-                )}
-              </div>
-              <button className="asset-edit-cancel" onClick={() => setIsCoordinatePickerOpen(false)} type="button">
-                Cancelar
-              </button>
-              <button className="asset-edit-save" disabled={!pendingLocation} onClick={confirmCoordinates} type="button">
-                Confirmar coordenadas
-              </button>
-            </footer>
-          </section>
-        </div>
-      )}
-      {assetCreated && (
-        <div className="asset-detail-modal-backdrop" role="presentation">
-          <section aria-modal="true" className="asset-created-modal" role="dialog">
-            <span className="asset-created-icon" aria-hidden="true">
-              <Check size={25} />
-            </span>
-            <h2>Activo Registrado</h2>
-            <p>Ya está disponible para futuras misiones e inspecciones</p>
-            <div className="asset-created-actions">
-              <button className="asset-created-back" onClick={() => setAssetCreated(false)} type="button">
-                Volver
-              </button>
-              <button className="asset-created-view" onClick={() => setAssetCreated(false)} type="button">
-                Ver Activos
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
-      {deleteAsset && (
-        <div className="modal-backdrop profile-delete-modal-backdrop" role="presentation">
-          <section aria-modal="true" className="profile-delete-modal asset-delete-modal" role="dialog">
-            <span className="profile-delete-modal-icon" aria-hidden="true">
-              <AlertTriangle size={31} />
-            </span>
-            <h2>Eliminar activo</h2>
-            <p>
-              ¿Está seguro de que desea eliminar {deleteAsset.displayName}?<br />
-              Esta acción no se puede deshacer.
-            </p>
-            <div className="profile-delete-modal-actions">
-              <button className="profile-delete-modal-secondary" onClick={() => setDeleteAsset(null)} type="button">
-                Cancelar
-              </button>
-              <button
-                className="profile-delete-modal-primary"
-                onClick={() => handleDeleteAsset(deleteAsset)}
-                type="button"
-              >
-                Eliminar
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
-    </section>
-  );
+      </>}
+    </>}
+    {deleting&&<div className="asset-confirm-backdrop"><section className="asset-confirm" role="dialog" aria-modal="true" aria-labelledby="asset-delete-title"><h2 id="asset-delete-title">Eliminar {deleting.name}</h2><p>El activo se eliminará de la planta. Esta acción no se puede deshacer.</p>{deleteError&&<p role="alert">{deleteError}</p>}<div><button className="asset-secondary" type="button" disabled={busyDelete} onClick={()=>setDeleting(null)}>Cancelar</button><button className="asset-danger" type="button" disabled={busyDelete} onClick={remove}>{busyDelete?"Eliminando…":"Eliminar activo"}</button></div></section></div>}
+  </section>;
 }
 
-function AssetDetailField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="asset-detail-field">
-      <span>{label}</span>
-      <strong>{value}</strong>
+function AssetEditor({plant,asset,assets,onCancel,onSaved}:{plant:Plant;asset?:BackendAsset;assets:BackendAsset[];onCancel:()=>void;onSaved:(asset:BackendAsset)=>void}) {
+  const [form,setForm]=useState<CreateAssetPayload>(()=>asset?{name:asset.name,code:asset.code,type:asset.type,status:asset.status,locationDetail:asset.locationDetail||plant.name,latitude:asset.latitude,longitude:asset.longitude,lastMaintenanceAt:asset.lastMaintenanceAt,imageName:asset.imageName,imageData:asset.imageData,documents:documents(asset),description:asset.description}:{name:"",code:`ACT-${crypto.randomUUID().slice(0,8).toUpperCase()}`,type:assetTypesForPlant(plant.id)[0].value,status:"ACTIVE",locationDetail:plant.name,latitude:NaN,longitude:NaN,lastMaintenanceAt:null,imageName:null,imageData:null,documents:[],description:""});
+  const [saving,setSaving]=useState(false),[reading,setReading]=useState(false),[error,setError]=useState(""),[dirty,setDirty]=useState(false),[confirmCancel,setConfirmCancel]=useState(false);
+  const [invalid,setInvalid]=useState<string[]>([]);
+  const location=Number.isFinite(form.latitude)&&Number.isFinite(form.longitude)?{latitude:String(form.latitude),longitude:String(form.longitude)}:undefined;
+  const set=(patch:Partial<CreateAssetPayload>)=>{setForm(f=>({...f,...patch}));setDirty(true);setInvalid([]);setError("");};
+  const cancel=()=>{if(dirty)setConfirmCancel(true);else onCancel();};
+  useEffect(()=>{const leave=(event:BeforeUnloadEvent)=>{if(dirty){event.preventDefault();event.returnValue="";}};window.addEventListener("beforeunload",leave);return()=>window.removeEventListener("beforeunload",leave);},[dirty]);
+  const save=async()=>{
+    if(saving||reading)return;
+    const missing=[!form.name.trim()?"name":"",!form.code.trim()?"code":"",!location||form.latitude < -90||form.latitude > 90||form.longitude < -180||form.longitude > 180?"location":"",!form.locationDetail.trim()?"sector":""].filter(Boolean);
+    if(missing.length){setInvalid(missing);setError("Completá el nombre, el código, el sector y una ubicación válida en el mapa.");return;}
+    setSaving(true);setError("");
+    try {const payload={...form,name:form.name.trim(),code:form.code.trim(),description:form.description?.trim()||null};onSaved(asset?await updateAsset(asset.idAsset,payload):await createAsset(payload));}
+    catch(e){setError(e instanceof Error?e.message:"No se pudo guardar el activo. Tus datos se conservan.");}finally{setSaving(false);}
+  };
+  const image=async(event:ChangeEvent<HTMLInputElement>)=>{
+    const file=event.target.files?.[0];event.target.value="";if(!file)return;
+    if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>5*1024*1024){setError("Usá una imagen JPG, PNG o WebP de hasta 5 MB.");return;}
+    setReading(true);try{const data=await new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=()=>reject(new Error("No se pudo leer la imagen."));r.readAsDataURL(file);});set({imageName:file.name,imageData:data});}catch(e){setError(e instanceof Error?e.message:"No se pudo leer la imagen.");}finally{setReading(false);}
+  };
+  const localDate=form.lastMaintenanceAt?new Date(Date.parse(form.lastMaintenanceAt)-new Date(form.lastMaintenanceAt).getTimezoneOffset()*60000).toISOString().slice(0,16):"";
+  return <>
+    <header className="asset-workspace-heading"><div><button className="asset-back" type="button" disabled={saving} onClick={cancel}><ArrowLeft size={16}/>Volver</button><h1 data-page-title="true">{asset?`Editar ${asset.name}`:"Nuevo activo"}</h1></div></header>
+    <div className="asset-editor-layout">
+      <form className="asset-editor-form" onSubmit={e=>{e.preventDefault();save();}}>
+        <fieldset disabled={saving||reading}><legend>Datos del activo</legend>
+          <label><span>Nombre *</span><input autoFocus required maxLength={100} aria-invalid={invalid.includes("name")} value={form.name} onChange={e=>set({name:e.target.value})} placeholder="Ej. Banqueta del laboratorio"/></label>
+          <div className="asset-editor-pair"><label>Tipo<select value={form.type} onChange={e=>set({type:e.target.value as BackendAssetType})}>{assetTypesForPlant(plant.id).map(t=><option key={t.value} value={t.value}>{t.label}</option>)}</select></label><label>Estado<select value={form.status} onChange={e=>set({status:e.target.value as BackendAssetStatus})}>{Object.entries(STATUSES).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label></div>
+          <label><span>Código *</span><input required maxLength={60} aria-invalid={invalid.includes("code")} value={form.code} onChange={e=>set({code:e.target.value})}/><small>{asset?"Código interno del activo.":"Propuesto automáticamente. Podés usar tu código interno."}</small></label>
+          <label>Sector o referencia<input maxLength={255} value={form.locationDetail} onChange={e=>set({locationDetail:e.target.value})}/></label>
+          <div className={`asset-location-summary${invalid.includes("location")?" invalid":""}`}><MapPin size={18}/><div><strong>{location?"Ubicación seleccionada":"Falta marcar la ubicación"}</strong><small>{location?coordinates(form):"Hacé clic sobre el mapa para ubicar el activo."}</small></div></div>
+          <label>Último mantenimiento <small>Opcional</small><input aria-label="Último mantenimiento" type="datetime-local" value={localDate} onChange={e=>set({lastMaintenanceAt:e.target.value?new Date(e.target.value).toISOString():null})}/><small>{form.lastMaintenanceAt?"":"Sin mantenimiento registrado"}</small></label>
+          <details className="asset-additional"><summary>Foto, descripción y documentos <small>Opcional</small></summary>
+            <label className="asset-image-upload">{form.imageData&&<img src={form.imageData} alt="Vista previa del activo"/>}<span><Upload size={16}/>{form.imageData?"Cambiar foto":"Agregar foto"}</span><input aria-label="Fotografía del activo" type="file" accept="image/jpeg,image/png,image/webp" onChange={image}/></label>{form.imageData&&<button className="asset-text-button" type="button" onClick={()=>set({imageData:null,imageName:null})}>Quitar foto</button>}
+            <label>Descripción<textarea maxLength={500} value={form.description??""} onChange={e=>set({description:e.target.value})}/></label>
+            <AssetDocumentInput documents={form.documents??[]} disabled={saving} onReadingChange={setReading} onChange={docs=>set({documents:docs})}/>
+          </details>
+        </fieldset>
+        {error&&<p className="asset-form-feedback" role="alert">{error}</p>}
+        {confirmCancel&&<div className="asset-unsaved" role="alert"><p>Tenés cambios sin guardar.</p><button type="button" onClick={()=>setConfirmCancel(false)}>Seguir editando</button><button type="button" onClick={onCancel}>Descartar cambios</button></div>}
+        <footer className="asset-editor-footer"><button className="asset-secondary" type="button" disabled={saving||reading} onClick={cancel}>Cancelar</button><button className="asset-primary" type="submit" disabled={saving||reading}>{saving?"Guardando…":reading?"Leyendo archivo…":asset?"Guardar cambios":"Crear activo"}</button></footer>
+      </form>
+      <section className="asset-editor-map" aria-label="Ubicación del activo"><p><MapPin size={16}/>{location?"Podés elegir otro punto para cambiar la ubicación.":"Marcá en el mapa dónde está el activo."}</p><div><AssetsOverviewMap assets={assets} plant={plant} selectedLocation={location} onSelect={p=>{if(!saving&&!reading)set({latitude:Number(p.latitude),longitude:Number(p.longitude)});}}/></div></section>
     </div>
-  );
-}
-
-function AssetStatCard({ icon, label, tone, value }: { icon: ReactNode; label: string; tone: "blue" | "green" | "amber" | "red"; value: number }) {
-  return (
-    <article className="assets-stat-card">
-      <span className={`assets-stat-icon ${tone}`}>{icon}</span>
-      <div>
-        <p>{label}</p>
-        <strong>{value}</strong>
-      </div>
-    </article>
-  );
+  </>;
 }

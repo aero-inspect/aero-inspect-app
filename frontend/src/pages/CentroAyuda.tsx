@@ -1,4 +1,4 @@
-﻿import { useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -72,8 +72,7 @@ export function CentroAyudaView() {
     <section className="help-dashboard">
       <header className="help-header">
         <div>
-          <h1>Centro de Ayuda</h1>
-          <p>Encuentra respuestas, guías y canales de soporte.</p>
+          <h1 data-page-title="true">Centro de Ayuda</h1>
         </div>
         <AppTopActions />
       </header>

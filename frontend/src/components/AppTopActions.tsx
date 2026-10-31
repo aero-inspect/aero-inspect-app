@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Bell, UserRound, X } from "lucide-react";
 import { emptyWeather, fetchWeather } from "../services/weather";
 import { getWeatherIcon } from "../utils/weatherIcon";
@@ -7,10 +7,24 @@ import { useSelectedPlant } from "../data/PlantContext";
 import { UTN_PLANT, LUJAN_PLANT } from "../data/plants";
 import { useActivity, noticeTitles, eventDate } from "../data/ActivityContext";
 
-export function AppTopActions() {
+export const SharedHeaderContext = createContext(false);
+export function AppTopActions({shared=false, children}: {shared?:boolean;children?:ReactNode} = {}) {
+  const hasSharedHeader=useContext(SharedHeaderContext);
+  if(hasSharedHeader && !shared) return null;
+  return <HeaderActions shared={shared}>{children}</HeaderActions>;
+}
+function HeaderActions({shared,children}: {shared:boolean;children?:ReactNode}) {
   const plant = useSelectedPlant();
   const WEATHER_CITY = plant.id === UTN_PLANT.id ? "Buenos Aires" : plant.id === LUJAN_PLANT.id ? "Luján" : "Bragado";
   const [isOpen, setIsOpen] = useState(false);
+  const notificationsRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    if(!isOpen)return;
+    const close=(event:PointerEvent)=>{if(!notificationsRef.current?.contains(event.target as Node))setIsOpen(false);};
+    const escape=(event:KeyboardEvent)=>{if(event.key==="Escape"){setIsOpen(false);notificationsRef.current?.querySelector("button")?.focus();}};
+    document.addEventListener("pointerdown",close);document.addEventListener("keydown",escape);
+    return ()=>{document.removeEventListener("pointerdown",close);document.removeEventListener("keydown",escape);};
+  },[isOpen]);
   const {notifications,unread,markRead,dismiss,loading,error}=useActivity();
   const [weather, setWeather] = useState(emptyWeather);
   const goToProfile = () => {
@@ -35,7 +49,8 @@ export function AppTopActions() {
 
 
   return (
-    <div className="app-top-actions">
+    <div className={shared ? "app-top-actions shared-header-actions" : "app-top-actions"}>
+      {children}
       <div className="app-weather" style={{ opacity: weather.loading ? 0.6 : 1 }}>
         <WeatherIcon aria-hidden="true" className="weather-icon" size={26} />
         <div>
@@ -44,7 +59,7 @@ export function AppTopActions() {
         </div>
       </div>
 
-      <div className="notifications-menu-wrap">
+      <div className="notifications-menu-wrap" ref={notificationsRef}>
         <button className="tech-notification-button" onClick={() => {if(!isOpen)markRead();setIsOpen((current) => !current);}} type="button" aria-label={`Notificaciones${unread ? ` (${unread} sin leer)` : ''}`} aria-expanded={isOpen}>
           <Bell size={20} />
           {unread>0 && <span aria-hidden="true" />}

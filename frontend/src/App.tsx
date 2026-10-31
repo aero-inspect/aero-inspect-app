@@ -124,7 +124,7 @@ export function App() {
   }
 
   return (
-    <div className="app-scale-root">
+    <div className="app-scale-root app-native-scale">
       <Home
         currentPath={currentPath}
         navigateTo={navigateTo}

@@ -19,3 +19,7 @@ Se retiró el primer banco junto a la salida del pasillo, manteniendo los cinco 
 ## Revisión visual de materiales
 
 Se verificó en navegador la escena y el control Zoom + sin errores WebGL registrados. Se ajustaron luz y sombras, césped continuo, variación superficial de hormigón/revoque, divisiones de ventanas, ventana lateral enrejada del galpón y geometría ondulada de su cubierta. Se retiraron bordes blancos de sectores porque el KML no implica líneas pintadas. La variación superficial es ilustrativa: no representa un relevamiento de manchas o daños. Alturas, detalles ocultos, torre fuera del KML y bancos siguen siendo aproximaciones.
+
+## Espacio 2 — referencias del 31/10/2026
+
+Se incorporaron las cinco delimitaciones nuevas de `utn-espacio-2.kml` sin modificar las del primer sector. Cancha 2 reutiliza las marcas blancas adaptadas a sus dimensiones; los arcos pequeños tienen altura estimada de 2 m y redes abiertas por delante. El galpón reproduce paredes blancas, cubierta curva verde suave, anexo frontal, alero de chapa, dos ventanas enrejadas y puerta doble. Alturas, anexo, árbol y luminarias son reconstrucciones visuales aproximadas, no relevamiento métrico. La reja sigue el borde oriental largo de Espacio 2. No se agregan las torres del estadio que aparecen fuera del predio en las fotos.
