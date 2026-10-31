@@ -435,6 +435,25 @@
   text-align: left;
 }
 
+.missions-date-sort {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:30px;
+  margin-left:-8px;
+  padding:4px 8px;
+  border:0;
+  border-radius:6px;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.missions-date-sort:hover,
+.missions-date-sort:focus-visible { background:#e9efed; color:#24394b; }
+
 .missions-table td {
   height: 50px;
   padding: 0 15px;

@@ -2,8 +2,8 @@
   height: var(--app-canvas-height);
   overflow: hidden;
   padding: 10px 18px;
-  color: #063b7a;
-  background: #f8fafc;
+  color: #24394b;
+  background: #f5f5f1;
 }
 
 .drones-topbar,
@@ -45,10 +45,10 @@
 .drone-heartbeat-card,
 .drone-info-card,
 .drone-preflight-card {
-  border: 1px solid #e3ebf2;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  border: 1px solid #dfe3e3;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(36, 57, 75, 0.055);
 }
 
 .drone-heartbeat-card {
@@ -90,8 +90,8 @@
 .drone-select-card {
   justify-content: space-between;
   gap: 22px;
-  height: 68px;
-  margin-bottom: 8px;
+  height: 72px;
+  margin-bottom: 12px;
   padding: 10px 20px;
 }
 
@@ -188,7 +188,8 @@
   min-width: 156px;
   height: 40px;
   margin: 0;
-  border-radius: 6px;
+  border:1px solid #efd0ce;
+  border-radius: 999px;
   background: rgba(252, 232, 232, 0.34);
   color: #ef2020;
   font-size: 13px;
@@ -206,6 +207,7 @@
 .drone-sse-status.connected {
   background: #e8f5e9;
   color: #119b53;
+  border-color:#cde5d2;
 }
 
 .drone-sse-error {
@@ -219,13 +221,13 @@
 .drone-telemetry-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
 .drone-info-card {
   min-height: 148px;
-  padding: 13px 16px;
+  padding: 16px 18px;
 }
 
 .drone-info-card header {
@@ -236,7 +238,7 @@
 .drone-info-card h2,
 .drone-preflight-card h2 {
   margin: 0;
-  color: #063b7a;
+  color: #24394b;
   font-size: 14px;
   line-height: 18px;
   font-weight: 700;
@@ -296,7 +298,7 @@
 }
 
 .drone-info-line strong {
-  color: #063b7a;
+  color: #24394b;
   font-size: 12px;
   line-height: 15px;
   font-weight: 700;
@@ -307,7 +309,7 @@
   display: grid;
   grid-template-columns: minmax(260px, 480px) minmax(0, 1fr);
   align-items: start;
-  gap: 10px;
+  gap: 14px;
 }
 
 .drone-bottom-grid > .drone-model-viewer {
@@ -323,8 +325,8 @@
   display: grid;
   grid-template-rows: auto repeat(3, 19px) 1fr;
   gap: 4px;
-  height: 168px;
-  padding: 14px 18px;
+  height: 184px;
+  padding: 18px 20px;
 }
 
 .drone-preflight-card h2 {

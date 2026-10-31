@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ComponentProps } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { LocateFixed, Minus, Plus } from "lucide-react";
 import type { BragadoPlant3DMap } from "./BragadoPlant3DMap";
 import { createStool, disposeAssetGroup } from "./lujan/assets";
 import { assetBelongsToPlant } from "../data/plantScope";
@@ -32,6 +33,8 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
   }, [selectedLocation]);
   const location = useRef(selectedLocation); location.current = selectedLocation;
   const zoomIn = useRef<() => void>(()=>{});
+  const zoomOut = useRef<() => void>(()=>{});
+  const centerMap = useRef<() => void>(()=>{});
   const [error, setError] = useState(false);
   useEffect(()=>{
     if (!host.current) return;
@@ -48,13 +51,14 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
     const scene = new THREE.Scene(); scene.background = new THREE.Color("#dce6ec");
     const camera = new THREE.PerspectiveCamera(45,1,.1,1000);
     const controls = new OrbitControls(camera,renderer.domElement);
-    controls.enableDamping = true; controls.minDistance=.65; controls.maxDistance=350; controls.maxPolarAngle=Math.PI/2-.02;
+    controls.enableDamping = true; controls.dampingFactor=.075; controls.rotateSpeed=.85; controls.panSpeed=1.05; controls.zoomSpeed=1.15;
+    controls.minDistance=.65; controls.maxDistance=350; controls.maxPolarAngle=Math.PI/2-.02;
     controls.zoomToCursor = true;
     controls.screenSpacePanning = false;
     // Keep both the orbit target and the camera above the ground after pan/zoom.
     const constrainCamera = () => {
-      controls.target.y = Math.max(.05, controls.target.y);
-      camera.position.y = Math.max(.25, camera.position.y);
+      controls.target.y = Math.max(0, controls.target.y);
+      camera.position.y = Math.max(.12, camera.position.y);
     };
     controls.addEventListener("change", constrainCamera);
     let automaticFrame=true;
@@ -64,6 +68,12 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       automaticFrame=false;
       const offset = camera.position.clone().sub(controls.target);
       offset.setLength(Math.max(controls.minDistance, offset.length() * .8));
+      camera.position.copy(controls.target).add(offset);controls.update();
+    };
+    zoomOut.current = () => {
+      automaticFrame=false;
+      const offset = camera.position.clone().sub(controls.target);
+      offset.setLength(Math.min(controls.maxDistance, offset.length() * 1.25));
       camera.position.copy(controls.target).add(offset);controls.update();
     };
     scene.add(new THREE.HemisphereLight(0xe7edf2,0x7e806b,2.5));
@@ -154,6 +164,13 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
     bounds.max.y=11;
     const corners: THREE.Vector3[]=[];
     for(const x of [bounds.min.x,bounds.max.x])for(const y of [0,11])for(const z of [bounds.min.z,bounds.max.z])corners.push(new THREE.Vector3(x,y,z));
+    centerMap.current = () => {
+      automaticFrame=false;
+      const center=bounds.getCenter(new THREE.Vector3());
+      controls.target.copy(center).setY(0);
+      camera.position.copy(controls.target).add(new THREE.Vector3(0,185,.01));
+      camera.lookAt(controls.target);controls.update();
+    };
     const observer=new ResizeObserver(()=>{
       const w=container.clientWidth,h=container.clientHeight;if(!w || !h)return;
       renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();
@@ -183,8 +200,11 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
   },[]);
   return <section className="utn-map" style={{position:"relative",width:"100%",height:"100%",minHeight:360,background:"#dce6ec",borderRadius:16,overflow:"hidden"}}>
     <div ref={host} style={{height:"100%",minHeight:360}} />
-    <button type="button" aria-label="Acercar mapa" title="Zoom +" onClick={()=>zoomIn.current()}
-      style={{position:"absolute",top:16,right:16,width:44,height:44,border:"1px solid #d6dce2",borderRadius:10,background:"white",color:"#233b55",fontSize:28,cursor:"pointer",boxShadow:"0 2px 8px #0002"}}>+</button>
+    <div className="utn-map-controls" aria-label="Controles del mapa">
+      <button type="button" aria-label="Acercar mapa" title="Acercar" onClick={()=>zoomIn.current()}><Plus size={20}/></button>
+      <button type="button" aria-label="Alejar mapa" title="Alejar" onClick={()=>zoomOut.current()}><Minus size={20}/></button>
+      <button type="button" aria-label="Centrar vista superior de la planta" title="Centrar planta" onClick={()=>centerMap.current()}><LocateFixed size={19}/></button>
+    </div>
     {error && <p role="alert" style={{position:"absolute",bottom:16,left:16}}>No se pudo iniciar la vista 3D.</p>}
   </section>;
 }
