@@ -66,6 +66,12 @@ function formatDistance(meters: number) {
   return meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
 }
 
+function formatRouteDistance(meters: number) {
+  if (meters < 0.7) return "0 m";
+  return `${meters.toLocaleString("es-AR", { minimumFractionDigits: meters < 1 ? 2 : 0, maximumFractionDigits: 2, useGrouping: false })} m`;
+}
+
+
 type WaypointEditDraft = {
   latitude: string;
   longitude: string;
@@ -745,7 +751,7 @@ export function GenerarPlanVueloView({
             </p>
 
             <p className="plan-builder-flight-estimate">
-              Distancia total: <strong>{formatDistance(totalDistanceMeters)}</strong> · Tiempo estimado:{" "}
+              Distancia total: <strong>{formatRouteDistance(totalDistanceMeters)}</strong> · Tiempo estimado:{" "}
               <strong>{formatDuration(estimatedDurationSeconds)}</strong> (incluye paradas, a {plan.cruiseSpeedMs} m/s
               de crucero)
             </p>
@@ -754,7 +760,7 @@ export function GenerarPlanVueloView({
               {orderedRoute.map((waypoint, index) => {
                 const isNegativeAltitude = waypoint.altitude < 0;
                 const canMove = index > 0 && index < orderedRoute.length - 1;
-                const canInsertAfter = index < orderedRoute.length - 1;
+                const nextWaypoint = orderedRoute[index + 1];
                 const canChangeType = waypoint.action !== "TAKEOFF" && waypoint.action !== "LAND";
                 const isSelected = selectedSequence === waypoint.sequence;
                 const isInteres = isSelected && (waypoint.action === "STOP" || pendingPointType === "interes");
@@ -1047,8 +1053,11 @@ export function GenerarPlanVueloView({
                       </button>
                     </div>
 
-                    {canInsertAfter && (
+                    {nextWaypoint && (
                       <div className="plan-builder-insert-row">
+                        <span className="plan-builder-segment-distance">
+                          #{waypoint.sequence} → #{nextWaypoint.sequence} · {formatRouteDistance(haversineDistanceMeters(waypoint, nextWaypoint))} de distancia
+                        </span>
                         <button
                           className="plan-builder-insert-toggle"
                           onClick={() => handleOpenInsert(waypoint.sequence)}
