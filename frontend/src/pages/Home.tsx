@@ -5,7 +5,7 @@ import type { MockUser, InspectionMission, Asset, Plant, SessionUser } from "../
 import type { BackendAsset, BackendMission } from "../api/types";
 import { getAssets, getMissions, getReports } from "../api/client";
 import { canConsultAssets, getRoleHomeTitle } from "../utils/helpers";
-import { DRONE_OPERATION_ROLES } from "../constants";
+import { DRONE_OPERATION_ROLES, PLAN_CREATION_ROLES } from "../constants";
 import { AssetsOverviewMap } from "../components/AssetsOverviewMap";
 import { MisActivosView } from "./MisActivos";
 import { ConfigurarMisionView } from "./ConfigurarMision";
@@ -242,7 +242,7 @@ export function Home({
           <MisMisionesView
             user={user}
             onGeneratePlan={
-              DRONE_OPERATION_ROLES.includes(user.role)
+              PLAN_CREATION_ROLES.includes(user.role)
                 ? () => {
                     // Entrando acá (no desde una inspección manual recién grabada), no hay
                     // ningún recorrido preelegido: si quedó uno de una vuelta anterior, se pisa.
