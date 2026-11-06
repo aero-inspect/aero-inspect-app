@@ -106,7 +106,7 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       const props=assetProps.current;
       const statuses={ACTIVE:"Activo",MAINTENANCE:"En mantenimiento",OUT_OF_SERVICE:"Fuera de servicio",UNCONFIRMED:"Sin confirmar"};
       for(const asset of props.assets) {
-        if(asset.idAsset<=0 || asset.type!=="BANQUETA" || !assetBelongsToPlant(asset,UTN_PLANT))continue;
+        if(asset.idAsset<=0 || !assetBelongsToPlant(asset,UTN_PLANT))continue;
         const f=props.filters;
         if(f && f.type!=="Todos" && f.type!==BACKEND_ASSET_TYPE_LABELS[asset.type])continue;
         if(f && f.status!=="Todos" && f.status!==statuses[asset.status])continue;
@@ -114,7 +114,19 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
         const position=local([asset.longitude,asset.latitude]);
         const ray=new THREE.Raycaster(position.clone().setY(40),new THREE.Vector3(0,-1,0));
         position.y=(ray.intersectObject(buildings,true)[0]?.point.y ?? 0)+.01;
-        const stool=createStool();stool.position.copy(position);assetLayer.add(stool);
+        if (asset.type === "BANQUETA") {
+          const stool=createStool();stool.position.copy(position);assetLayer.add(stool);
+        } else {
+          // The map must expose every asset in the plant.  A neutral marker avoids
+          // representing roofs, sheds and industrial equipment as benches.
+          const markerGroup=new THREE.Group();
+          const markerMaterial=new THREE.MeshStandardMaterial({color:0x295b87,metalness:.08,roughness:.58});
+          const stem=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.55,12),markerMaterial);
+          stem.position.y=.28;stem.castShadow=true;markerGroup.add(stem);
+          const head=new THREE.Mesh(new THREE.OctahedronGeometry(.22),markerMaterial);
+          head.position.y=.68;head.castShadow=true;markerGroup.add(head);
+          markerGroup.position.copy(position);assetLayer.add(markerGroup);
+        }
         const selected=asset.code===props.focusedAssetCode || props.assetSelection?.selectedIds.includes(asset.idAsset);
         const halo=new THREE.Mesh(new THREE.RingGeometry(.45,.6,32),new THREE.MeshBasicMaterial({color:selected?0x34b57a:0x3289c6,side:THREE.DoubleSide}));
         halo.rotation.x=-Math.PI/2;halo.position.copy(position).add(new THREE.Vector3(0,.01,0));assetLayer.add(halo);
