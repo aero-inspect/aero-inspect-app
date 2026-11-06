@@ -43,9 +43,7 @@ export type Asset = {
   lastMaintenanceAt?: string;
   imageName?: string;
   imagePreview?: string;
-  documentName?: string;
-  documentData?: string;
-  documents?: import("../api/types").AssetDocument[];
+  documents?: { id?: string; name: string }[];
   images?: AssetImage[];
   plantId: string;
 };

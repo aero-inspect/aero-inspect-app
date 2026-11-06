@@ -18,20 +18,20 @@ import {
 } from "lucide-react";
 import type { Asset, Plant } from "../types";
 import type { BackendAsset, BackendAssetStatus, BackendAssetType } from "../api/types";
-import { createAsset as createBackendAsset, deleteAsset as deleteBackendAsset, getAssets, updateAsset as updateBackendAsset } from "../api/client";
+import { createAsset as createBackendAsset, deleteAsset as deleteBackendAsset, deleteAssetDocument, deleteAssetImage, getAssets, updateAsset as updateBackendAsset, uploadAssetDocument, uploadAssetImage } from "../api/client";
 import { AssetsOverviewMap } from "../components/AssetsOverviewMap";
 import { SelectedPlant3DMap as BragadoPlant3DMap } from "../components/SelectedPlant3DMap";
 import { AppTopActions } from "../components/AppTopActions";
 import { LoadingState } from "../components/LoadingState";
 import { ASSET_TYPE_OPTIONS, assetTypesForPlant } from "../data/assetTypes";
 
-import { AssetDocumentInput, AssetDocumentLink } from "../components/AssetDocumentInput";
+import { AssetDocumentInput, AssetDocumentLink, type DocumentDraft } from "../components/AssetDocumentInput";
 
 type AssetStatus = "Activo" | "En mantenimiento" | "Fuera de servicio" | "Sin confirmar";
 type AssetDetailRow = Asset & { displayName: string; displayType: string; displayStatus: AssetStatus; tone: "warning" | "ok" | "danger" };
 
 type AssetFormState = {
-  documents: import("../api/types").AssetDocument[];
+  documents: DocumentDraft[];
   name: string;
   type: BackendAssetType | "";
   locationDetail: string;
@@ -42,9 +42,10 @@ type AssetFormState = {
   code: string;
   description: string;
   imageName: string | null;
-  imageData: string | null;
-  documentName: string | null;
-  documentData: string | null;
+  // URL para mostrar: la del storage si ya estaba guardada, o un object URL de imageFile.
+  imagePreview: string | null;
+  // Imagen nueva elegida en el form; se sube recién al guardar.
+  imageFile: File | null;
 };
 
 type AssetRequiredField = "name" | "type" | "locationDetail" | "status" | "latitude" | "longitude" | "code";
@@ -106,11 +107,26 @@ const EMPTY_FORM: AssetFormState = {
   code: "",
   description: "",
   imageName: null,
-  imageData: null,
-  documentName: null,
-  documentData: null,
+  imagePreview: null,
+  imageFile: null,
   documents: []
 };
+
+// Sube o borra lo que cambió en la foto y los adjuntos respecto de lo guardado. Devuelve el
+// activo tal como quedó después del último cambio, o null si no hubo ninguno.
+async function syncAssetFiles(idAsset: number, saved: { hadImage: boolean; documents: DocumentDraft[] }, form: AssetFormState) {
+  let latest: BackendAsset | null = null;
+  if (form.imageFile) latest = await uploadAssetImage(idAsset, form.imageFile);
+  else if (saved.hadImage && !form.imagePreview) latest = await deleteAssetImage(idAsset);
+  const kept = new Set(form.documents.flatMap(document => document.id ? [document.id] : []));
+  for (const document of saved.documents) {
+    if (document.id && !kept.has(document.id)) latest = await deleteAssetDocument(idAsset, document.id);
+  }
+  for (const document of form.documents) {
+    if (document.file) latest = await uploadAssetDocument(idAsset, document.file);
+  }
+  return latest;
+}
 
 
 const ASSET_STATUS_OPTIONS: Array<{ value: BackendAssetStatus; label: AssetStatus }> = [
@@ -150,10 +166,8 @@ function backendAssetToAsset(asset: BackendAsset, plantId: string): AssetDetailR
     createdAt: asset.createdAt ?? undefined,
     lastMaintenanceAt: asset.lastMaintenanceAt ?? undefined,
     imageName: asset.imageName ?? undefined,
-    imagePreview: asset.imageData ?? undefined,
-    documentName: asset.documentName ?? undefined,
-    documentData: asset.documentData ?? undefined,
-    documents: asset.documents ?? (asset.documentName && asset.documentData ? [{ name: asset.documentName, data: asset.documentData }] : []),
+    imagePreview: asset.imageUrl ?? undefined,
+    documents: (asset.documents ?? []).map(document => ({ id: document.id, name: document.name })),
     plantId,
     displayName: asset.name,
     displayType,
@@ -189,7 +203,6 @@ export function MisActivosView({
   const [mapHoveredAssetId, setMapHoveredAssetId] = useState<number | null>(null);
   const [openFilter, setOpenFilter] = useState<"type" | "status" | null>(null);
   const [openAssetFormSelect, setOpenAssetFormSelect] = useState<"create-type" | "create-status" | "edit-type" | "edit-status" | null>(null);
-  const [isReadingDocument, setIsReadingDocument] = useState(false);
   const [createAsset, setCreateAsset] = useState(false);
   const [assetCreated, setAssetCreated] = useState(false);
   const [detailAsset, setDetailAsset] = useState<AssetDetailRow | null>(null);
@@ -297,20 +310,11 @@ export function MisActivosView({
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setForm((current) => ({
-        ...current,
-        imageName: file.name,
-        imageData: typeof reader.result === "string" ? reader.result : null
-      }));
-    };
-    reader.readAsDataURL(file);
+    setForm((current) => ({ ...current, imageName: file.name, imageFile: file, imagePreview: URL.createObjectURL(file) }));
+    event.target.value = "";
   };
 
   const handleCreateAsset = async () => {
-    if (isReadingDocument) return;
     const requiredErrors: Partial<Record<AssetRequiredField, boolean>> = {
       name: !form.name.trim(),
       code: !form.code.trim(),
@@ -338,17 +342,22 @@ export function MisActivosView({
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
         lastMaintenanceAt: form.lastMaintenanceAt ? new Date(form.lastMaintenanceAt).toISOString() : null,
-        imageName: form.imageName,
-        imageData: form.imageData,
-        documents: form.documents,
         description: form.description.trim() || null
       };
-      const savedAsset = await createBackendAsset(payload);
+      const createdAsset = await createBackendAsset(payload);
+      let filesError: string | null = null;
+      let savedAsset = createdAsset;
+      try {
+        savedAsset = await syncAssetFiles(createdAsset.idAsset, { hadImage: false, documents: [] }, form) ?? createdAsset;
+      } catch (error) {
+        filesError = `El activo se creó, pero no se pudieron subir sus archivos: ${error instanceof Error ? error.message : "error inesperado"}`;
+      }
       setBackendAssets(current => [...(current ?? []), savedAsset]);
       setForm(EMPTY_FORM);
       setFormErrors({});
       setCreateAsset(false);
-      setAssetCreated(true);
+      if (filesError) setLoadError(filesError);
+      else setAssetCreated(true);
       loadAssets();
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "No se pudo crear el activo.");
@@ -381,10 +390,9 @@ export function MisActivosView({
       code: asset.code ?? "",
       description: asset.description,
       imageName: asset.imageName ?? null,
-      imageData: asset.imagePreview ?? null,
-      documentName: asset.documentName ?? null,
-      documentData: asset.documentData ?? null,
-      documents: asset.documents ?? (asset.documentName && asset.documentData ? [{ name: asset.documentName, data: asset.documentData }] : [])
+      imagePreview: asset.imagePreview ?? null,
+      imageFile: null,
+      documents: asset.documents ?? []
     });
     setSaveError(null);
     setIsEditingDetail(true);
@@ -397,20 +405,11 @@ export function MisActivosView({
   const handleDetailImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setDetailEditForm((current) => ({
-        ...current,
-        imageName: file.name,
-        imageData: typeof reader.result === "string" ? reader.result : null
-      }));
-    };
-    reader.readAsDataURL(file);
+    setDetailEditForm((current) => ({ ...current, imageName: file.name, imageFile: file, imagePreview: URL.createObjectURL(file) }));
     event.target.value = "";
   };
 
   const handleUpdateAsset = async () => {
-    if (isReadingDocument) return;
     if (!detailAsset || !detailEditForm.type || !detailEditForm.status) return;
     if (!detailEditForm.name.trim() || !detailEditForm.code.trim() || !detailEditForm.locationDetail.trim() || !detailEditForm.latitude.trim() || !detailEditForm.longitude.trim()) {
       setSaveError("Completá todos los campos obligatorios antes de guardar.");
@@ -428,11 +427,8 @@ export function MisActivosView({
         latitude: Number(detailEditForm.latitude),
         longitude: Number(detailEditForm.longitude),
         lastMaintenanceAt: detailEditForm.lastMaintenanceAt ? new Date(detailEditForm.lastMaintenanceAt).toISOString() : null,
-        imageName: detailEditForm.imageName,
-        imageData: detailEditForm.imageData,
-        documents: detailEditForm.documents,
         description: detailEditForm.description.trim() || null
-      });
+      }).then(async saved => await syncAssetFiles(saved.idAsset, { hadImage: Boolean(detailAsset.imagePreview), documents: detailAsset.documents ?? [] }, detailEditForm) ?? saved);
       const nextDetail = backendAssetToAsset(updated, plant.id);
       setBackendAssets((current) => current?.map((asset) => asset.idAsset === updated.idAsset ? updated : asset) ?? [updated]);
       setDetailAsset(nextDetail);
@@ -485,21 +481,21 @@ export function MisActivosView({
                 </div>
                 <div className="asset-detail-inline-image">
                   <span>Imagen del activo</span>
-                  {detailEditForm.imageData ? (
-                    <img className="asset-detail-photo" src={detailEditForm.imageData} alt={detailEditForm.imageName ?? detailEditForm.name} />
+                  {detailEditForm.imagePreview ? (
+                    <img className="asset-detail-photo" src={detailEditForm.imagePreview} alt={detailEditForm.imageName ?? detailEditForm.name} />
                   ) : (
                     <div className="asset-detail-photo asset-detail-photo-empty">Sin imagen cargada</div>
                   )}
                   <div className="asset-detail-image-actions">
                     <label className="asset-detail-image-upload">
                       <Upload size={15} aria-hidden="true" />
-                      {detailEditForm.imageData ? "Subir otra imagen" : "Subir imagen"}
+                      {detailEditForm.imagePreview ? "Subir otra imagen" : "Subir imagen"}
                       <input accept="image/png,image/jpeg,image/webp" onChange={handleDetailImageChange} type="file" />
                     </label>
-                    {detailEditForm.imageData && <button onClick={() => setDetailEditForm((current) => ({ ...current, imageName: null, imageData: null }))} type="button">Quitar</button>}
+                    {detailEditForm.imagePreview && <button onClick={() => setDetailEditForm((current) => ({ ...current, imageName: null, imagePreview: null, imageFile: null }))} type="button">Quitar</button>}
                   </div>
                   <p>{detailEditForm.imageName ?? "JPG, PNG o WebP"}</p>
-                  <AssetDocumentInput onReadingChange={setIsReadingDocument} documents={detailEditForm.documents} disabled={isSaving || isReadingDocument} onChange={documents => setDetailEditForm(current => ({ ...current, documents }))} />
+                  <AssetDocumentInput idAsset={detailAsset.id} documents={detailEditForm.documents} disabled={isSaving} onChange={documents => setDetailEditForm(current => ({ ...current, documents }))} />
                 </div>
               </div>
             ) : (
@@ -512,7 +508,7 @@ export function MisActivosView({
                   <AssetDetailField label="Fecha de creación" value={formatDateTime(detailAsset.createdAt)} />
                   <AssetDetailField label="Último mantenimiento" value={formatDateTime(detailAsset.lastMaintenanceAt)} />
                   <AssetDetailField label="Código" value={detailAsset.code || "-"} />
-                  <AssetDocumentLink documents={detailAsset.documents ?? []} />
+                  <AssetDocumentLink idAsset={detailAsset.id} documents={detailAsset.documents ?? []} />
                 </div>
 
                 <div className="asset-detail-image-area">
@@ -531,7 +527,7 @@ export function MisActivosView({
               {saveError && <span className="asset-detail-save-error" role="alert">{saveError}</span>}
               {isEditingDetail ? <>
                 <button className="asset-detail-edit-button" onClick={() => { setIsEditingDetail(false); setSaveError(null); }} type="button">Cancelar</button>
-                <button className="asset-detail-save-button" disabled={isSaving || isReadingDocument} onClick={handleUpdateAsset} type="button">{isSaving ? "Guardando..." : "Guardar cambios"}</button>
+                <button className="asset-detail-save-button" disabled={isSaving} onClick={handleUpdateAsset} type="button">{isSaving ? "Guardando..." : "Guardar cambios"}</button>
               </> : <>
                 <button className="asset-detail-edit-button" onClick={() => beginDetailEdit(detailAsset)} type="button"><Pencil size={15} aria-hidden="true" />Editar activo</button>
                 <button className="asset-detail-delete-button" onClick={() => setDeleteAsset(detailAsset)} type="button">Eliminar activo</button>
@@ -859,19 +855,19 @@ export function MisActivosView({
               <div className="asset-edit-side">
                 <div className="asset-edit-image-area asset-create-image-area">
                   <span>Imagen</span>
-                  <label className={form.imageData ? "asset-create-upload has-preview" : "asset-create-upload"} aria-label="Subir imagen">
-                    {form.imageData ? (
-                      <img className="asset-create-preview" src={form.imageData} alt={form.imageName ?? "Imagen del activo"} />
+                  <label className={form.imagePreview ? "asset-create-upload has-preview" : "asset-create-upload"} aria-label="Subir imagen">
+                    {form.imagePreview ? (
+                      <img className="asset-create-preview" src={form.imagePreview} alt={form.imageName ?? "Imagen del activo"} />
                     ) : (
                       <Upload size={24} aria-hidden="true" />
                     )}
-                    <input accept="image/*" hidden onChange={handleImageChange} type="file" />
+                    <input accept="image/png,image/jpeg,image/webp" hidden onChange={handleImageChange} type="file" />
                   </label>
                   <p>{form.imageName || "Registro visual del activo seleccionado."}</p>
 
                 </div>
 
-                  <AssetDocumentInput onReadingChange={setIsReadingDocument} documents={form.documents} disabled={isSaving || isReadingDocument} onChange={documents => setForm(current => ({ ...current, documents }))} />
+                  <AssetDocumentInput documents={form.documents} disabled={isSaving} onChange={documents => setForm(current => ({ ...current, documents }))} />
 
                 <label className="asset-edit-field asset-edit-description">
                   <span>Descripción</span>
@@ -892,7 +888,7 @@ export function MisActivosView({
                 {saveError && <p className="assets-empty-message assets-form-error">{saveError}</p>}
                 <button
                   className="asset-edit-save"
-                  disabled={isSaving || isReadingDocument}
+                  disabled={isSaving}
                   onClick={handleCreateAsset}
                   type="button"
                 >

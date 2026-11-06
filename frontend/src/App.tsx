@@ -89,7 +89,7 @@ export function App() {
           name: data.user.name,
           role: mapBackendRole(data.user.role),
           token: data.token,
-          profileImage: data.user.profileImage ?? ""
+          profileImage: data.user.profileImageUrl ?? ""
         });
         navigateTo("/");
         return;

@@ -18,6 +18,7 @@ type ProfileData = {
   role: string;
   active: boolean;
   profileImage: string;
+  profileImageUrl?: string | null;
   registeredAt: string | null;
   lastAccessAt: string | null;
 };
@@ -121,13 +122,33 @@ export function ProfileView({
     setError("");
 
     try {
+      // La foto va aparte: se sube (o se borra) antes de guardar los datos, así la respuesta
+      // del PUT ya trae la URL nueva.
+      const { profileImage, ...fields } = formData;
+      if (profileImage.startsWith("data:")) {
+        const body = new FormData();
+        body.append("file", await (await fetch(profileImage)).blob(), "avatar.jpg");
+        const imageResponse = await fetch("/api/v1/users/me/image", {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${user.token}` },
+          body
+        });
+        if (!imageResponse.ok) throw new Error("No se pudo guardar la foto de perfil.");
+      } else if (!profileImage && profile?.profileImage) {
+        const imageResponse = await fetch("/api/v1/users/me/image", {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+        if (!imageResponse.ok) throw new Error("No se pudo borrar la foto de perfil.");
+      }
+
       const response = await fetch("/api/v1/users/me", {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${user.token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(fields)
       });
 
       if (!response.ok) throw new Error("No se pudo guardar el perfil.");
@@ -478,7 +499,7 @@ function normalizeProfile(profile: ProfileData): ProfileData {
     email: profile.email ?? "",
     company: profile.company ?? "",
     location: profile.location ?? "",
-    profileImage: profile.profileImage ?? ""
+    profileImage: profile.profileImageUrl ?? ""
   };
 }
 
