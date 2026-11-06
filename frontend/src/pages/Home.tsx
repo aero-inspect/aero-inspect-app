@@ -1,4 +1,5 @@
 import { Fragment, Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, ChevronLeft, ChevronRight, UsersRound } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { MockUser, InspectionMission, Asset, Plant, SessionUser } from "../types";
@@ -31,7 +32,8 @@ import { AppTopActions, SharedHeaderContext, DroneGlyph } from "../components/Ap
 import { LoadingState } from "../components/LoadingState";
 import sidebarLogo from "../assets/aeroinspect-sidebar-logo.png";
 
-import { PLANTS, UTN_PLANT, PLANT_STORAGE_KEY, loadSelectedPlant } from "../data/plants";
+import { PLANTS, PLANT_STORAGE_KEY } from "../data/plants";
+import { ROUTES, RESERVED_SEGMENTS, plantPath } from "../routes";
 import { PlantContext } from "../data/PlantContext";
 import { ActivityProvider } from "../data/ActivityContext";
 import { setApiPlant } from "../api/client";
@@ -40,8 +42,7 @@ import { setApiPlant } from "../api/client";
 const ManualAnalysisView = lazy(() => import("./ManualAnalysis").then(module => ({ default: module.ManualAnalysisView })));
 
 export function Home({
-  currentPath,
-  navigateTo,
+  plant: selectedPlant,
   user,
   onLogout,
   assets: allAssets,
@@ -56,8 +57,7 @@ export function Home({
   setUsers,
   setUser
 }: {
-  currentPath: string;
-  navigateTo: (path: string) => void;
+  plant: Plant;
   user: SessionUser;
   onLogout: () => void;
   assets: Asset[];
@@ -72,42 +72,69 @@ export function Home({
   setUsers: Dispatch<SetStateAction<MockUser[]>>;
   setUser: Dispatch<SetStateAction<SessionUser | null>>;
 }) {
-  const [reportCaptureAssetId, setReportCaptureAssetId] = useState<number | null>(null);
-  const [selectedPlant, setSelectedPlant] = useState(loadSelectedPlant);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // La planta viene de la URL: se deja lista para las llamadas a la API antes de renderizar las vistas.
+  setApiPlant(selectedPlant);
+  useEffect(() => {
+    try { localStorage.setItem(PLANT_STORAGE_KEY, selectedPlant.id); } catch { /* Selection still works without storage. */ }
+  }, [selectedPlant.id]);
+
+  // Ruta sin el prefijo de la planta, p. ej. "/missions/new".
+  const currentPath = location.pathname.slice(`/${selectedPlant.id}`.length).replace(/\/+$/, "") || ROUTES.home;
+  const navigateTo = (route: string) => navigate(plantPath(selectedPlant.id, route));
+  const detailOf = (base: string, reserved: readonly string[]) => {
+    if (!currentPath.startsWith(`${base}/`)) return null;
+    const segment = currentPath.slice(base.length + 1);
+    return segment && !segment.includes("/") && !reserved.includes(segment) ? segment : null;
+  };
+
+  // Lo que antes se guardaba en estado ahora viaja en la URL.
+  const searchKey = searchParams.toString();
+  const selectedFlightPlanIds = useMemo(
+    () => searchParams.getAll("planId").map(Number).filter(Number.isInteger),
+    [searchKey]
+  );
+  const recordingParam = Number(searchParams.get("recordingId"));
+  const selectedRecordingId = searchParams.get("recordingId") && Number.isInteger(recordingParam) ? recordingParam : null;
+  const captureParam = Number(searchParams.get("assetId"));
+  const reportCaptureAssetId = searchParams.get("assetId") && Number.isInteger(captureParam) ? captureParam : null;
+  const viewAssetHistory = (idAsset: number) => navigate({ pathname: plantPath(selectedPlant.id, ROUTES.reports), search: `?assetId=${idAsset}` });
 
   const assets = allAssets.filter(asset => asset.plantId === selectedPlant.id);
   const missions = allMissions.filter(mission => assets.some(asset => asset.id === mission.assetId));
-  const isRegisterAssetPath = currentPath === "/registro-activo";
-  const isAssetsPath = currentPath === "/mis-activos";
-  const isMissionPath = currentPath === "/configurar-mision";
-  const isMissionsPath = currentPath === "/mis-misiones";
-  const isGeneratePlanPath = currentPath === "/generar-plan";
-  const isManualInspectionPath = currentPath === "/inspeccion-manual";
-  const isDronePath = currentPath === "/dron";
-  const isDronesAbmPath = currentPath === "/gestion-drones";
-  const isLaunchPath = currentPath === "/ejecutar-despegue";
-  const isProfilePath = currentPath === "/perfil";
-  const isRoleMgmtPath = currentPath === "/gestion-roles";
-  const isMonitorPath = currentPath === "/monitorear-mision";
-  const isReportsPath = currentPath === "/reportes";
-  const isCreateReportPath = currentPath === "/crear-reporte";
-  const isReportDetailPath = currentPath === "/reporte-detalle";
-  const isSavedReportPath = currentPath === "/reporte-detalle-real";
-  const isTemporaryAnalysisPath = currentPath === "/analisis-manual";
+  const selectedAssetParam = detailOf(ROUTES.assets, RESERVED_SEGMENTS.assets);
+  const selectedAssetId = selectedAssetParam !== null && Number.isInteger(Number(selectedAssetParam)) ? Number(selectedAssetParam) : null;
+  const isRegisterAssetPath = currentPath === ROUTES.assetsNew;
+  const isAssetsPath = currentPath === ROUTES.assets || selectedAssetParam !== null;
+  const isMissionPath = currentPath === ROUTES.missionsNew;
+  const isMissionsPath = currentPath === ROUTES.missions;
+  const isGeneratePlanPath = currentPath === ROUTES.flightPlansNew;
+  const isManualInspectionPath = currentPath === ROUTES.manualInspection;
+  const isDronePath = currentPath === ROUTES.dronesTelemetry;
+  const isDronesAbmPath = currentPath === ROUTES.drones;
+  const isLaunchPath = currentPath === ROUTES.missionsLaunch;
+  const isProfilePath = currentPath === ROUTES.profile;
+  const isRoleMgmtPath = currentPath === ROUTES.staff;
+  const isMonitorPath = detailOf(ROUTES.missions, RESERVED_SEGMENTS.missions) !== null;
+  const isReportsPath = currentPath === ROUTES.reports;
+  const isCreateReportPath = currentPath === ROUTES.reportsNew;
+  const isReportDetailPath = currentPath === ROUTES.reportsDemoDetail;
+  const isSavedReportPath = detailOf(ROUTES.reports, RESERVED_SEGMENTS.reports) !== null;
+  const isTemporaryAnalysisPath = currentPath === ROUTES.reportsManualAnalysis;
   const isReportDetailRealPath = isSavedReportPath || isTemporaryAnalysisPath;
-  const isHelpPath = currentPath === "/centro-ayuda";
-  const isActivityPath = currentPath === "/actividad-reciente";
-  const isPruebaTelemetriaPath = currentPath === "/prueba-telemetria";
+  const isHelpPath = currentPath === ROUTES.help;
+  const isActivityPath = currentPath === ROUTES.profileActivity;
+  const isPruebaTelemetriaPath = currentPath === ROUTES.dronesTelemetryTest;
   const userCanConsultAssets = canConsultAssets(user.role);
   const currentProfileImage = user.profileImage ?? "";
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [selectedBackendMissionId, setSelectedBackendMissionId] = useState<string | null>(null);
-  const [selectedFlightPlanIds, setSelectedFlightPlanIds] = useState<number[]>([]);
-  // Recorrido elegido en la inspección manual, para entrar al wizard con él ya seleccionado.
-  const [selectedRecordingId, setSelectedRecordingId] = useState<number | null>(null);
-  const [selectedReportCode, setSelectedReportCode] = useState<string | null>(null);
-  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const [assetsViewKey, setAssetsViewKey] = useState(0);
+  const rel = (route: string) => route.slice(1);
+  const navigateWithSearch = (route: string, search: string) => navigate({ pathname: plantPath(selectedPlant.id, route), search: search ? `?${search}` : "" });
+  // Una vista que el rol no puede usar vuelve al inicio en vez de quedar en blanco.
+  const only = (allowed: boolean, element: JSX.Element) => allowed ? element : <Navigate to={plantPath(selectedPlant.id, ROUTES.home)} replace />;
   const sidebarRoleLabel = user.role === "Técnico de Mantenimiento" ? "Técnico de Mantenimiento" : user.role;
   return (
     <SharedHeaderContext.Provider value={true}>
@@ -122,51 +149,51 @@ export function Home({
           <img className="sidebar-brand-logo" src={sidebarLogo} alt="AeroInspect" />
         </div>
         <nav className="nav-list" aria-label="Principal">
-          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isManualInspectionPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isReportDetailRealPath && !isRoleMgmtPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo("/")} aria-label="Inicio" title="Inicio" type="button">
+          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isManualInspectionPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isReportDetailRealPath && !isRoleMgmtPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.home)} aria-label="Inicio" title="Inicio" type="button">
             <HomeIcon size={20} />
             {!isSidebarCollapsed && <span>Inicio</span>}
           </button>
 
           {userCanConsultAssets && (
-            <button className={isRegisterAssetPath || isAssetsPath ? "active" : undefined} onClick={() => { setSelectedAssetId(null); setAssetsViewKey(value => value + 1); navigateTo("/mis-activos"); }} aria-label="Activos" title="Activos" type="button">
+            <button className={isRegisterAssetPath || isAssetsPath ? "active" : undefined} onClick={() => { setAssetsViewKey(value => value + 1); navigateTo(ROUTES.assets); }} aria-label="Activos" title="Activos" type="button">
               <Package size={20} />
               {!isSidebarCollapsed && <span>Activos</span>}
             </button>
           )}
 
           {DRONE_OPERATION_ROLES.includes(user.role) && (
-            <button className={isDronePath ? "active" : undefined} onClick={() => navigateTo("/dron")} aria-label="Drones" title="Drones" type="button">
+            <button className={isDronePath ? "active" : undefined} onClick={() => navigateTo(ROUTES.dronesTelemetry)} aria-label="Drones" title="Drones" type="button">
               <DroneGlyph />
               {!isSidebarCollapsed && <span>Drones</span>}
             </button>
           )}
 
           {user.role === "Jefe de Planta" && (
-            <button className={isDronesAbmPath ? "active" : undefined} onClick={() => navigateTo("/gestion-drones")} aria-label="Gestión de Drones" title="Gestión de Drones" type="button">
+            <button className={isDronesAbmPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.drones)} aria-label="Gestión de Drones" title="Gestión de Drones" type="button">
               <DroneGlyph />
               {!isSidebarCollapsed && <span>Gestión de Drones</span>}
             </button>
           )}
 
           {(userCanConsultAssets || user.role === "Técnico de Mantenimiento") && (
-            <button className={isMissionsPath || isMissionPath || isGeneratePlanPath || isManualInspectionPath ? "active" : undefined} onClick={() => navigateTo("/mis-misiones")} aria-label="Misiones" title="Misiones" type="button">
+            <button className={isMissionsPath || isMissionPath || isGeneratePlanPath || isManualInspectionPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.missions)} aria-label="Misiones" title="Misiones" type="button">
               <Plane size={20} />
               {!isSidebarCollapsed && <span>Misiones</span>}
             </button>
           )}
 
-          <button className={isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath ? "active" : undefined} onClick={() => navigateTo("/reportes")} aria-label="Reportes" title="Reportes" type="button">
+          <button className={isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.reports)} aria-label="Reportes" title="Reportes" type="button">
             <CheckCircle2 size={20} />
             {!isSidebarCollapsed && <span>Reportes</span>}
           </button>
           {user.role === "Jefe de Planta" && (
-            <button className={isRoleMgmtPath ? "active" : undefined} onClick={() => navigateTo("/gestion-roles")} aria-label="Gestión de personal" title="Gestión de personal" type="button">
+            <button className={isRoleMgmtPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.staff)} aria-label="Gestión de personal" title="Gestión de personal" type="button">
               <UsersRound size={20} />
               {!isSidebarCollapsed && <span>Gestión de personal</span>}
             </button>
           )}
         </nav>
-        <button className="sidebar-user" aria-label="Mi perfil" onClick={() => navigateTo("/perfil")} type="button">
+        <button className="sidebar-user" aria-label="Mi perfil" onClick={() => navigateTo(ROUTES.profile)} type="button">
           {currentProfileImage ? (
             <img className="sidebar-user-avatar" src={currentProfileImage} alt="Foto de perfil" />
           ) : (
@@ -191,15 +218,7 @@ export function Home({
             <select id="selected-plant" value={selectedPlant.id} onChange={(event) => {
               const next = PLANTS.find(plant => plant.id === event.target.value);
               if (!next) return;
-              setApiPlant(next);
-              setSelectedPlant(next);
-              try { localStorage.setItem(PLANT_STORAGE_KEY, next.id); } catch { /* Selection still works without storage. */ }
-              setSelectedBackendMissionId(null);
-              setSelectedFlightPlanIds([]);
-              setSelectedRecordingId(null);
-              setSelectedReportCode(null);
-              setSelectedAssetId(null);
-              navigateTo("/");
+              navigate(plantPath(next.id, ROUTES.home));
             }}>
               {PLANTS.map(plant => <option key={plant.id} value={plant.id}>{plant.name}</option>)}
             </select>
@@ -215,7 +234,6 @@ export function Home({
             <button
               className="ghost-button"
               onClick={() => {
-                navigateTo("/");
                 onLogout();
               }}
               type="button"
@@ -226,102 +244,81 @@ export function Home({
           </header>
         )}
 
-        {isPruebaTelemetriaPath ? (
-          <PruebaTelemetriaView token={user.token} onBack={() => navigateTo("/dron")} />
-        ) : isProfilePath ? (
-          <ProfileView user={user} setUser={setUser} onBack={() => navigateTo("/")} onAssignRoles={() => navigateTo("/gestion-roles")} onViewActivity={() => navigateTo("/actividad-reciente")} onLogout={onLogout} />
-        ) : isRegisterAssetPath && (userCanConsultAssets || user.role === "Jefe de Planta") ? (
-          <MisActivosView initialCreate assets={assets} onBack={() => navigateTo("/mis-activos")} onDeleteAsset={id=>setAssets(current=>current.filter(a=>a.id!==id))} onRegisterAsset={()=>{}} onUpdateAsset={()=>{}} plant={selectedPlant} onViewAssetHistory={id=>{setReportCaptureAssetId(id);navigateTo("/reportes");}} />
-        ) : isRoleMgmtPath && user.role === "Jefe de Planta" ? (
-          <RoleManagementView user={user} onBack={() => navigateTo("/perfil")} />
-        ) : isDronesAbmPath && user.role === "Jefe de Planta" ? (
-          <DronesAbmView />
-        ) : isMonitorPath && userCanConsultAssets ? (
-          <MonitorMissionView missionId={selectedBackendMissionId} token={user.token} onBack={() => navigateTo("/mis-misiones")} />
-        ) : isMissionsPath ? (
-          <MisMisionesView
-            user={user}
-            onGeneratePlan={
-              PLAN_CREATION_ROLES.includes(user.role)
-                ? () => {
-                    // Entrando acá (no desde una inspección manual recién grabada), no hay
-                    // ningún recorrido preelegido: si quedó uno de una vuelta anterior, se pisa.
-                    setSelectedRecordingId(null);
-                    navigateTo("/generar-plan");
-                  }
-                : undefined
-            }
-            onCreateMission={(idFlightPlans) => {
-              setSelectedFlightPlanIds(idFlightPlans);
-              navigateTo("/configurar-mision");
-            }}
-            onViewMission={(idMission) => {
-              setSelectedBackendMissionId(idMission);
-              navigateTo("/monitorear-mision");
-            }}
-          />
-        ) : isGeneratePlanPath && userCanConsultAssets ? (
-          <GenerarPlanVueloView
-            initialRecordingId={selectedRecordingId}
-            onBack={() => navigateTo("/mis-misiones")}
-            onPlanConfirmed={(idFlightPlan) => {
-              setSelectedFlightPlanIds([idFlightPlan]);
-              navigateTo("/configurar-mision");
-            }}
-            onStartManualInspection={() => navigateTo("/inspeccion-manual")}
-          />
-        ) : isManualInspectionPath && DRONE_OPERATION_ROLES.includes(user.role) ? (
-          <InspeccionManualView
-            onBack={() => navigateTo("/")}
-            onGeneratePlan={(idFlightRecording) => {
-              setSelectedRecordingId(idFlightRecording);
-              navigateTo("/generar-plan");
-            }}
-          />
-        ) : isMissionPath && userCanConsultAssets ? (
-          <ConfigurarMisionView initialFlightPlanIds={selectedFlightPlanIds} onBack={() => navigateTo("/mis-misiones")} onViewMissions={() => navigateTo("/mis-misiones")} />
-        ) : isLaunchPath && DRONE_OPERATION_ROLES.includes(user.role) ? (
-          <LaunchMissionView
-            missions={missions}
-            assets={assets}
-            droneConnected={droneConnected}
-            battery={battery}
-            setMissions={setMissions}
-            onBack={() => navigateTo("/")}
-            plant={selectedPlant}
-          />
-        ) : isDronePath && DRONE_OPERATION_ROLES.includes(user.role) ? (
-          <DroneTelemetryView />
-        ) : isAssetsPath && userCanConsultAssets ? (
-          <MisActivosView key={assetsViewKey} assets={assets} onBack={() => navigateTo("/")} onDeleteAsset={(assetId) => setAssets((current) => current.filter((asset) => asset.id !== assetId))} onRegisterAsset={() => navigateTo("/registro-activo")} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} selectedAssetId={selectedAssetId} plant={selectedPlant} onViewAssetHistory={id=>{setReportCaptureAssetId(id);navigateTo("/reportes");}} />
-        ) : isCreateReportPath ? (
-          <CrearReporteView onBack={() => navigateTo("/reportes")} />
-        ) : isReportDetailPath ? (
-          <ReporteDetalleView onBack={() => navigateTo("/reportes")} />
-        ) : isTemporaryAnalysisPath ? (
-          <Suspense fallback={<LoadingState text="Cargando herramienta manual..." compact />}><ManualAnalysisView onBack={() => navigateTo("/reportes")} onViewReport={code=>{setSelectedReportCode(code);navigateTo("/reporte-detalle-real");}} /></Suspense>
-        ) : isSavedReportPath ? (
-          <ReporteDetalleRealView reportCode={selectedReportCode} onBack={() => {setReportCaptureAssetId(null);navigateTo("/reportes");}} onViewAsset={id=>{setReportCaptureAssetId(id);navigateTo("/reportes");}} />
-        ) : isHelpPath ? (
-          <CentroAyudaView />
-        ) : isActivityPath ? (
-          <ActividadRecienteView />
-        ) : isReportsPath ? (
-          <div className="reports-route-shell"><TemporaryManualAnalysisShortcut onOpen={() => navigateTo("/analisis-manual")} /><ReportesView initialAssetId={reportCaptureAssetId} onViewReport={(code) => { setSelectedReportCode(code); navigateTo("/reporte-detalle-real"); }} /></div>
-        ) : user.role === "Jefe de Planta" || user.role === "Técnico de Mantenimiento" ? (
-          <InspectionHomeView
-            navigateTo={navigateTo}
-            onViewAsset={(idAsset) => {
-              setSelectedAssetId(idAsset);
-              navigateTo("/mis-activos");
-            }}
-            onViewMission={(idMission) => {
-              setSelectedBackendMissionId(idMission);
-              navigateTo("/monitorear-mision");
-            }}
-            plant={selectedPlant}
-          />
-        ) : (
+        <Routes>
+          <Route path={rel(ROUTES.dronesTelemetryTest)} element={<PruebaTelemetriaView token={user.token} onBack={() => navigateTo(ROUTES.dronesTelemetry)} />} />
+          <Route path={rel(ROUTES.profile)} element={<ProfileView user={user} setUser={setUser} onBack={() => navigateTo(ROUTES.home)} onAssignRoles={() => navigateTo(ROUTES.staff)} onViewActivity={() => navigateTo(ROUTES.profileActivity)} onLogout={onLogout} />} />
+          <Route path={rel(ROUTES.assetsNew)} element={only(userCanConsultAssets,
+            <MisActivosView initialCreate assets={assets} onBack={() => navigateTo(ROUTES.assets)} onDeleteAsset={id=>setAssets(current=>current.filter(a=>a.id!==id))} onRegisterAsset={()=>{}} onUpdateAsset={()=>{}} plant={selectedPlant} onViewAssetHistory={viewAssetHistory} />
+          )} />
+          <Route path={rel(ROUTES.staff)} element={only(user.role === "Jefe de Planta", <RoleManagementView user={user} onBack={() => navigateTo(ROUTES.profile)} />)} />
+          <Route path={rel(ROUTES.drones)} element={only(user.role === "Jefe de Planta", <DronesAbmView />)} />
+          <Route path={`${rel(ROUTES.missions)}/:missionId`} element={only(userCanConsultAssets, <MissionMonitorRoute token={user.token} onBack={() => navigateTo(ROUTES.missions)} />)} />
+          <Route path={rel(ROUTES.missions)} element={
+            <MisMisionesView
+              user={user}
+              onGeneratePlan={
+                PLAN_CREATION_ROLES.includes(user.role)
+                  ? () => navigateTo(ROUTES.flightPlansNew)
+                  : undefined
+              }
+              onCreateMission={(idFlightPlans) => navigateWithSearch(ROUTES.missionsNew, idFlightPlans.map((id) => `planId=${id}`).join("&"))}
+              onViewMission={(idMission) => navigateTo(ROUTES.mission(idMission))}
+            />
+          } />
+          <Route path={rel(ROUTES.flightPlansNew)} element={only(userCanConsultAssets,
+            <GenerarPlanVueloView
+              initialRecordingId={selectedRecordingId}
+              onBack={() => navigateTo(ROUTES.missions)}
+              onPlanConfirmed={(idFlightPlan) => navigateWithSearch(ROUTES.missionsNew, `planId=${idFlightPlan}`)}
+              onStartManualInspection={() => navigateTo(ROUTES.manualInspection)}
+            />
+          )} />
+          <Route path={rel(ROUTES.manualInspection)} element={only(DRONE_OPERATION_ROLES.includes(user.role),
+            <InspeccionManualView
+              onBack={() => navigateTo(ROUTES.home)}
+              onGeneratePlan={(idFlightRecording) => navigateWithSearch(ROUTES.flightPlansNew, `recordingId=${idFlightRecording}`)}
+            />
+          )} />
+          <Route path={rel(ROUTES.missionsNew)} element={only(userCanConsultAssets,
+            <ConfigurarMisionView initialFlightPlanIds={selectedFlightPlanIds} onBack={() => navigateTo(ROUTES.missions)} onViewMissions={() => navigateTo(ROUTES.missions)} />
+          )} />
+          <Route path={rel(ROUTES.missionsLaunch)} element={only(DRONE_OPERATION_ROLES.includes(user.role),
+            <LaunchMissionView
+              missions={missions}
+              assets={assets}
+              droneConnected={droneConnected}
+              battery={battery}
+              setMissions={setMissions}
+              onBack={() => navigateTo(ROUTES.home)}
+              plant={selectedPlant}
+            />
+          )} />
+          <Route path={rel(ROUTES.dronesTelemetry)} element={only(DRONE_OPERATION_ROLES.includes(user.role), <DroneTelemetryView />)} />
+          {[rel(ROUTES.assets), `${rel(ROUTES.assets)}/:assetId`].map((path) => (
+            <Route key={path} path={path} element={only(userCanConsultAssets,
+              <MisActivosView key={assetsViewKey} assets={assets} onBack={() => navigateTo(ROUTES.home)} onDeleteAsset={(assetId) => setAssets((current) => current.filter((asset) => asset.id !== assetId))} onRegisterAsset={() => navigateTo(ROUTES.assetsNew)} onUpdateAsset={(nextAsset) => setAssets((current) => current.map((asset) => (asset.id === nextAsset.id ? nextAsset : asset)))} selectedAssetId={selectedAssetId} plant={selectedPlant} onViewAssetHistory={viewAssetHistory} />
+            )} />
+          ))}
+          <Route path={rel(ROUTES.reportsNew)} element={<CrearReporteView onBack={() => navigateTo(ROUTES.reports)} />} />
+          <Route path={rel(ROUTES.reportsDemoDetail)} element={<ReporteDetalleView onBack={() => navigateTo(ROUTES.reports)} />} />
+          <Route path={rel(ROUTES.reportsManualAnalysis)} element={
+            <Suspense fallback={<LoadingState text="Cargando herramienta manual..." compact />}><ManualAnalysisView onBack={() => navigateTo(ROUTES.reports)} onViewReport={code => navigateTo(ROUTES.report(code))} /></Suspense>
+          } />
+          <Route path={`${rel(ROUTES.reports)}/:reportCode`} element={<ReportDetailRoute onBack={() => navigateTo(ROUTES.reports)} onViewAsset={viewAssetHistory} />} />
+          <Route path={rel(ROUTES.help)} element={<CentroAyudaView />} />
+          <Route path={rel(ROUTES.profileActivity)} element={<ActividadRecienteView />} />
+          <Route path={rel(ROUTES.reports)} element={
+            <div className="reports-route-shell"><TemporaryManualAnalysisShortcut onOpen={() => navigateTo(ROUTES.reportsManualAnalysis)} /><ReportesView initialAssetId={reportCaptureAssetId} onViewReport={(code) => navigateTo(ROUTES.report(code))} /></div>
+          } />
+          <Route path={rel(ROUTES.home)} element={
+            user.role === "Jefe de Planta" || user.role === "Técnico de Mantenimiento" ? (
+              <InspectionHomeView
+                navigateTo={navigateTo}
+                onViewAsset={(idAsset) => navigateTo(ROUTES.asset(idAsset))}
+                onViewMission={(idMission) => navigateTo(ROUTES.mission(idMission))}
+                plant={selectedPlant}
+              />
+            ) : (
           <Fragment>
             <header className="dashboard-header">
               <div>
@@ -363,7 +360,7 @@ export function Home({
                 <div className="card-header">
                   <h3>Misiones Recientes</h3>
                   {userCanConsultAssets && (
-                    <button className="view-all-link" onClick={() => navigateTo("/mis-misiones")}>
+                    <button className="view-all-link" onClick={() => navigateTo(ROUTES.missions)}>
                       Ver todas <ArrowRight size={14} />
                     </button>
                   )}
@@ -385,36 +382,36 @@ export function Home({
                 </div>
                 <div className="quick-actions">
                   {user.role === "Jefe de Planta" && (
-                    <button className="action-button" onClick={() => navigateTo("/registro-activo")}>
+                    <button className="action-button" onClick={() => navigateTo(ROUTES.assetsNew)}>
                       <Package size={20} />
                       <span>Registrar Activo</span>
                     </button>
                   )}
                   {userCanConsultAssets && (
                     <>
-                      <button className="action-button" onClick={() => navigateTo("/mis-activos")}>
+                      <button className="action-button" onClick={() => navigateTo(ROUTES.assets)}>
                         <Package size={20} />
                         <span>Ver Activos</span>
                       </button>
-                      <button className="action-button" onClick={() => navigateTo("/mis-misiones")}>
+                      <button className="action-button" onClick={() => navigateTo(ROUTES.missions)}>
                         <MapPin size={20} />
                         <span>Ver Misiones</span>
                       </button>
                     </>
                   )}
                   {user.role === "Técnico de Mantenimiento" && (
-                    <button className="action-button" onClick={() => navigateTo("/configurar-mision")}>
+                    <button className="action-button" onClick={() => navigateTo(ROUTES.missionsNew)}>
                       <MapPin size={20} />
                       <span>Configurar Misión</span>
                     </button>
                   )}
                   {DRONE_OPERATION_ROLES.includes(user.role) && (
                     <>
-                      <button className="action-button" onClick={() => navigateTo("/dron")}>
+                      <button className="action-button" onClick={() => navigateTo(ROUTES.dronesTelemetry)}>
                         <Radio size={20} />
                         <span>Telemetría Dron</span>
                       </button>
-                      <button className="action-button" onClick={() => navigateTo("/ejecutar-despegue")}>
+                      <button className="action-button" onClick={() => navigateTo(ROUTES.missionsLaunch)}>
                         <ArrowRight size={20} />
                         <span>Ejecutar Despegue</span>
                       </button>
@@ -443,7 +440,10 @@ export function Home({
               </div>
             </div>
           </Fragment>
-        )}
+            )
+          } />
+          <Route path="*" element={<Navigate to={plantPath(selectedPlant.id, ROUTES.home)} replace />} />
+        </Routes>
       </section>
     </main>
     </ActivityProvider>
@@ -538,12 +538,12 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
     <div className="tech-dashboard inspection-home">
       <div className="inspection-home-header"><h1 data-page-title="true">Inicio</h1></div>
       <div className="home-attention" aria-label="Pendientes de la planta">
-        <button type="button" onClick={()=>nextMission ? openMission(nextMission.idMission) : navigateTo("/mis-misiones")}>
+        <button type="button" onClick={()=>nextMission ? openMission(nextMission.idMission) : navigateTo(ROUTES.missions)}>
           <span>{nextMission?.status === "IN_PROGRESS" ? "En curso" : nextMission && missionSortTime(nextMission)<Date.now() ? "Misión pendiente" : "Próxima misión"}</span>
           <strong>{isLoading ? "Cargando…" : loadError ? "No disponible" : nextMission?.name ?? "Sin misiones programadas"}</strong>
           <small>{nextMission ? missionDisplayDate(nextMission) : "Ver misiones"} →</small>
         </button>
-        <button type="button" onClick={()=>navigateTo("/reportes")}>
+        <button type="button" onClick={()=>navigateTo(ROUTES.reports)}>
           <span>Inspecciones por revisar</span><strong>{pendingReviews === null ? "Consultar reportes" : pendingReviews === 0 ? "Sin revisiones pendientes" : `${pendingReviews} ${pendingReviews === 1 ? "pendiente" : "pendientes"}`}</strong>
           <small>Ver reportes →</small>
         </button>
@@ -552,7 +552,7 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
         <section className="inspection-latest-card">
           <header>
             <h2>Últimas misiones</h2>
-            <button type="button" onClick={() => navigateTo("/mis-misiones")}>Ver todas</button>
+            <button type="button" onClick={() => navigateTo(ROUTES.missions)}>Ver todas</button>
           </header>
           <div className="inspection-latest-list">
             {isLoading ? (
@@ -593,6 +593,12 @@ function InspectionHomeView({ navigateTo, onViewAsset, onViewMission, plant }: I
   );
 }
 
+function MissionMonitorRoute({ token, onBack }: { token: string; onBack: () => void }) {
+  const { missionId } = useParams();
+  return <MonitorMissionView missionId={missionId ?? null} token={token} onBack={onBack} />;
+}
 
-
-
+function ReportDetailRoute({ onBack, onViewAsset }: { onBack: () => void; onViewAsset: (idAsset: number) => void }) {
+  const { reportCode } = useParams();
+  return <ReporteDetalleRealView reportCode={reportCode ?? null} onBack={onBack} onViewAsset={onViewAsset} />;
+}
