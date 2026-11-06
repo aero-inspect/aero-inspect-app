@@ -13,6 +13,7 @@ export const ASSET_TYPE_COLORS: Record<AssetType, string> = {
   Banqueta: "#303438"
 };
 export const DRONE_OPERATION_ROLES = ["Técnico de Mantenimiento"];
+export const PLAN_CREATION_ROLES = ["Jefe de Planta"];
 export const ASSET_CONSULT_ROLES = ["Jefe de Planta", "Técnico de Mantenimiento"];
 export const ASSETS_STORAGE_KEY = "aeroinspect.assets";
 export const MISSIONS_STORAGE_KEY = "aeroinspect.missions";

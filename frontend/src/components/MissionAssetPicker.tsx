@@ -10,8 +10,9 @@ import {
 } from "../utils/missionAutonomy";
 import { SelectedPlant3DMap as BragadoPlant3DMap } from "./SelectedPlant3DMap";
 import { LoadingState } from "./LoadingState";
+import { useSelectedPlant } from "../data/PlantContext";
 
-const INSPECTABLE_TYPES = ["SILO", "SILO_FLOTANTE", "CELDA", "NORIA", "SECADORA"];
+const INSPECTABLE_TYPES = ["SILO", "SILO_FLOTANTE", "CELDA", "NORIA", "SECADORA", "BANQUETA"];
 
 export function resolveInspectionPlan(asset: BackendAsset, plans: BackendFlightPlan[]) {
   if (!INSPECTABLE_TYPES.includes(asset.type)) return null;
@@ -49,6 +50,7 @@ export function MissionAssetPicker({
   batteryPercentage?: number | null;
   planAssetSelection?: PlanAssetSelection;
 }) {
+  const plant = useSelectedPlant();
   const [assets, setAssets] = useState<BackendAsset[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ export function MissionAssetPicker({
 
   useEffect(() => {
     let active = true;
-    getAssets()
+    getAssets(plant)
       .then((items) => {
         if (active) setAssets(items);
       })
@@ -70,7 +72,7 @@ export function MissionAssetPicker({
     return () => {
       active = false;
     };
-  }, []);
+  }, [plant]);
 
   const selectedPlans = useMemo(
     () => selectedPlanIds.map((id) => plans.find((plan) => plan.idFlightPlan === id)).filter((plan): plan is BackendFlightPlan => Boolean(plan)),
@@ -83,7 +85,7 @@ export function MissionAssetPicker({
   const disabledAssetIds = useMemo(
     () => planAssetSelection
       ? assets
-        .filter((asset) => INSPECTABLE_TYPES.includes(asset.type) && !planAssetSelection.selectableIds.includes(asset.idAsset))
+        .filter((asset) => !planAssetSelection.selectableIds.includes(asset.idAsset))
         .map((asset) => asset.idAsset)
       : undefined,
     [assets, planAssetSelection]

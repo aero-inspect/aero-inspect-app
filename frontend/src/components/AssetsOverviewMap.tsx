@@ -1,4 +1,5 @@
-import { LUJAN_PLANT } from "../data/plants";
+import { UTNPlant3DMap } from "./UTNPlant3DMap";
+import { UTN_PLANT, LUJAN_PLANT } from "../data/plants";
 import { LujanPlant3DMap } from "./LujanPlant3DMap";
 import type { BackendAsset } from "../api/types";
 import type { Plant } from "../types";
@@ -22,6 +23,7 @@ export function AssetsOverviewMap({
   filters?: MapFilters;
   focusedAssetCode?: string | null;
 }) {
+  if (plant.id === UTN_PLANT.id) return <UTNPlant3DMap assets={assets} filters={filters} onViewAsset={onViewAsset} focusedAssetCode={focusedAssetCode} onSelect={onSelect} selectedLocation={selectedLocation} />;
   if (plant.id === LUJAN_PLANT.id) return <LujanPlant3DMap assets={assets} filters={filters} onViewAsset={onViewAsset} focusedAssetCode={focusedAssetCode} onSelect={onSelect} selectedLocation={selectedLocation} />;
   if (onSelect || selectedLocation) {
     return (

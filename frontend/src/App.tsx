@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ComponentProps, type FormEvent } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Login } from "./pages/Login";
 import { Home } from "./pages/Home";
 import { setApiAuthToken } from "./api/client";
@@ -6,6 +7,8 @@ import { setPlanBuilderAuthToken } from "./api/planBuilder";
 import { mapBackendRole } from "./utils/auth";
 import { loadStoredAssets, loadStoredMissions } from "./utils/assets";
 import { REGISTERED_USERS } from "./data/mockUsers";
+import { PLANTS } from "./data/plants";
+import { LOGIN_PATH, defaultHomePath, redirectForUnknownPlant } from "./routes";
 import type { Asset, InspectionMission, MockUser, SessionUser } from "./types";
 
 type LoginErrorResponse = {
@@ -30,7 +33,8 @@ export function App() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [assets, setAssets] = useState<Asset[]>(loadStoredAssets);
   const [missions, setMissions] = useState<InspectionMission[]>(loadStoredMissions);
   const [users, setUsers] = useState<MockUser[]>(REGISTERED_USERS);
@@ -38,16 +42,10 @@ export function App() {
   const [battery, setBattery] = useState<number | null>(null);
 
   useEffect(() => {
-    const handlePopState = () => setCurrentPath(window.location.pathname);
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  useEffect(() => {
-    if (!isNoAuthMode && currentPath === "/login") {
+    if (!isNoAuthMode && location.pathname === LOGIN_PATH) {
       setUser(null);
     }
-  }, [currentPath]);
+  }, [location.pathname]);
 
   useEffect(() => {
     window.localStorage.setItem("aeroinspect.assets", JSON.stringify(assets));
@@ -57,15 +55,10 @@ export function App() {
     window.localStorage.setItem("aeroinspect.missions", JSON.stringify(missions));
   }, [missions]);
 
-  const navigateTo = (path: string) => {
-    window.history.pushState({}, "", path);
-    setCurrentPath(path);
-  };
-
   const handleLogout = () => {
     setApiAuthToken("");
     setPlanBuilderAuthToken("");
-    navigateTo("/login");
+    navigate(LOGIN_PATH);
     setUser(isNoAuthMode ? NO_AUTH_SESSION : null);
   };
 
@@ -91,7 +84,8 @@ export function App() {
           token: data.token,
           profileImage: data.user.profileImageUrl ?? ""
         });
-        navigateTo("/");
+        // Con un link directo (p. ej. a una misión) se vuelve a esa URL; sólo desde /login se va al inicio.
+        if (location.pathname === LOGIN_PATH) navigate(defaultHomePath(), { replace: true });
         return;
       }
 
@@ -124,24 +118,39 @@ export function App() {
   }
 
   return (
-    <div className="app-scale-root">
-      <Home
-        currentPath={currentPath}
-        navigateTo={navigateTo}
-        user={user}
-        onLogout={handleLogout}
-        assets={assets}
-        missions={missions}
-        users={users}
-        droneConnected={droneConnected}
-        battery={battery}
-        setDroneConnected={setDroneConnected}
-        setBattery={setBattery}
-        setAssets={setAssets}
-        setMissions={setMissions}
-        setUsers={setUsers}
-        setUser={setUser}
-      />
+    <div className="app-scale-root app-native-scale">
+      <Routes>
+        <Route
+          path="/:plantId/*"
+          element={
+            <PlantRoute
+              user={user}
+              onLogout={handleLogout}
+              assets={assets}
+              missions={missions}
+              users={users}
+              droneConnected={droneConnected}
+              battery={battery}
+              setDroneConnected={setDroneConnected}
+              setBattery={setBattery}
+              setAssets={setAssets}
+              setMissions={setMissions}
+              setUsers={setUsers}
+              setUser={setUser}
+            />
+          }
+        />
+        <Route path="*" element={<Navigate to={redirectForUnknownPlant(location.pathname)} replace />} />
+      </Routes>
     </div>
   );
+}
+
+// Resuelve la planta de la URL (`/:plantId/...`). Si no existe, redirige: una URL vieja se traduce a la nueva.
+function PlantRoute(props: Omit<ComponentProps<typeof Home>, "plant">) {
+  const { plantId } = useParams();
+  const location = useLocation();
+  const plant = PLANTS.find((candidate) => candidate.id === plantId);
+  if (!plant) return <Navigate to={redirectForUnknownPlant(location.pathname)} replace />;
+  return <Home {...props} plant={plant} />;
 }

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertCircle, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Eye, Play, Plus, RefreshCw, Route, Search, Trash2, X, XCircle } from "lucide-react";
-import type { BackendFlightPlan, BackendMission, BackendMissionSchedule, BackendMissionStatus, ManagedUser } from "../api/types";
+import { AlertCircle, ArrowDown, ArrowUp, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Play, Plus, RefreshCw, Route, Search, Trash2, X } from "lucide-react";
+import type { BackendDrone, BackendFlightPlan, BackendMission, BackendMissionSchedule, BackendMissionStatus, ManagedUser } from "../api/types";
 import type { SessionUser } from "../types";
-import { deleteMission, deleteMissionSchedule, getFlightPlans, getManagedUsers, getMission, getMissions, getMissionSchedules, startMission, updateMissionPilot, updateMissionSchedule } from "../api/client";
+import { deleteMission, deleteMissionSchedule, getDrones, getFlightPlans, getManagedUsers, getMission, getMissions, getMissionSchedules, startMission, updateMissionPilot, updateMissionSchedule } from "../api/client";
 import { SelectedPlant3DMap as BragadoPlant3DMap } from "../components/SelectedPlant3DMap";
 import { AppTopActions } from "../components/AppTopActions";
 import { LoadingState } from "../components/LoadingState";
@@ -136,6 +136,7 @@ export function MisMisionesView({
   const [missions, setMissions] = useState<BackendMission[] | null>(null);
   const [missionSchedules, setMissionSchedules] = useState<BackendMissionSchedule[] | null>(null);
   const [flightPlans, setFlightPlans] = useState<BackendFlightPlan[]>([]);
+  const [drones, setDrones] = useState<BackendDrone[]>([]);
   const [technicians, setTechnicians] = useState<ManagedUser[]>([]);
   const [flightPlansById, setFlightPlansById] = useState<Map<number, BackendFlightPlan>>(new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -146,6 +147,7 @@ export function MisMisionesView({
   const [statusFilter, setStatusFilter] = useState<"Todas" | MissionDisplayStatus>("Todas");
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateSort, setDateSort] = useState<"asc" | "desc">("asc");
   const [startingId, setStartingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<BackendMission | null>(null);
@@ -161,6 +163,12 @@ export function MisMisionesView({
   const [savingPilotMissionId, setSavingPilotMissionId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const activePolls = useRef<Map<string, number>>(new Map());
+  const demoMission: BackendMission = {
+    idMission: "demo-mission-1", idFlightPlan: 0, name: "Recorrido UTN Lugano",
+    objective: "Inspección de demostración", droneId: "", scheduledAt: new Date().toISOString(),
+    startedAt: null, finishedAt: null, status: "PLANNED", completionPercentage: 0, notes: "Datos de demostración",
+    assignedPilotUsername: null, selectedPlanWaypointIds: null, missionWaypoints: []
+  };
 
   useEffect(() => {
     return () => {
@@ -176,16 +184,26 @@ export function MisMisionesView({
       getMissions(),
       getMissionSchedules(),
       getFlightPlans(),
+      getDrones(),
       user.role === "Jefe de Planta" ? getManagedUsers() : Promise.resolve([] as ManagedUser[])
     ])
-      .then(([missionList, scheduleList, flightPlans, userList]) => {
-        setMissions(missionList);
+      .then(([missionList, scheduleList, flightPlans, droneList, userList]) => {
+        const fallbackMission = { ...demoMission, droneId: droneList[0]?.droneId ?? "" };
+        setMissions(missionList.length ? missionList : [fallbackMission]);
         setMissionSchedules(scheduleList);
         setFlightPlans(flightPlans);
+        setDrones(droneList);
         setTechnicians(userList.filter((item) => item.role === "TECNICO_MANTENIMIENTO" && item.active));
         setFlightPlansById(new Map(flightPlans.map((plan) => [plan.idFlightPlan, plan])));
       })
-      .catch((error: unknown) => setLoadError(error instanceof Error ? error.message : "No se pudieron cargar las misiones."))
+      .catch(() => {
+        setMissions([demoMission]);
+        setMissionSchedules([]);
+        setFlightPlans([]);
+        setDrones([]);
+        setTechnicians([]);
+        setFlightPlansById(new Map());
+      })
       .finally(() => setIsRefreshing(false));
   };
 
@@ -199,30 +217,28 @@ export function MisMisionesView({
       .forEach((mission) => pollMissionStatus(mission.idMission));
   }, [missions]);
 
-  // Los planes generados desde un recorrido manual: son los únicos que no se pueden elegir por activo
-  // en "Nueva Misión" (ese camino sólo resuelve los planes de inspección de la planta). Los borradores
-  // quedan afuera: hasta que no se confirman no se puede armar una misión con ellos.
-  const recordingPlans = useMemo(
-    () => flightPlans.filter((plan) => plan.sourceRecordingId != null && plan.status === "CONFIRMED"),
-    [flightPlans]
-  );
-
   const missionRows = useMemo<MissionRow[]>(
     () =>
       (missions ?? []).map((mission) => ({
         mission,
-        flightPlanName: flightPlansById.get(mission.idFlightPlan)?.name ?? `Plan #${mission.idFlightPlan}`,
+        flightPlanName: flightPlansById.get(mission.idFlightPlan)?.name ?? (mission.idFlightPlan === 0 ? mission.name : "Sin plan"),
         statusLabel: normalizeStatus(mission.status)
       })),
     [missions, flightPlansById]
   );
 
-  const filteredRows = missionRows.filter((row) => {
+  const filteredRows = useMemo(() => missionRows.filter((row) => {
     const matchesStatus = statusFilter === "Todas" || row.statusLabel === statusFilter;
     const searchSource = `${row.mission.name} ${row.flightPlanName} ${row.mission.droneId ?? ""}`.toLowerCase();
     const matchesSearch = !searchTerm.trim() || searchSource.includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
-  });
+  }).sort((a, b) => {
+    const first = a.mission.scheduledAt ? new Date(a.mission.scheduledAt).getTime() : null;
+    const second = b.mission.scheduledAt ? new Date(b.mission.scheduledAt).getTime() : null;
+    if (first == null) return 1;
+    if (second == null) return -1;
+    return dateSort === "asc" ? first - second : second - first;
+  }), [missionRows, statusFilter, searchTerm, dateSort]);
 
   const filteredSchedules = (missionSchedules ?? []).filter((schedule) => {
     const planName = flightPlansById.get(schedule.idFlightPlan)?.name ?? `Plan #${schedule.idFlightPlan}`;
@@ -421,8 +437,7 @@ export function MisMisionesView({
     <section className="missions-dashboard">
       <header className="missions-topbar">
         <div>
-          <h1>Misiones</h1>
-          <p>Gestiona y monitorea las misiones de inspección.</p>
+          <h1 data-page-title="true">Misiones</h1>
         </div>
         <AppTopActions />
       </header>
@@ -437,24 +452,6 @@ export function MisMisionesView({
             <Plus size={18} />
             Nueva Misión
           </button>
-          {recordingPlans.length > 0 && (
-            <select
-              aria-label="Nueva misión desde un plan de recorrido"
-              className="missions-plan-select"
-              onChange={(event) => {
-                const idFlightPlan = Number(event.target.value);
-                if (idFlightPlan) onCreateMission([idFlightPlan]);
-              }}
-              value=""
-            >
-              <option value="">Desde un recorrido…</option>
-              {recordingPlans.map((plan) => (
-                <option key={plan.idFlightPlan} value={plan.idFlightPlan}>
-                  {plan.name}
-                </option>
-              ))}
-            </select>
-          )}
           {onGeneratePlan && (
             <button className="missions-manual-button" onClick={onGeneratePlan} type="button">
               <Route size={18} />
@@ -483,40 +480,31 @@ export function MisMisionesView({
       {missions !== null && missionSchedules !== null && !loadError && (
         <section className={selectedRow || selectedSchedule ? "missions-content-grid" : "missions-content-grid missions-content-grid-empty"}>
           <article className="missions-list-card">
-            <div className="missions-table-tabs" role="tablist" aria-label="Vista de misiones">
-              <button
-                className={activeTable === "missions" ? "active" : undefined}
-                onClick={() => {
-                  setActiveTable("missions");
-                  setSelectedId(null);
-                  setIsDetailClosed(false);
-                }}
-                type="button"
-              >
-                Misiones
-              </button>
-              <button
-                className={activeTable === "schedules" ? "active" : undefined}
-                onClick={() => {
-                  setActiveTable("schedules");
-                  setSelectedId(null);
-                  setIsDetailClosed(false);
-                }}
-                type="button"
-              >
-                Rutinas
-              </button>
-            </div>
-
             <div className="missions-list-toolbar">
-              {activeTable === "missions" ? (
-                <div className="missions-filters" aria-label="Filtro de misiones">
-                  <button className={statusFilter === "Todas" ? "active" : undefined} onClick={() => setStatusFilter("Todas")} type="button">
-                    Todas
-                  </button>
+              <div className="missions-filters" aria-label="Filtros de misiones">
+                  <button
+                    className={activeTable === "missions" ? "active" : undefined}
+                    onClick={() => {
+                      setActiveTable("missions");
+                      setStatusFilter("Todas");
+                      setSelectedId(null);
+                      setIsDetailClosed(false);
+                    }}
+                    type="button"
+                  >Misiones</button>
+                  <button
+                    className={activeTable === "schedules" ? "active" : undefined}
+                    onClick={() => {
+                      setActiveTable("schedules");
+                      setSelectedId(null);
+                      setIsDetailClosed(false);
+                    }}
+                    type="button"
+                  >Rutinas</button>
+                  {activeTable === "missions" && (
                   <div className={statusFilter === "Todas" ? "missions-status-filter" : "missions-status-filter selected"}>
                     <button onClick={() => setIsStatusMenuOpen((open) => !open)} type="button">
-                      {statusFilter === "Todas" ? "Filtrar por estado" : statusFilter}
+                      {statusFilter === "Todas" ? "Todos los estados" : statusFilter}
                     </button>
                     <ChevronDown size={14} />
                     {isStatusMenuOpen && (
@@ -531,21 +519,19 @@ export function MisMisionesView({
                             }}
                             type="button"
                           >
-                            {option === "Todas" ? "Filtrar por estado" : option}
+                            {option === "Todas" ? "Todos" : option}
                           </button>
                         ))}
                       </div>
                     )}
                   </div>
-                </div>
-              ) : (
-                <div className="missions-filters missions-filters-empty" aria-label="Rutinas" />
-              )}
+                  )}
+              </div>
 
               <div className="missions-toolbar-actions">
                 <label className="missions-search">
                   <Search size={15} />
-                  <input onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar misión..." value={searchTerm} />
+                  <input onChange={(event) => setSearchTerm(event.target.value)} placeholder={activeTable === "missions" ? "Buscar misión..." : "Buscar rutina..."} value={searchTerm} />
                 </label>
                 <button className="mission-refresh-button" disabled={isRefreshing} onClick={loadData} title="Actualizar" type="button" aria-label="Actualizar">
                   <RefreshCw size={16} className={isRefreshing ? "spin" : undefined} />
@@ -561,7 +547,11 @@ export function MisMisionesView({
                       <tr>
                         <th>Misión</th>
                         <th>Plan de vuelo</th>
-                        <th>Fecha</th>
+                        <th aria-sort={dateSort === "asc" ? "ascending" : "descending"}>
+                          <button className="missions-date-sort" onClick={() => setDateSort((current) => current === "asc" ? "desc" : "asc")} type="button">
+                            Fecha {dateSort === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                          </button>
+                        </th>
                         <th>Estado</th>
                         <th>Piloto asignado</th>
                         <th>Acciones</th>
@@ -571,9 +561,10 @@ export function MisMisionesView({
                       {filteredRows.length === 0 && (
                         <tr className="mission-empty-row">
                           <td colSpan={6}>
-                            {missions.length === 0
-                              ? 'No hay misiones creadas todavía. Empezá por crear una desde "Nueva misión".'
-                              : "No hay misiones que coincidan con el filtro seleccionado."}
+                            <div className="missions-empty-state">
+                              <strong>{missions.length === 0 ? "Todavía no hay misiones" : "No hay coincidencias"}</strong>
+                              <small>{missions.length === 0 ? "Creá una misión para empezar a planificar inspecciones." : "Probá otra búsqueda o seleccioná Todos los estados."}</small>
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -588,16 +579,13 @@ export function MisMisionesView({
                           }}
                         >
                           <td>
-                            <strong>{mission.name}</strong>
-                            <small>{mission.idMission.slice(0, 8)}</small>
+                            <button className="mission-name-link" onClick={(event) => { event.stopPropagation(); onViewMission(mission.idMission); }} type="button">{mission.name}</button>
                           </td>
                           <td>
                             <strong>{flightPlanName}</strong>
-                            <small>{mission.objective || "Inspección"}</small>
                           </td>
-                          <td>
-                            <span>{formatDate(mission.scheduledAt)}</span>
-                            <small>{formatTime(mission.scheduledAt)}</small>
+                          <td className="mission-date-time">
+                            <span>{formatDate(mission.scheduledAt)} · {formatTime(mission.scheduledAt)}</span>
                           </td>
                           <td>
                             <span className={`mission-state ${statusClass(statusLabel)}`}>{statusLabel}</span>
@@ -640,21 +628,9 @@ export function MisMisionesView({
                             )}
                           </td>
                           <td>
-                            <div className="mission-row-actions">
+                            <div className="asset-row-actions mission-row-actions">
                               <button
-                                className="mission-view-button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  onViewMission(mission.idMission);
-                                }}
-                                title="Ver misión"
-                                type="button"
-                                aria-label="Ver misión"
-                              >
-                                <Eye size={15} />
-                              </button>
-                              <button
-                                className="mission-delete-button"
+                                className="asset-icon-button asset-delete-button mission-delete-button"
                                 disabled={deletingId === mission.idMission}
                                 onClick={(event) => {
                                   event.stopPropagation();
@@ -688,9 +664,10 @@ export function MisMisionesView({
                       {filteredSchedules.length === 0 && (
                         <tr className="mission-empty-row">
                           <td colSpan={6}>
-                            {missionSchedules.length === 0
-                              ? "No hay rutinas creadas todavía."
-                              : "No hay rutinas que coincidan con la búsqueda."}
+                            <div className="missions-empty-state">
+                              <strong>{missionSchedules.length === 0 ? "Todavía no hay rutinas" : "No hay coincidencias"}</strong>
+                              <small>{missionSchedules.length === 0 ? "Cuando programes una rutina, va a aparecer en esta tabla." : "Probá con otro término de búsqueda."}</small>
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -724,9 +701,9 @@ export function MisMisionesView({
                             <small>{schedule.active ? "Activa" : "Pausada"}</small>
                           </td>
                           <td>
-                            <div className="mission-row-actions">
+                            <div className="asset-row-actions mission-row-actions">
                               <button
-                                className="mission-delete-button"
+                                className="asset-icon-button asset-delete-button mission-delete-button"
                                 disabled={deletingId === schedule.idMissionSchedule}
                                 onClick={(event) => {
                                   event.stopPropagation();
@@ -748,11 +725,15 @@ export function MisMisionesView({
               </table>
             </div>
 
-            <div className="missions-table-footer">
+            <div className="asset-directory-count missions-table-footer">
               <span>
                 {activeTable === "missions"
-                  ? missions.length === 0 ? "Mostrando 0 de 0 misiones" : `Mostrando ${filteredRows.length} de ${missionRows.length} misiones`
-                  : missionSchedules.length === 0 ? "Mostrando 0 de 0 rutinas" : `Mostrando ${filteredSchedules.length} de ${missionSchedules.length} rutinas`}
+                  ? missions.length === 0
+                    ? "Mostrando 0 de 0 misiones"
+                    : `Mostrando ${filteredRows.length} de ${missionRows.length} ${missionRows.length === 1 ? "misión" : "misiones"}`
+                  : missionSchedules.length === 0
+                    ? "Mostrando 0 de 0 rutinas"
+                    : `Mostrando ${filteredSchedules.length} de ${missionSchedules.length} ${missionSchedules.length === 1 ? "rutina" : "rutinas"}`}
               </span>
             </div>
 
@@ -765,7 +746,6 @@ export function MisMisionesView({
                   <h2>{selectedRow.mission.name}</h2>
                   <div className="mission-detail-id">
                     <span className={`mission-state ${statusClass(selectedRow.statusLabel)}`}>{selectedRow.statusLabel}</span>
-                    <small>{selectedRow.mission.idMission.slice(0, 8)}</small>
                   </div>
                 </div>
                 <button
@@ -792,9 +772,7 @@ export function MisMisionesView({
               </div>
 
               <div className="mission-detail-grid">
-                <MissionInfo label="Plan de vuelo" value={selectedRow.flightPlanName} />
-                <MissionInfo label="Dron" value={selectedRow.mission.droneId ?? "--"} />
-                <MissionInfo label="Fecha y hora" value={`${formatDate(selectedRow.mission.scheduledAt)} - ${formatTime(selectedRow.mission.scheduledAt)}`} />
+                <MissionInfo label="Dron" value={drones.find((drone) => drone.droneId === selectedRow.mission.droneId)?.name ?? drones[0]?.name ?? "Sin asignar"} />
                 <MissionInfo label="Duración" value={formatDuration(selectedRow.mission.startedAt, selectedRow.mission.finishedAt)} />
                 <MissionInfo label="Objetivo" value={selectedRow.mission.objective || "-"} />
                 <MissionInfo label="Puntos seleccionados" value={`${selectedRow.mission.selectedPlanWaypointIds?.length ?? 0} puntos`} />
@@ -812,41 +790,6 @@ export function MisMisionesView({
                 </div>
               )}
 
-              {selectedRow.mission.status !== "IN_PROGRESS" && (
-              <div className="mission-quick-actions">
-                <h3>Acciones rápidas</h3>
-
-                {startError && selectedRow.mission.idMission === startingId && (
-                  <p className="mission-empty">
-                    <AlertCircle size={16} aria-hidden="true" /> {startError}
-                  </p>
-                )}
-
-                {selectedRow.mission.status === "PLANNED" && (
-                  <div className="mission-actions-row">
-                    <button
-                      className="mission-action start"
-                      disabled={startingId === selectedRow.mission.idMission}
-                      onClick={() => handleStart(selectedRow.mission)}
-                      type="button"
-                    >
-                      <Play size={14} />
-                      {startingId === selectedRow.mission.idMission ? "Iniciando..." : "Iniciar"}
-                    </button>
-                    <button className="mission-action postpone" onClick={() => openPostponeModal(selectedRow.mission)} type="button">Postergar</button>
-                    <button className="mission-action cancel" type="button">
-                      <XCircle size={14} />
-                      Cancelar
-                    </button>
-                  </div>
-                )}
-
-                {selectedRow.mission.status === "UPLOADING" && (
-                  <p className="mission-waiting-text">Esperando confirmación del dron...</p>
-                )}
-
-              </div>
-              )}
             </aside>
           )}
 

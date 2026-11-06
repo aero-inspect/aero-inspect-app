@@ -136,8 +136,7 @@ export function DronesAbmView() {
     <section className="drones-abm-dashboard">
       <header className="drones-abm-header">
         <div>
-          <h1>Gestión de Drones</h1>
-          <p>Alta, edición y baja de los drones de la flota.</p>
+          <h1 data-page-title="true">Gestión de Drones</h1>
         </div>
         <AppTopActions />
       </header>

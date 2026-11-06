@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft, Save, CheckCircle2, AlertCircle, CalendarClock, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { BackendFlightPlan, BackendDrone, BackendDroneStatus } from "../api/types";
 import { getFlightPlans, getDrones, getDroneStatuses, createFlightPlan, createMission, createMissionSchedule } from "../api/client";
 import { FieldError } from "../components/FieldError";
 import { MissionAssetPicker } from "../components/MissionAssetPicker";
 import { AppTopActions } from "../components/AppTopActions";
+import { useSelectedPlant } from "../data/PlantContext";
 
 import { photoCountForWaypoint } from "../utils/missionPhotos";
 import { buildCombinedFlightPlan } from "../utils/missionPlanComposer";
@@ -84,6 +86,7 @@ export function ConfigurarMisionView({
   onBack: () => void;
   onViewMissions: () => void;
 }) {
+  const plant = useSelectedPlant();
   const [flightPlans, setFlightPlans] = useState<BackendFlightPlan[] | null>(null);
   const [flightPlansError, setFlightPlansError] = useState<string | null>(null);
   const [hasAppliedInitialPlan, setHasAppliedInitialPlan] = useState(false);
@@ -97,6 +100,12 @@ export function ConfigurarMisionView({
   // el usuario sacó de esta misión. Se guardan los excluidos y no los elegidos para que, sin tocar
   // nada, queden todos elegidos sin depender de cuándo terminó de cargar el plan.
   const [excludedAssetIds, setExcludedAssetIds] = useState<number[]>([]);
+  // El plan se eligió con el selector del header (no vino ya elegido): se comporta como plan fijo.
+  const [planChosenManually, setPlanChosenManually] = useState(false);
+  const [planSlot, setPlanSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setPlanSlot(document.getElementById("mission-plan-slot"));
+  }, []);
 
   const [name, setName] = useState("");
   const [objective, setObjective] = useState("");
@@ -117,7 +126,7 @@ export function ConfigurarMisionView({
   const loadFlightPlans = () => {
     setFlightPlansError(null);
     setFlightPlans(null);
-    getFlightPlans()
+    getFlightPlans(plant)
       .then(setFlightPlans)
       .catch((error: unknown) => setFlightPlansError(error instanceof Error ? error.message : "No se pudieron cargar los planes de vuelo."));
   };
@@ -130,7 +139,7 @@ export function ConfigurarMisionView({
     getDroneStatuses()
       .then(setDroneStatuses)
       .catch(() => setDroneStatuses([]));
-  }, []);
+  }, [plant]);
 
   useEffect(() => {
     setHasAppliedInitialPlan(false);
@@ -149,7 +158,25 @@ export function ConfigurarMisionView({
 
   // Se llega con un único plan ya elegido (Generar plan -> "Ir a configurar misión"): la ruta no se
   // cambia, se eligen los activos de ese plan en los que se para.
-  const fixedPlan = initialFlightPlanIds?.length === 1 && selectedFlightPlans.length === 1 ? selectedFlightPlans[0] : null;
+  const fixedPlan = (initialFlightPlanIds?.length === 1 || planChosenManually) && selectedFlightPlans.length === 1 ? selectedFlightPlans[0] : null;
+
+  const eligiblePlans = (flightPlans ?? []).filter((plan) => plan.status !== "DRAFT" && plan.route.length > 1);
+
+  // Sin un plan que venga ya elegido, se arranca con el primero de la planta.
+  useEffect(() => {
+    if (initialFlightPlanIds?.length || selectedFlightPlans.length > 0 || planChosenManually || !eligiblePlans.length) return;
+    setPlanChosenManually(true);
+    setSelectedFlightPlans([eligiblePlans[0]]);
+  }, [initialFlightPlanIds, selectedFlightPlans.length, planChosenManually, eligiblePlans]);
+
+  const handleSelectBasePlan = (value: string) => {
+    setExcludedAssetIds([]);
+    setSubmitError(null);
+    const plan = flightPlans?.find((candidate) => candidate.idFlightPlan === Number(value));
+    if (!plan) return;
+    setPlanChosenManually(true);
+    setSelectedFlightPlans([plan]);
+  };
   const fixedPlanAssetIds = fixedPlan ? pointOfInterestAssetIds(fixedPlan) : [];
   const inspectedAssetIds = fixedPlanAssetIds.filter((idAsset) => !excludedAssetIds.includes(idAsset));
 
@@ -212,6 +239,7 @@ export function ConfigurarMisionView({
   const resetForm = () => {
     setSelectedFlightPlans([]);
     setExcludedAssetIds([]);
+    setPlanChosenManually(false);
 
     setName("");
     setObjective("");
@@ -296,11 +324,29 @@ export function ConfigurarMisionView({
             <ArrowLeft size={19} />
           </button>
           <div>
-            <h1>Configurar misión</h1>
+            <h1 data-page-title="true">Configurar misión</h1>
           </div>
         </div>
         <AppTopActions />
       </header>
+
+      {planSlot && createPortal(
+        <>
+          <span>Plan</span>
+          <select
+            aria-label="Plan de vuelo de la misión"
+            disabled={flightPlans === null}
+            onChange={(event) => handleSelectBasePlan(event.target.value)}
+            value={fixedPlan ? String(fixedPlan.idFlightPlan) : ""}
+          >
+            {!eligiblePlans.length && <option value="">{flightPlans === null ? "Cargando planes..." : "Sin planes en la planta"}</option>}
+            {eligiblePlans.map((plan) => (
+              <option key={plan.idFlightPlan} value={plan.idFlightPlan}>{plan.name}</option>
+            ))}
+          </select>
+        </>,
+        planSlot
+      )}
 
       {flightPlansError && <p className="mission-empty" role="alert">{flightPlansError}</p>}
         <form onSubmit={handleSubmit}>
@@ -310,7 +356,7 @@ export function ConfigurarMisionView({
                 plans={flightPlans ?? []}
                 selectedPlanIds={selectedFlightPlans.map((plan) => plan.idFlightPlan)}
                 onSelect={setSelectedFlightPlans}
-                locked={Boolean(initialFlightPlanIds?.length)}
+                locked={Boolean(initialFlightPlanIds?.length) || planChosenManually}
                 batteryPercentage={selectedDroneStatus?.battery?.percentage}
                 planAssetSelection={fixedPlan ? {
                   selectableIds: fixedPlanAssetIds,
