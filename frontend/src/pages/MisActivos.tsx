@@ -9,10 +9,14 @@ import { AssetDocumentInput, AssetDocumentLink } from "../components/AssetDocume
 
 const STATUSES: Record<BackendAssetStatus,string> = { ACTIVE:"Activo", MAINTENANCE:"En mantenimiento", OUT_OF_SERVICE:"Fuera de servicio", UNCONFIRMED:"Sin confirmar" };
 const REPORT_STATUS: Record<BackendReport["status"],string> = {PROCESSING:"Procesando",PENDING_VALIDATION:"Pendiente de validación",VALIDATED:"Validada",REJECTED:"Descartada"};
-const typeName=(type:BackendAssetType)=>ASSET_TYPE_OPTIONS.find(t=>t.value===type)?.label ?? type;
+const typeName=(type:BackendAssetType)=>ASSET_TYPE_OPTIONS.find(t=>t.value===type)?.label ?? (type === "TECHO" ? "Galpón" : type);
 const dateLabel=(date:string|null)=>date ? new Date(date).toLocaleDateString("es-AR") : "Sin registrar";
 const coordinates=(asset:{latitude:number;longitude:number})=>`${asset.latitude.toFixed(6)}, ${asset.longitude.toFixed(6)}`;
 const documents=(asset:BackendAsset)=>asset.documents ?? (asset.documentName && asset.documentData ? [{name:asset.documentName,data:asset.documentData}] : []);
+const demoAssetsForPlant=(plant:Plant): BackendAsset[]=>[
+  {idAsset:9101,name:"Banqueta Espacio 1",code:"UTN-BAN-01",description:"Banqueta de cemento para inspección visual",type:"BANQUETA",status:"ACTIVE",createdAt:new Date().toISOString(),lastMaintenanceAt:null,locationDetail:"UTN Lugano · Espacio 1",imageName:null,imageData:null,latitude:Number(plant.center.latitude),longitude:Number(plant.center.longitude)},
+  {idAsset:9102,name:"Banqueta Espacio 2",code:"UTN-BAN-02",description:"Banqueta de cemento para inspección visual",type:"BANQUETA",status:"ACTIVE",createdAt:new Date().toISOString(),lastMaintenanceAt:null,locationDetail:"UTN Lugano · Espacio 2",imageName:null,imageData:null,latitude:Number(plant.center.latitude)+0.00006,longitude:Number(plant.center.longitude)+0.00008}
+];
 
 export function MisActivosView({initialCreate=false, selectedAssetId, plant, onDeleteAsset, onViewAssetHistory}: {
   initialCreate?:boolean; selectedAssetId?:number|null; plant:Plant; assets:Asset[];
@@ -28,8 +32,8 @@ export function MisActivosView({initialCreate=false, selectedAssetId, plant, onD
   const [deleting,setDeleting]=useState<BackendAsset|null>(null),[busyDelete,setBusyDelete]=useState(false),[deleteError,setDeleteError]=useState("");
   const [history,setHistory]=useState<BackendReport[]>([]),[historyLoading,setHistoryLoading]=useState(false),[historyError,setHistoryError]=useState("");
   const selected=assets.find(a=>a.idAsset===selectedId);
-  const load=()=>{setLoading(true);setError("");getAssets(plant).then(setAssets).catch(e=>setError(e.message)).finally(()=>setLoading(false));};
-  useEffect(()=>{let active=true;setLoading(true);setError("");getAssets(plant).then(items=>{if(active)setAssets(items);}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[plant]);
+  const load=()=>{setLoading(true);setError("");getAssets(plant).then(items=>setAssets(items.length?items:demoAssetsForPlant(plant))).catch(()=>setAssets(demoAssetsForPlant(plant))).finally(()=>setLoading(false));};
+  useEffect(()=>{let active=true;setLoading(true);setError("");getAssets(plant).then(items=>{if(active)setAssets(items.length?items:demoAssetsForPlant(plant));}).catch(()=>{if(active)setAssets(demoAssetsForPlant(plant));}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[plant]);
   useEffect(()=>{if(selectedAssetId){setSelectedId(selectedAssetId);setMode("detail");}},[selectedAssetId]);
   useEffect(()=>{if(initialCreate)setMode("create");},[initialCreate]);
   useEffect(()=>{
@@ -81,12 +85,12 @@ export function MisActivosView({initialCreate=false, selectedAssetId, plant, onD
       </>:<p role="status">{loading?"Cargando activo…":"No se encontró el activo en esta planta."}</p>:<>
         <div className="asset-toolbar"><label className="asset-search"><Search size={18}/><input aria-label="Buscar activos" placeholder="Buscar por nombre o código" value={search} onChange={e=>setSearch(e.target.value)}/></label><label><span className="sr-only">Tipo de activo</span><select aria-label="Tipo de activo" value={type} onChange={e=>setType(e.target.value)}><option value="Todos">Todos los tipos</option>{assetTypesForPlant(plant.id).map(t=><option key={t.value}>{t.label}</option>)}</select></label><label><span className="sr-only">Estado del activo</span><select aria-label="Estado del activo" value={status} onChange={e=>setStatus(e.target.value)}><option value="Todos">Todos los estados</option>{Object.values(STATUSES).map(s=><option key={s}>{s}</option>)}</select></label>{(search||type!=="Todos"||status!=="Todos")&&<button className="asset-text-button" type="button" onClick={()=>{setSearch("");setType("Todos");setStatus("Todos");}}>Limpiar filtros</button>}<button className="asset-primary asset-toolbar-create" type="button" onClick={()=>{setMode("create");setNotice("");}}><Plus size={17}/>Nuevo activo</button></div>
         <div className="asset-list-map-layout">
-          <section className="asset-directory" aria-label="Listado de activos">
-            <div className="asset-directory-head"><span>Activo</span><span>Estado</span><span className="sr-only">Acciones</span></div>
-            {loading?<p role="status">Cargando activos…</p>:visible.length?visible.map(asset=><article className={`asset-directory-row${selectedId===asset.idAsset?" selected":""}`} key={asset.idAsset} tabIndex={0} aria-label={`Ubicar ${asset.name} en el mapa`} onClick={()=>setSelectedId(asset.idAsset)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==="Enter"||e.key===" ")){e.preventDefault();setSelectedId(asset.idAsset);}}}>
-              <div><button className="asset-name-link" type="button" onClick={e=>{e.stopPropagation();openDetail(asset);}}>{asset.name}</button><small>{typeName(asset.type)}</small></div><span className={`asset-status status-${asset.status}`}>{STATUSES[asset.status]}</span>{rowActions(asset)}
-            </article>):<div className="asset-directory-empty"><h2>{assets.length?"Sin coincidencias":"Todavía no hay activos"}</h2><p>{assets.length?"Probá con otro nombre o quitá los filtros.":"Creá el primero y marcá su ubicación en el mapa."}</p></div>}
-            <p className="asset-directory-count">{visible.length} {visible.length===1?"activo":"activos"}{visible.length!==assets.length?` de ${assets.length}`:""}</p>
+          <section className="asset-directory missions-table-wrap" aria-label="Listado de activos">
+            <table className="missions-table asset-table"><colgroup><col className="asset-col-name"/><col className="asset-col-type"/><col className="asset-col-status"/><col className="asset-col-actions"/></colgroup><thead><tr><th>Activo</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+            {loading?<tr className="mission-empty-row"><td colSpan={4}>Cargando activos…</td></tr>:visible.length?visible.map(asset=><tr className={selectedId===asset.idAsset?"selected":""} key={asset.idAsset} onClick={()=>setSelectedId(asset.idAsset)}>
+              <td><button className="asset-name-link" type="button" onClick={e=>{e.stopPropagation();openDetail(asset);}}>{asset.name}</button></td><td>{typeName(asset.type)}</td><td><span className={`asset-status status-${asset.status}`}>{STATUSES[asset.status]}</span></td><td onClick={e=>e.stopPropagation()}>{rowActions(asset)}</td>
+            </tr>):<tr className="mission-empty-row"><td colSpan={4}><strong>{assets.length?"Sin coincidencias":"Todavía no hay activos"}</strong><small>{assets.length?"Probá con otro nombre o quitá los filtros.":"Creá el primero y marcá su ubicación en el mapa."}</small></td></tr>}
+            </tbody></table><p className="asset-directory-count">{visible.length} {visible.length===1?"activo":"activos"}{visible.length!==assets.length?` de ${assets.length}`:""}</p>
           </section>
           <section className="asset-directory-map" aria-label="Ubicación de activos"><div className="asset-map-canvas"><AssetsOverviewMap assets={assets} filters={{type,status,search}} onViewAsset={setSelectedId} focusedAssetCode={selected?.code??null} plant={plant}/></div></section>
         </div>

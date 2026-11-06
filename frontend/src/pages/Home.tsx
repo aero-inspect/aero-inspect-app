@@ -368,29 +368,15 @@ export function Home({
                     </button>
                   )}
                 </div>
-                <div className="missions-list">
+                <div className="missions-list missions-table-wrap home-missions-table-wrap">
+                  <table className="missions-table home-missions-table"><thead><tr><th>Activo</th><th>Estado</th></tr></thead><tbody>
                   {missions.slice(0, 3).map((mission) => (
-                    <div key={mission.id} className="mission-item">
-                      <div className="mission-icon">
-                        {mission.status === "Finalizada" ? (
-                          <CheckCircle2 size={18} />
-                        ) : mission.status === "En ejecución" ? (
-                          <Clock size={18} />
-                        ) : (
-                          <AlertCircle size={18} />
-                        )}
-                      </div>
-                      <div className="mission-info">
-                        <strong>{mission.assetName}</strong>
-                        <span className={`mission-status status-${mission.status?.toLowerCase().replace(" ", "-") || "pendiente"}`}>
-                          {mission.status || "Pendiente"}
-                        </span>
-                      </div>
-                    </div>
+                    <tr key={mission.id}><td><strong>{mission.assetName}</strong><small>{mission.name || "Misión de inspección"}</small></td><td><span className={`mission-status status-${mission.status?.toLowerCase().replace(" ", "-") || "pendiente"}`}>{mission.status || "Pendiente"}</span></td></tr>
                   ))}
                   {missions.length === 0 && (
-                    <p className="empty-state">No hay misiones registradas</p>
+                    <tr className="mission-empty-row"><td colSpan={2}>No hay misiones registradas</td></tr>
                   )}
+                  </tbody></table>
                 </div>
               </div>
               <div className="dashboard-card actions-card">

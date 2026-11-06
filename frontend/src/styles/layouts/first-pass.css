@@ -136,6 +136,11 @@
 .app-native-scale .sidebar-user-role { font-size:10px; line-height:1.4; }
 .app-native-scale .sidebar-user-name { font-size:12px; line-height:1.4; }
 .app-native-scale .sidebar-user-status { display:none; }
+.app-native-scale .sidebar-full .nav-list { min-height:0; overflow-y:auto; }
+.app-native-scale .sidebar-full .sidebar-user { min-height:72px; flex-shrink:0; overflow:visible; }
+.app-native-scale .sidebar-full .sidebar-user-info { overflow:visible; }
+.app-native-scale .sidebar-full .sidebar-user-name,
+.app-native-scale .sidebar-full .sidebar-user-role { display:-webkit-box; overflow:hidden; white-space:normal; text-overflow:clip; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
 .app-native-scale .sidebar-collapse-button { top:6px; }
 .app-native-scale .sidebar-collapsed .sidebar-brand { height:48px; min-height:48px; margin-bottom:24px; overflow:visible; }
 .app-native-scale .sidebar-collapsed .sidebar-brand-logo { display:block; width:52px; height:36px; }

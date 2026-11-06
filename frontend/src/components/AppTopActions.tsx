@@ -88,7 +88,7 @@ function HeaderActions({shared,children}: {shared:boolean;children?:ReactNode}) 
         )}
       </div>
 
-      <button className="tech-user-button" onClick={goToProfile} type="button" aria-label="Perfil">
+      <button className="tech-user-button" onClick={goToProfile} type="button" aria-label="Perfil y cerrar sesión" title="Perfil · Cerrar sesión">
         <UserRound size={21} />
       </button>
     </div>

@@ -5,6 +5,7 @@ import { getFlightPlans, getDrones, getDroneStatuses, createFlightPlan, createMi
 import { FieldError } from "../components/FieldError";
 import { MissionAssetPicker } from "../components/MissionAssetPicker";
 import { AppTopActions } from "../components/AppTopActions";
+import { useSelectedPlant } from "../data/PlantContext";
 
 import { photoCountForWaypoint } from "../utils/missionPhotos";
 import { buildCombinedFlightPlan } from "../utils/missionPlanComposer";
@@ -84,6 +85,7 @@ export function ConfigurarMisionView({
   onBack: () => void;
   onViewMissions: () => void;
 }) {
+  const plant = useSelectedPlant();
   const [flightPlans, setFlightPlans] = useState<BackendFlightPlan[] | null>(null);
   const [flightPlansError, setFlightPlansError] = useState<string | null>(null);
   const [hasAppliedInitialPlan, setHasAppliedInitialPlan] = useState(false);
@@ -117,7 +119,7 @@ export function ConfigurarMisionView({
   const loadFlightPlans = () => {
     setFlightPlansError(null);
     setFlightPlans(null);
-    getFlightPlans()
+    getFlightPlans(plant)
       .then(setFlightPlans)
       .catch((error: unknown) => setFlightPlansError(error instanceof Error ? error.message : "No se pudieron cargar los planes de vuelo."));
   };
@@ -130,7 +132,7 @@ export function ConfigurarMisionView({
     getDroneStatuses()
       .then(setDroneStatuses)
       .catch(() => setDroneStatuses([]));
-  }, []);
+  }, [plant]);
 
   useEffect(() => {
     setHasAppliedInitialPlan(false);

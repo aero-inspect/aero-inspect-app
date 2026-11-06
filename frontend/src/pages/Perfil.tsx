@@ -5,6 +5,7 @@ import { AppTopActions } from "../components/AppTopActions";
 import { LoadingState } from "../components/LoadingState";
 import { mapBackendRole } from "../utils/auth";
 import { useActivity, activityTitles, eventDate } from "../data/ActivityContext";
+import { useSelectedPlant } from "../data/PlantContext";
 
 type ProfileData = {
   username: string;
@@ -47,6 +48,7 @@ export function ProfileView({
   onViewActivity: () => void;
   onLogout: () => void;
 }) {
+  const selectedPlant = useSelectedPlant();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const {activity,loading:activityLoading,error:activityError}=useActivity();
   const [formData, setFormData] = useState<ProfileFormData>(EMPTY_PROFILE);
@@ -325,7 +327,8 @@ export function ProfileView({
                   <ProfileField disabled={!isEditing} label="Teléfono" onChange={(value) => setFormData((current) => ({ ...current, phone: value }))} value={formData.phone} />
                   <ProfileField disabled={!isEditing} label="Email" onChange={(value) => setFormData((current) => ({ ...current, email: value }))} value={formData.email} />
                   <ProfileField disabled={!isEditing} label="Empresa" onChange={(value) => setFormData((current) => ({ ...current, company: value }))} value={formData.company} />
-                  <ProfileField disabled={!isEditing} label="Planta" onChange={(value) => setFormData((current) => ({ ...current, location: value }))} value={formData.location} />
+                  <ProfileField disabled={!isEditing} label="Planta asignada" onChange={(value) => setFormData((current) => ({ ...current, location: value }))} value={formData.location} />
+                  {!isEditing && <ProfileField disabled label="Planta seleccionada" onChange={() => undefined} value={selectedPlant.name} />}
                 </div>
 
                 {isEditing && (
@@ -360,16 +363,17 @@ export function ProfileView({
 
               <section className="profile-action-card profile-logout-card">
                 <div className="profile-action-icon profile-logout-icon">
-                  <LogOut size={29} />
+                  <LogOut size={28} />
                 </div>
                 <div className="profile-action-copy">
                   <h2>Cerrar sesión</h2>
-                  <p>¿Deseas cerrar tu sesión actual en la plataforma?</p>
+                  <p>Finalizá tu sesión de forma segura en este dispositivo.</p>
                 </div>
                 <button className="profile-logout-button" onClick={onLogout} type="button">
                   Cerrar sesión
                 </button>
               </section>
+
             </>
           )}
         </main>
@@ -523,7 +527,7 @@ function ProfileField({
   return (
     <label className="profile-modern-field">
       <span>{label}</span>
-      <input disabled={disabled} onChange={(event) => onChange(event.target.value)} value={value} />
+      {disabled ? <strong className="profile-field-value">{value || "Sin informar"}</strong> : <input onChange={(event) => onChange(event.target.value)} value={value} />}
     </label>
   );
 }
