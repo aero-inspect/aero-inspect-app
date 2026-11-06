@@ -14,7 +14,7 @@ const statusLabels: Record<BackendReport["status"], string> = { PROCESSING: "Pro
 const assetTypes = Object.entries(BACKEND_ASSET_TYPE_LABELS).map(([value,label])=>({value: value as BackendAssetType,label}));
 const severityFilters = { Todas: "Todas", CRITICAL: "Crítica", HIGH: "Alta", MEDIUM: "Media", LOW: "Baja", NOT_REPORTED: "No informada" };
 const demoPhoto = "https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=80";
-const demoAsset = (plant: ReturnType<typeof useSelectedPlant>): BackendAsset => ({ idAsset: 9001, name: "Banqueta Espacio 1", code: "UTN-BAN-01", description: "Banqueta de cemento para inspección visual", type: "BANQUETA", status: "ACTIVE", createdAt: new Date().toISOString(), lastMaintenanceAt: null, locationDetail: plant.name, imageName: null, imageData: null, latitude: Number(plant.center.latitude), longitude: Number(plant.center.longitude) });
+const demoAsset = (plant: ReturnType<typeof useSelectedPlant>): BackendAsset => ({ idAsset: 9001, name: "Banqueta Espacio 1", code: "UTN-BAN-01", description: "Banqueta de cemento para inspección visual", type: "BANQUETA", status: "ACTIVE", createdAt: new Date().toISOString(), lastMaintenanceAt: null, locationDetail: plant.name, imageName: null, imageUrl: null, documents: [], latitude: Number(plant.center.latitude), longitude: Number(plant.center.longitude) });
 
 export function ReportesView({ onViewReport, initialAssetId = null }: { onViewReport: (code: string) => void; initialAssetId?: number | null }) {
   const plant=useSelectedPlant();

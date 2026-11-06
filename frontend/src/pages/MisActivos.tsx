@@ -2,20 +2,34 @@ import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { ArrowLeft, Plus, Search, MapPin, Upload, X, Pencil, Trash2 } from "lucide-react";
 import type { Asset, Plant } from "../types";
 import type { BackendAsset, BackendAssetStatus, BackendAssetType, BackendReport, CreateAssetPayload } from "../api/types";
-import { createAsset, deleteAsset, getAssets, updateAsset, getReports } from "../api/client";
+import { createAsset, deleteAsset, deleteAssetDocument, deleteAssetImage, getAssets, updateAsset, getReports, uploadAssetDocument, uploadAssetImage } from "../api/client";
 import { AssetsOverviewMap } from "../components/AssetsOverviewMap";
 import { assetTypesForPlant, ASSET_TYPE_OPTIONS } from "../data/assetTypes";
-import { AssetDocumentInput, AssetDocumentLink } from "../components/AssetDocumentInput";
+import { AssetDocumentInput, AssetDocumentLink, type DocumentDraft } from "../components/AssetDocumentInput";
 
 const STATUSES: Record<BackendAssetStatus,string> = { ACTIVE:"Activo", MAINTENANCE:"En mantenimiento", OUT_OF_SERVICE:"Fuera de servicio", UNCONFIRMED:"Sin confirmar" };
 const REPORT_STATUS: Record<BackendReport["status"],string> = {PROCESSING:"Procesando",PENDING_VALIDATION:"Pendiente de validación",VALIDATED:"Validada",REJECTED:"Descartada"};
 const typeName=(type:BackendAssetType)=>ASSET_TYPE_OPTIONS.find(t=>t.value===type)?.label ?? (type === "TECHO" ? "Galpón" : type);
 const dateLabel=(date:string|null)=>date ? new Date(date).toLocaleDateString("es-AR") : "Sin registrar";
 const coordinates=(asset:{latitude:number;longitude:number})=>`${asset.latitude.toFixed(6)}, ${asset.longitude.toFixed(6)}`;
-const documents=(asset:BackendAsset)=>asset.documents ?? (asset.documentName && asset.documentData ? [{name:asset.documentName,data:asset.documentData}] : []);
+const documents=(asset:BackendAsset):DocumentDraft[]=>(asset.documents??[]).map(d=>({id:d.id,name:d.name}));
+// Foto y adjuntos del editor. Se suben aparte, después de guardar los datos del activo:
+// imagePreview es la URL del storage si ya estaba guardada, o un object URL de imageFile.
+type AssetFiles={imageName:string|null;imagePreview:string|null;imageFile:File|null;documents:DocumentDraft[]};
+// Sube o borra lo que cambió respecto de lo guardado. Devuelve el activo como quedó después del
+// último cambio, o null si no hubo ninguno.
+async function syncAssetFiles(idAsset:number,saved:{hadImage:boolean;documents:DocumentDraft[]},files:AssetFiles){
+  let latest:BackendAsset|null=null;
+  if(files.imageFile)latest=await uploadAssetImage(idAsset,files.imageFile);
+  else if(saved.hadImage&&!files.imagePreview)latest=await deleteAssetImage(idAsset);
+  const kept=new Set(files.documents.flatMap(d=>d.id?[d.id]:[]));
+  for(const d of saved.documents)if(d.id&&!kept.has(d.id))latest=await deleteAssetDocument(idAsset,d.id);
+  for(const d of files.documents)if(d.file)latest=await uploadAssetDocument(idAsset,d.file);
+  return latest;
+}
 const demoAssetsForPlant=(plant:Plant): BackendAsset[]=>[
-  {idAsset:9101,name:"Banqueta Espacio 1",code:"UTN-BAN-01",description:"Banqueta de cemento para inspección visual",type:"BANQUETA",status:"ACTIVE",createdAt:new Date().toISOString(),lastMaintenanceAt:null,locationDetail:"UTN Lugano · Espacio 1",imageName:null,imageData:null,latitude:Number(plant.center.latitude),longitude:Number(plant.center.longitude)},
-  {idAsset:9102,name:"Banqueta Espacio 2",code:"UTN-BAN-02",description:"Banqueta de cemento para inspección visual",type:"BANQUETA",status:"ACTIVE",createdAt:new Date().toISOString(),lastMaintenanceAt:null,locationDetail:"UTN Lugano · Espacio 2",imageName:null,imageData:null,latitude:Number(plant.center.latitude)+0.00006,longitude:Number(plant.center.longitude)+0.00008}
+  {idAsset:9101,name:"Banqueta Espacio 1",code:"UTN-BAN-01",description:"Banqueta de cemento para inspección visual",type:"BANQUETA",status:"ACTIVE",createdAt:new Date().toISOString(),lastMaintenanceAt:null,locationDetail:"UTN Lugano · Espacio 1",imageName:null,imageUrl:null,documents:[],latitude:Number(plant.center.latitude),longitude:Number(plant.center.longitude)},
+  {idAsset:9102,name:"Banqueta Espacio 2",code:"UTN-BAN-02",description:"Banqueta de cemento para inspección visual",type:"BANQUETA",status:"ACTIVE",createdAt:new Date().toISOString(),lastMaintenanceAt:null,locationDetail:"UTN Lugano · Espacio 2",imageName:null,imageUrl:null,documents:[],latitude:Number(plant.center.latitude)+0.00006,longitude:Number(plant.center.longitude)+0.00008}
 ];
 
 export function MisActivosView({initialCreate=false, selectedAssetId, plant, onDeleteAsset, onViewAssetHistory}: {
@@ -45,11 +59,11 @@ export function MisActivosView({initialCreate=false, selectedAssetId, plant, onD
   },[selectedId,mode,plant]);
   const visible=useMemo(()=>assets.filter(a=>(type==="Todos"||typeName(a.type)===type)&&(status==="Todos"||STATUSES[a.status]===status)&&`${a.name} ${a.code} ${typeName(a.type)}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())),[assets,type,status,search]);
   useEffect(()=>{if(selectedId && mode==="list" && !visible.some(a=>a.idAsset===selectedId))setSelectedId(null);},[visible,selectedId,mode]);
-  const save=(asset:BackendAsset)=>{
+  const save=(asset:BackendAsset,warning?:string)=>{
     const created=mode==="create";
     setAssets(current=>created?[...current,asset]:current.map(a=>a.idAsset===asset.idAsset?asset:a));
     setSelectedId(asset.idAsset);setSearch("");setType("Todos");setStatus("Todos");setMode(created?"list":"detail");
-    setNotice(created?`${asset.name} se creó y quedó ubicado en el mapa.`:"Cambios guardados.");
+    setNotice(warning??(created?`${asset.name} se creó y quedó ubicado en el mapa.`:"Cambios guardados."));
   };
   const remove=async()=>{if(!deleting)return;setBusyDelete(true);setDeleteError("");try{
     await deleteAsset(deleting.idAsset);onDeleteAsset(deleting.idAsset);setAssets(items=>items.filter(a=>a.idAsset!==deleting.idAsset));setDeleting(null);setSelectedId(null);setMode("list");setNotice("Activo eliminado.");
@@ -73,9 +87,9 @@ export function MisActivosView({initialCreate=false, selectedAssetId, plant, onD
         <div className="asset-detail-layout-v2">
           <section className="asset-detail-summary">
             <span className={`asset-status status-${selected.status}`}>{STATUSES[selected.status]}</span>
-            {selected.imageData?<img className="asset-reference-photo" src={selected.imageData} alt={selected.name}/>:<div className="asset-no-photo">Sin fotografía de referencia</div>}
+            {selected.imageUrl?<img className="asset-reference-photo" src={selected.imageUrl} alt={selected.name}/>:<div className="asset-no-photo">Sin fotografía de referencia</div>}
             <dl><div><dt>Ubicación</dt><dd>{selected.locationDetail||plant.name}</dd></div><div><dt>Descripción</dt><dd>{selected.description||"Sin descripción"}</dd></div><div><dt>Último mantenimiento</dt><dd>{dateLabel(selected.lastMaintenanceAt)}</dd></div><div><dt>Creado el</dt><dd>{dateLabel(selected.createdAt)}</dd></div></dl>
-            <details className="asset-additional"><summary>Coordenadas y documentación</summary><p className="asset-mono">{coordinates(selected)}</p><AssetDocumentLink documents={documents(selected)}/></details>
+            <details className="asset-additional"><summary>Coordenadas y documentación</summary><p className="asset-mono">{coordinates(selected)}</p><AssetDocumentLink idAsset={selected.idAsset} documents={documents(selected)}/></details>
           </section>
           <div className="asset-detail-map-v2"><AssetsOverviewMap assets={assets} focusedAssetCode={selected.code} plant={plant}/></div>
         </div>
@@ -100,33 +114,40 @@ export function MisActivosView({initialCreate=false, selectedAssetId, plant, onD
   </section>;
 }
 
-function AssetEditor({plant,asset,assets,onCancel,onSaved}:{plant:Plant;asset?:BackendAsset;assets:BackendAsset[];onCancel:()=>void;onSaved:(asset:BackendAsset)=>void}) {
-  const [form,setForm]=useState<CreateAssetPayload>(()=>asset?{name:asset.name,code:asset.code,type:asset.type,status:asset.status,locationDetail:asset.locationDetail||plant.name,latitude:asset.latitude,longitude:asset.longitude,lastMaintenanceAt:asset.lastMaintenanceAt,imageName:asset.imageName,imageData:asset.imageData,documents:documents(asset),description:asset.description}:{name:"",code:`ACT-${crypto.randomUUID().slice(0,8).toUpperCase()}`,type:assetTypesForPlant(plant.id)[0].value,status:"ACTIVE",locationDetail:plant.name,latitude:NaN,longitude:NaN,lastMaintenanceAt:null,imageName:null,imageData:null,documents:[],description:""});
-  const [saving,setSaving]=useState(false),[reading,setReading]=useState(false),[error,setError]=useState(""),[dirty,setDirty]=useState(false),[confirmCancel,setConfirmCancel]=useState(false);
+function AssetEditor({plant,asset,assets,onCancel,onSaved}:{plant:Plant;asset?:BackendAsset;assets:BackendAsset[];onCancel:()=>void;onSaved:(asset:BackendAsset,warning?:string)=>void}) {
+  const [form,setForm]=useState<CreateAssetPayload>(()=>asset?{name:asset.name,code:asset.code,type:asset.type,status:asset.status,locationDetail:asset.locationDetail||plant.name,latitude:asset.latitude,longitude:asset.longitude,lastMaintenanceAt:asset.lastMaintenanceAt,description:asset.description}:{name:"",code:`ACT-${crypto.randomUUID().slice(0,8).toUpperCase()}`,type:assetTypesForPlant(plant.id)[0].value,status:"ACTIVE",locationDetail:plant.name,latitude:NaN,longitude:NaN,lastMaintenanceAt:null,description:""});
+  const [files,setFilesState]=useState<AssetFiles>(()=>({imageName:asset?.imageName??null,imagePreview:asset?.imageUrl??null,imageFile:null,documents:asset?documents(asset):[]}));
+  const [saving,setSaving]=useState(false),[error,setError]=useState(""),[dirty,setDirty]=useState(false),[confirmCancel,setConfirmCancel]=useState(false);
   const [invalid,setInvalid]=useState<string[]>([]);
   const location=Number.isFinite(form.latitude)&&Number.isFinite(form.longitude)?{latitude:String(form.latitude),longitude:String(form.longitude)}:undefined;
   const set=(patch:Partial<CreateAssetPayload>)=>{setForm(f=>({...f,...patch}));setDirty(true);setInvalid([]);setError("");};
+  const setFiles=(patch:Partial<AssetFiles>)=>{setFilesState(f=>({...f,...patch}));setDirty(true);setError("");};
   const cancel=()=>{if(dirty)setConfirmCancel(true);else onCancel();};
   useEffect(()=>{const leave=(event:BeforeUnloadEvent)=>{if(dirty){event.preventDefault();event.returnValue="";}};window.addEventListener("beforeunload",leave);return()=>window.removeEventListener("beforeunload",leave);},[dirty]);
   const save=async()=>{
-    if(saving||reading)return;
+    if(saving)return;
     const missing=[!form.name.trim()?"name":"",!form.code.trim()?"code":"",!location||form.latitude < -90||form.latitude > 90||form.longitude < -180||form.longitude > 180?"location":"",!form.locationDetail.trim()?"sector":""].filter(Boolean);
     if(missing.length){setInvalid(missing);setError("Completá el nombre, el código, el sector y una ubicación válida en el mapa.");return;}
     setSaving(true);setError("");
-    try {const payload={...form,name:form.name.trim(),code:form.code.trim(),description:form.description?.trim()||null};onSaved(asset?await updateAsset(asset.idAsset,payload):await createAsset(payload));}
+    try {
+      const payload={...form,name:form.name.trim(),code:form.code.trim(),description:form.description?.trim()||null};
+      const saved=asset?await updateAsset(asset.idAsset,payload):await createAsset(payload);
+      try{onSaved(await syncAssetFiles(saved.idAsset,{hadImage:Boolean(asset?.imageUrl),documents:asset?documents(asset):[]},files)??saved);}
+      catch(e){onSaved(saved,`${saved.name} se guardó, pero no se pudieron subir sus archivos: ${e instanceof Error?e.message:"error inesperado"}`);}
+    }
     catch(e){setError(e instanceof Error?e.message:"No se pudo guardar el activo. Tus datos se conservan.");}finally{setSaving(false);}
   };
-  const image=async(event:ChangeEvent<HTMLInputElement>)=>{
+  const image=(event:ChangeEvent<HTMLInputElement>)=>{
     const file=event.target.files?.[0];event.target.value="";if(!file)return;
     if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>5*1024*1024){setError("Usá una imagen JPG, PNG o WebP de hasta 5 MB.");return;}
-    setReading(true);try{const data=await new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=()=>reject(new Error("No se pudo leer la imagen."));r.readAsDataURL(file);});set({imageName:file.name,imageData:data});}catch(e){setError(e instanceof Error?e.message:"No se pudo leer la imagen.");}finally{setReading(false);}
+    setFiles({imageName:file.name,imageFile:file,imagePreview:URL.createObjectURL(file)});
   };
   const localDate=form.lastMaintenanceAt?new Date(Date.parse(form.lastMaintenanceAt)-new Date(form.lastMaintenanceAt).getTimezoneOffset()*60000).toISOString().slice(0,16):"";
   return <>
     <header className="asset-workspace-heading"><div><button className="asset-back" type="button" disabled={saving} onClick={cancel}><ArrowLeft size={16}/>Volver</button><h1 data-page-title="true">{asset?`Editar ${asset.name}`:"Nuevo activo"}</h1></div></header>
     <div className="asset-editor-layout">
       <form className="asset-editor-form" onSubmit={e=>{e.preventDefault();save();}}>
-        <fieldset disabled={saving||reading}><legend>Datos del activo</legend>
+        <fieldset disabled={saving}><legend>Datos del activo</legend>
           <label><span>Nombre *</span><input autoFocus required maxLength={100} aria-invalid={invalid.includes("name")} value={form.name} onChange={e=>set({name:e.target.value})} placeholder="Ej. Banqueta del laboratorio"/></label>
           <div className="asset-editor-pair"><label>Tipo<select value={form.type} onChange={e=>set({type:e.target.value as BackendAssetType})}>{assetTypesForPlant(plant.id).map(t=><option key={t.value} value={t.value}>{t.label}</option>)}</select></label><label>Estado<select value={form.status} onChange={e=>set({status:e.target.value as BackendAssetStatus})}>{Object.entries(STATUSES).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label></div>
           <label><span>Código *</span><input required maxLength={60} aria-invalid={invalid.includes("code")} value={form.code} onChange={e=>set({code:e.target.value})}/><small>{asset?"Código interno del activo.":"Propuesto automáticamente. Podés usar tu código interno."}</small></label>
@@ -134,16 +155,16 @@ function AssetEditor({plant,asset,assets,onCancel,onSaved}:{plant:Plant;asset?:B
           <div className={`asset-location-summary${invalid.includes("location")?" invalid":""}`}><MapPin size={18}/><div><strong>{location?"Ubicación seleccionada":"Falta marcar la ubicación"}</strong><small>{location?coordinates(form):"Hacé clic sobre el mapa para ubicar el activo."}</small></div></div>
           <label>Último mantenimiento <small>Opcional</small><input aria-label="Último mantenimiento" type="datetime-local" value={localDate} onChange={e=>set({lastMaintenanceAt:e.target.value?new Date(e.target.value).toISOString():null})}/><small>{form.lastMaintenanceAt?"":"Sin mantenimiento registrado"}</small></label>
           <details className="asset-additional"><summary>Foto, descripción y documentos <small>Opcional</small></summary>
-            <label className="asset-image-upload">{form.imageData&&<img src={form.imageData} alt="Vista previa del activo"/>}<span><Upload size={16}/>{form.imageData?"Cambiar foto":"Agregar foto"}</span><input aria-label="Fotografía del activo" type="file" accept="image/jpeg,image/png,image/webp" onChange={image}/></label>{form.imageData&&<button className="asset-text-button" type="button" onClick={()=>set({imageData:null,imageName:null})}>Quitar foto</button>}
+            <label className="asset-image-upload">{files.imagePreview&&<img src={files.imagePreview} alt="Vista previa del activo"/>}<span><Upload size={16}/>{files.imagePreview?"Cambiar foto":"Agregar foto"}</span><input aria-label="Fotografía del activo" type="file" accept="image/jpeg,image/png,image/webp" onChange={image}/></label>{files.imagePreview&&<button className="asset-text-button" type="button" onClick={()=>setFiles({imagePreview:null,imageFile:null,imageName:null})}>Quitar foto</button>}
             <label>Descripción<textarea maxLength={500} value={form.description??""} onChange={e=>set({description:e.target.value})}/></label>
-            <AssetDocumentInput documents={form.documents??[]} disabled={saving} onReadingChange={setReading} onChange={docs=>set({documents:docs})}/>
+            <AssetDocumentInput idAsset={asset?.idAsset} documents={files.documents} disabled={saving} onChange={docs=>setFiles({documents:docs})}/>
           </details>
         </fieldset>
         {error&&<p className="asset-form-feedback" role="alert">{error}</p>}
         {confirmCancel&&<div className="asset-unsaved" role="alert"><p>Tenés cambios sin guardar.</p><button type="button" onClick={()=>setConfirmCancel(false)}>Seguir editando</button><button type="button" onClick={onCancel}>Descartar cambios</button></div>}
-        <footer className="asset-editor-footer"><button className="asset-secondary" type="button" disabled={saving||reading} onClick={cancel}>Cancelar</button><button className="asset-primary" type="submit" disabled={saving||reading}>{saving?"Guardando…":reading?"Leyendo archivo…":asset?"Guardar cambios":"Crear activo"}</button></footer>
+        <footer className="asset-editor-footer"><button className="asset-secondary" type="button" disabled={saving} onClick={cancel}>Cancelar</button><button className="asset-primary" type="submit" disabled={saving}>{saving?"Guardando…":asset?"Guardar cambios":"Crear activo"}</button></footer>
       </form>
-      <section className="asset-editor-map" aria-label="Ubicación del activo"><p><MapPin size={16}/>{location?"Podés elegir otro punto para cambiar la ubicación.":"Marcá en el mapa dónde está el activo."}</p><div><AssetsOverviewMap assets={assets} plant={plant} selectedLocation={location} onSelect={p=>{if(!saving&&!reading)set({latitude:Number(p.latitude),longitude:Number(p.longitude)});}}/></div></section>
+      <section className="asset-editor-map" aria-label="Ubicación del activo"><p><MapPin size={16}/>{location?"Podés elegir otro punto para cambiar la ubicación.":"Marcá en el mapa dónde está el activo."}</p><div><AssetsOverviewMap assets={assets} plant={plant} selectedLocation={location} onSelect={p=>{if(!saving)set({latitude:Number(p.latitude),longitude:Number(p.longitude)});}}/></div></section>
     </div>
   </>;
 }

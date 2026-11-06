@@ -52,9 +52,9 @@ function AssetPopup({ asset, onViewAsset }: { asset: BackendAsset; onViewAsset?:
       <button aria-label="Cerrar" className="asset-popup-close" onClick={() => map.closePopup()} type="button">
         <X size={13} strokeWidth={2.5} />
       </button>
-      {asset.imageData && (
+      {asset.imageUrl && (
         <div className="asset-popup-photo-wrap">
-          <img alt={asset.name} className="asset-popup-photo" src={asset.imageData} />
+          <img alt={asset.name} className="asset-popup-photo" src={asset.imageUrl} />
           <span aria-hidden="true" className="asset-popup-photo-scrim" />
           <span className={`asset-popup-status-badge ${statusInfo.tone}`}>{statusInfo.label}</span>
         </div>
@@ -69,7 +69,7 @@ function AssetPopup({ asset, onViewAsset }: { asset: BackendAsset; onViewAsset?:
             {BACKEND_ASSET_TYPE_LABELS[asset.type]} · {asset.code}
           </span>
         </div>
-        {!asset.imageData && <span className={`asset-popup-status-badge ${statusInfo.tone}`}>{statusInfo.label}</span>}
+        {!asset.imageUrl && <span className={`asset-popup-status-badge ${statusInfo.tone}`}>{statusInfo.label}</span>}
       </div>
       {(asset.locationDetail || asset.description) && (
         <div className="asset-popup-meta">

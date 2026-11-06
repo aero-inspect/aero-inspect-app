@@ -5,7 +5,8 @@
 export type BackendAssetType = "SILO" | "NORIA" | "CINTA_TRANSPORTADORA" | "TUBERIA" | "TECHO" | "SILO_FLOTANTE" | "CELDA" | "SECADORA" | "BANQUETA";
 export type BackendAssetStatus = "ACTIVE" | "MAINTENANCE" | "OUT_OF_SERVICE" | "UNCONFIRMED";
 
-export type AssetDocument = { name: string; data: string };
+// Metadata de un adjunto: el contenido se baja aparte (downloadAssetDocument), nunca viene en el JSON.
+export type AssetDocument = { id: string; name: string; contentType: string; size: number; uploadedAt: string };
 
 export type BackendAsset = {
   idAsset: number;
@@ -18,10 +19,8 @@ export type BackendAsset = {
   lastMaintenanceAt: string | null;
   locationDetail: string | null;
   imageName: string | null;
-  imageData: string | null;
-  documentName?: string | null;
-  documentData?: string | null;
-  documents?: AssetDocument[];
+  imageUrl: string | null;
+  documents: AssetDocument[];
   latitude: number;
   longitude: number;
 };
@@ -46,11 +45,6 @@ export type CreateAssetPayload = {
   latitude: number;
   longitude: number;
   lastMaintenanceAt?: string | null;
-  imageName?: string | null;
-  imageData?: string | null;
-  documentName?: string | null;
-  documentData?: string | null;
-  documents?: AssetDocument[];
   description?: string | null;
 };
 
@@ -182,7 +176,7 @@ export type ManagedUser = {
   lastName: string;
   role: string;
   plant: string;
-  profileImage: string | null;
+  profileImageUrl: string | null;
   active: boolean;
 };
 

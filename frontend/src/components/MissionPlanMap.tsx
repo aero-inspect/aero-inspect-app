@@ -140,9 +140,9 @@ function AssetPointsOfInterestPopup({
       <button aria-label="Cerrar" className="asset-popup-close" onClick={() => map.closePopup()} type="button">
         <X size={13} strokeWidth={2.5} />
       </button>
-      {asset.imageData && (
+      {asset.imageUrl && (
         <div className="asset-popup-photo-wrap">
-          <img alt={asset.name} className="asset-popup-photo" src={asset.imageData} />
+          <img alt={asset.name} className="asset-popup-photo" src={asset.imageUrl} />
         </div>
       )}
       <h3>

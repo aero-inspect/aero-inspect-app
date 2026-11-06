@@ -82,7 +82,7 @@ export function App() {
           name: data.user.name,
           role: mapBackendRole(data.user.role),
           token: data.token,
-          profileImage: data.user.profileImage ?? ""
+          profileImage: data.user.profileImageUrl ?? ""
         });
         // Con un link directo (p. ej. a una misión) se vuelve a esa URL; sólo desde /login se va al inicio.
         if (location.pathname === LOGIN_PATH) navigate(defaultHomePath(), { replace: true });
