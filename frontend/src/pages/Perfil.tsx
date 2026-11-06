@@ -6,6 +6,8 @@ import { LoadingState } from "../components/LoadingState";
 import { mapBackendRole } from "../utils/auth";
 import { useActivity, activityTitles, eventDate } from "../data/ActivityContext";
 import { useSelectedPlant } from "../data/PlantContext";
+import { useNavigate } from "react-router-dom";
+import { ROUTES, plantPath } from "../routes";
 
 type ProfileData = {
   username: string;
@@ -49,6 +51,7 @@ export function ProfileView({
   onLogout: () => void;
 }) {
   const selectedPlant = useSelectedPlant();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const {activity,loading:activityLoading,error:activityError}=useActivity();
   const [formData, setFormData] = useState<ProfileFormData>(EMPTY_PROFILE);
@@ -251,10 +254,7 @@ export function ProfileView({
     }
   };
 
-  const goToHelp = () => {
-    window.history.pushState({}, "", "/centro-ayuda");
-    window.dispatchEvent(new PopStateEvent("popstate"));
-  };
+  const goToHelp = () => navigate(plantPath(selectedPlant.id, ROUTES.help));
 
   return (
     <section className={isEditing ? "profile-dashboard profile-dashboard-editing" : "profile-dashboard"}>

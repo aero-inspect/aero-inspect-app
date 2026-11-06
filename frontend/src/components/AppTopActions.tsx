@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Bell, UserRound, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ROUTES, plantPath } from "../routes";
 import { emptyWeather, fetchWeather } from "../services/weather";
 import { getWeatherIcon } from "../utils/weatherIcon";
 
@@ -27,10 +29,8 @@ function HeaderActions({shared,children}: {shared:boolean;children?:ReactNode}) 
   },[isOpen]);
   const {notifications,unread,markRead,dismiss,loading,error}=useActivity();
   const [weather, setWeather] = useState(emptyWeather);
-  const goToProfile = () => {
-    window.history.pushState({}, "", "/perfil");
-    window.dispatchEvent(new PopStateEvent("popstate"));
-  };
+  const navigate = useNavigate();
+  const goToProfile = () => navigate(plantPath(plant.id, ROUTES.profile));
 
   useEffect(() => {
     const loadWeather = async () => {
