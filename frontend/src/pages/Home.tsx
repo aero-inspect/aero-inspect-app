@@ -204,7 +204,7 @@ export function Home({
               {PLANTS.map(plant => <option key={plant.id} value={plant.id}>{plant.name}</option>)}
             </select>
           </label>
-
+          {isMissionPath && <div id="mission-plan-slot" className="mission-plan-slot" />}
         </div></AppTopActions></header>
         {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isManualInspectionPath && !isHelpPath && !isActivityPath && user.role !== "Técnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">
