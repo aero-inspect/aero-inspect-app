@@ -277,7 +277,7 @@ export function Home({
               onCreateMission={(idFlightPlan) => navigateWithSearch(ROUTES.missionsNew, `planId=${idFlightPlan}`)}
             />
           )} />
-          <Route path={rel(ROUTES.flightPlansNew)} element={only(userCanConsultAssets,
+          <Route path={rel(ROUTES.flightPlansNew)} element={only(userCanManagePlans,
             <GenerarPlanVueloView
               initialRecordingId={selectedRecordingId}
               onBack={() => navigateTo(ROUTES.flightPlans)}
@@ -286,10 +286,7 @@ export function Home({
             />
           )} />
           <Route path={rel(ROUTES.manualInspection)} element={only(DRONE_OPERATION_ROLES.includes(user.role),
-            <InspeccionManualView
-              onBack={() => navigateTo(ROUTES.home)}
-              onGeneratePlan={(idFlightRecording) => navigateWithSearch(ROUTES.flightPlansNew, `recordingId=${idFlightRecording}`)}
-            />
+            <InspeccionManualView onBack={() => navigateTo(ROUTES.home)} />
           )} />
           <Route path={rel(ROUTES.missionsNew)} element={only(userCanConsultAssets,
             <ConfigurarMisionView initialFlightPlanIds={selectedFlightPlanIds} onBack={() => navigateTo(ROUTES.missions)} onViewMissions={() => navigateTo(ROUTES.missions)} />
