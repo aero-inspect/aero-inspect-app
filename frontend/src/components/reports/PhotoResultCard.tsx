@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { CalendarDays, LoaderCircle, X } from "lucide-react";
 import type { AiAnalysisFindings, AiCorrosionReport, AiCrackReport, AiDeformationReport, AiSeverityReport, BackendInspectionPhoto, BackendReport } from "../../api/types";
+import { displayedDeformation } from "../../utils/deformation";
 const CORROSION_AREA_THRESHOLD = 70;
 
 export type ReportState = "pending" | "validated" | "discarded";
@@ -26,7 +27,7 @@ export function PhotoResultCard({ canRemove, index, onRemove, photo, assignment,
   const report = findings?.corrosion ?? null;
   const severity = findings?.severity ?? null;
   const crack = findings?.crack ?? null;
-  const deformation = findings?.deformation ?? null;
+  const deformation = findings ? displayedDeformation(findings.deformation) : null;
   const result = report ? getResult(report, severity) : null;
   const crackResult = crack ? getCrackResult(crack) : null;
   const deformationResult = deformation ? getDeformationResult(deformation) : null;
