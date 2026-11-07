@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertCircle, ArrowDown, ArrowUp, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Play, Plus, RefreshCw, Route, Search, Trash2, X } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Play, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import type { BackendDrone, BackendFlightPlan, BackendMission, BackendMissionSchedule, BackendMissionStatus, ManagedUser } from "../api/types";
 import type { SessionUser } from "../types";
 import { deleteMission, deleteMissionSchedule, getDrones, getFlightPlans, getManagedUsers, getMission, getMissions, getMissionSchedules, startMission, updateMissionPilot, updateMissionSchedule } from "../api/client";
@@ -124,14 +124,11 @@ function formatScheduleDays(schedule: BackendMissionSchedule) {
 export function MisMisionesView({
   user,
   onCreateMission,
-  onViewMission,
-  onGeneratePlan
+  onViewMission
 }: {
   user: SessionUser;
   onCreateMission: (idFlightPlans: number[]) => void;
   onViewMission: (idMission: string) => void;
-  /** Sólo viene para los roles que operan el dron; sin esto el botón no se muestra. */
-  onGeneratePlan?: () => void;
 }) {
   const [missions, setMissions] = useState<BackendMission[] | null>(null);
   const [missionSchedules, setMissionSchedules] = useState<BackendMissionSchedule[] | null>(null);
@@ -452,12 +449,6 @@ export function MisMisionesView({
             <Plus size={18} />
             Nueva Misión
           </button>
-          {onGeneratePlan && (
-            <button className="missions-manual-button" onClick={onGeneratePlan} type="button">
-              <Route size={18} />
-              Generar plan
-            </button>
-          )}
         </div>
       </section>
 

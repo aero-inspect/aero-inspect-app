@@ -1,6 +1,7 @@
 import L from "leaflet";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MapContainer, Marker, Polyline, TileLayer, Tooltip } from "react-leaflet";
+import { useEffect } from "react";
+import { MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
 import type { PlanWaypoint, TrackPoint, WaypointAction } from "../api/planBuilder";
 import type { BackendAsset } from "../api/types";
 import { BACKEND_ASSET_TYPE_COLORS } from "../api/constants";
@@ -58,8 +59,28 @@ function createAssetMarkerIcon(asset: BackendAsset, isHighlighted: boolean) {
   });
 }
 
+// Más cerca, la imagen satelital ya se ve borrosa.
+const FIT_MAX_ZOOM = 21;
+
+// Encuadra el recorrido una sola vez, al montar: un plan de pocos metros con el zoom fijo de
+// abajo queda como un punto en el medio del mapa.
+function FitRoute({ positions }: { positions: Array<[number, number]> }) {
+  const map = useMap();
+  useEffect(() => {
+    // Con todos los puntos en el mismo lugar (despegar, parar y aterrizar ahí) el recuadro no
+    // tiene área y Leaflet deja el mapa en negro: se queda con el zoom de siempre.
+    const bounds = L.latLngBounds(positions);
+    if (positions.length > 1 && !bounds.getNorthEast().equals(bounds.getSouthWest())) {
+      map.fitBounds(bounds, { maxZoom: FIT_MAX_ZOOM, padding: [48, 48] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map]);
+  return null;
+}
+
 export function PlanDraftMap({
   assets = [],
+  fitToRoute = false,
   highlightedAssetId = null,
   onSelectWaypoint,
   onMoveWaypoint,
@@ -68,6 +89,7 @@ export function PlanDraftMap({
   trackPoints
 }: {
   assets?: BackendAsset[];
+  fitToRoute?: boolean;
   // El activo elegido (o por elegir) en el combo de punto de interés: se lo resalta en el mapa
   // para poder identificarlo.
   highlightedAssetId?: number | null;
@@ -96,6 +118,7 @@ export function PlanDraftMap({
         zoomControl
       >
         <MapSizeController center={center} />
+        {fitToRoute && <FitRoute positions={routePositions} />}
         <TileLayer
           attribution={SATELLITE_LAYER.attribution}
           maxNativeZoom={SATELLITE_LAYER.maxNativeZoom}

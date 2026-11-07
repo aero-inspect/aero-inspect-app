@@ -32,7 +32,8 @@ export function InspeccionManualView({
   onGeneratePlan
 }: {
   onBack: () => void;
-  onGeneratePlan: (idFlightRecording: number) => void;
+  /** Sólo para el Jefe de Planta, que es quien gestiona los planes; sin esto queda un aviso. */
+  onGeneratePlan?: (idFlightRecording: number) => void;
 }) {
   const [drones, setDrones] = useState<BackendDrone[] | null>(null);
   const [dronesError, setDronesError] = useState<string | null>(null);
@@ -255,13 +256,18 @@ export function InspeccionManualView({
                 <CheckCircle2 size={16} aria-hidden="true" /> Recorrido #{newRecording.idFlightRecording}{" "}
                 subido: {newRecording.pointCount} puntos, {formatDateTime(newRecording.recordedFrom)}.
               </p>
-              <button
-                className="configure-create mission-builder-submit manual-recording-button"
-                onClick={() => onGeneratePlan(newRecording.idFlightRecording)}
-                type="button"
-              >
-                Generar plan con este recorrido
-              </button>
+              {onGeneratePlan ? (
+                <button
+                  className="configure-create mission-builder-submit manual-recording-button"
+                  onClick={() => onGeneratePlan(newRecording.idFlightRecording)}
+                  type="button"
+                >
+                  Generar plan con este recorrido
+                </button>
+              ) : (
+                // Los planes los genera el Jefe de Planta desde Planes; el técnico sólo graba.
+                <p>El Jefe de Planta puede generar el plan con este recorrido desde Planes.</p>
+              )}
             </div>
           )}
 

@@ -1,6 +1,6 @@
 import { Fragment, Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, ChevronLeft, ChevronRight, UsersRound } from "lucide-react";
+import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, ChevronLeft, ChevronRight, UsersRound, Route as RouteIcon } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { MockUser, InspectionMission, Asset, Plant, SessionUser } from "../types";
 import type { BackendAsset, BackendMission } from "../api/types";
@@ -13,6 +13,7 @@ import { ConfigurarMisionView } from "./ConfigurarMision";
 import { GenerarPlanVueloView } from "./GenerarPlanVuelo";
 import { InspeccionManualView } from "./InspeccionManual";
 import { MisMisionesView } from "./MisMisiones";
+import { PlanesVueloView } from "./PlanesVuelo";
 import { DroneTelemetryView } from "./DroneTelemetry";
 import { DronesAbmView } from "./DronesAbm";
 import { PruebaTelemetriaView } from "./PruebaTelemetria";
@@ -110,6 +111,7 @@ export function Home({
   const isAssetsPath = currentPath === ROUTES.assets || selectedAssetParam !== null;
   const isMissionPath = currentPath === ROUTES.missionsNew;
   const isMissionsPath = currentPath === ROUTES.missions;
+  const isPlansPath = currentPath === ROUTES.flightPlans;
   const isGeneratePlanPath = currentPath === ROUTES.flightPlansNew;
   const isManualInspectionPath = currentPath === ROUTES.manualInspection;
   const isDronePath = currentPath === ROUTES.dronesTelemetry;
@@ -128,6 +130,7 @@ export function Home({
   const isActivityPath = currentPath === ROUTES.profileActivity;
   const isPruebaTelemetriaPath = currentPath === ROUTES.dronesTelemetryTest;
   const userCanConsultAssets = canConsultAssets(user.role);
+  const userCanManagePlans = PLAN_CREATION_ROLES.includes(user.role);
   const currentProfileImage = user.profileImage ?? "";
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [assetsViewKey, setAssetsViewKey] = useState(0);
@@ -149,7 +152,7 @@ export function Home({
           <img className="sidebar-brand-logo" src={sidebarLogo} alt="AeroInspect" />
         </div>
         <nav className="nav-list" aria-label="Principal">
-          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isManualInspectionPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isReportDetailRealPath && !isRoleMgmtPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.home)} aria-label="Inicio" title="Inicio" type="button">
+          <button className={!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isPlansPath && !isGeneratePlanPath && !isManualInspectionPath && !isDronePath && !isDronesAbmPath && !isLaunchPath && !isMonitorPath && !isReportsPath && !isCreateReportPath && !isReportDetailPath && !isReportDetailRealPath && !isRoleMgmtPath && !isHelpPath && !isActivityPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.home)} aria-label="Inicio" title="Inicio" type="button">
             <HomeIcon size={20} />
             {!isSidebarCollapsed && <span>Inicio</span>}
           </button>
@@ -175,8 +178,16 @@ export function Home({
             </button>
           )}
 
+          {/* Los planes los gestiona sólo el Jefe de Planta: el técnico no ve esta entrada. */}
+          {userCanManagePlans && (
+            <button className={isPlansPath || isGeneratePlanPath || isManualInspectionPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.flightPlans)} aria-label="Planes" title="Planes" type="button">
+              <RouteIcon size={20} />
+              {!isSidebarCollapsed && <span>Planes</span>}
+            </button>
+          )}
+
           {(userCanConsultAssets || user.role === "Técnico de Mantenimiento") && (
-            <button className={isMissionsPath || isMissionPath || isGeneratePlanPath || isManualInspectionPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.missions)} aria-label="Misiones" title="Misiones" type="button">
+            <button className={isMissionsPath || isMissionPath || (isManualInspectionPath && !userCanManagePlans) ? "active" : undefined} onClick={() => navigateTo(ROUTES.missions)} aria-label="Misiones" title="Misiones" type="button">
               <Plane size={20} />
               {!isSidebarCollapsed && <span>Misiones</span>}
             </button>
@@ -212,7 +223,7 @@ export function Home({
         </button>
       </aside>
 
-      <section key={selectedPlant.id} className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isGeneratePlanPath || isManualInspectionPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isRoleMgmtPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
+      <section key={selectedPlant.id} className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isPlansPath || isGeneratePlanPath || isManualInspectionPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isRoleMgmtPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
         <header className="shared-app-header"><AppTopActions shared><div className="plant-switcher">
           <label htmlFor="selected-plant"><span className="sr-only">Cambiar planta</span>
             <select id="selected-plant" value={selectedPlant.id} onChange={(event) => {
@@ -225,7 +236,7 @@ export function Home({
           </label>
           {isMissionPath && <div id="mission-plan-slot" className="mission-plan-slot" />}
         </div></AppTopActions></header>
-        {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isGeneratePlanPath && !isManualInspectionPath && !isHelpPath && !isActivityPath && user.role !== "Técnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
+        {!isRegisterAssetPath && !isAssetsPath && !isMissionPath && !isMissionsPath && !isPlansPath && !isGeneratePlanPath && !isManualInspectionPath && !isHelpPath && !isActivityPath && user.role !== "Técnico de Mantenimiento" && user.role !== "Jefe de Planta" && (
           <header className="topbar">
             <div>
               <p className="eyebrow">Bienvenida, {user.name}</p>
@@ -256,28 +267,34 @@ export function Home({
           <Route path={rel(ROUTES.missions)} element={
             <MisMisionesView
               user={user}
-              onGeneratePlan={
-                PLAN_CREATION_ROLES.includes(user.role)
-                  ? () => navigateTo(ROUTES.flightPlansNew)
-                  : undefined
-              }
               onCreateMission={(idFlightPlans) => navigateWithSearch(ROUTES.missionsNew, idFlightPlans.map((id) => `planId=${id}`).join("&"))}
               onViewMission={(idMission) => navigateTo(ROUTES.mission(idMission))}
             />
           } />
-          <Route path={rel(ROUTES.flightPlansNew)} element={only(userCanConsultAssets,
+          <Route path={rel(ROUTES.flightPlans)} element={only(userCanManagePlans,
+            <PlanesVueloView
+              onGeneratePlan={() => navigateTo(ROUTES.flightPlansNew)}
+              onCreateMission={(idFlightPlan) => navigateWithSearch(ROUTES.missionsNew, `planId=${idFlightPlan}`)}
+            />
+          )} />
+          <Route path={rel(ROUTES.flightPlansNew)} element={only(userCanManagePlans,
             <GenerarPlanVueloView
               initialRecordingId={selectedRecordingId}
-              onBack={() => navigateTo(ROUTES.missions)}
+              onBack={() => navigateTo(ROUTES.flightPlans)}
               onPlanConfirmed={(idFlightPlan) => navigateWithSearch(ROUTES.missionsNew, `planId=${idFlightPlan}`)}
               onStartManualInspection={() => navigateTo(ROUTES.manualInspection)}
             />
           )} />
-          <Route path={rel(ROUTES.manualInspection)} element={only(DRONE_OPERATION_ROLES.includes(user.role),
-            <InspeccionManualView
-              onBack={() => navigateTo(ROUTES.home)}
-              onGeneratePlan={(idFlightRecording) => navigateWithSearch(ROUTES.flightPlansNew, `recordingId=${idFlightRecording}`)}
-            />
+          <Route path={rel(ROUTES.manualInspection)} element={only(DRONE_OPERATION_ROLES.includes(user.role) || userCanManagePlans,
+            userCanManagePlans ? (
+              // El jefe llega desde Generar plan y vuelve ahí con el recorrido recién grabado.
+              <InspeccionManualView
+                onBack={() => navigateTo(ROUTES.flightPlansNew)}
+                onGeneratePlan={(idFlightRecording) => navigateWithSearch(ROUTES.flightPlansNew, `recordingId=${idFlightRecording}`)}
+              />
+            ) : (
+              <InspeccionManualView onBack={() => navigateTo(ROUTES.home)} />
+            )
           )} />
           <Route path={rel(ROUTES.missionsNew)} element={only(userCanConsultAssets,
             <ConfigurarMisionView initialFlightPlanIds={selectedFlightPlanIds} onBack={() => navigateTo(ROUTES.missions)} onViewMissions={() => navigateTo(ROUTES.missions)} />
