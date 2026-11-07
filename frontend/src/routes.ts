@@ -10,6 +10,7 @@ export const ROUTES = {
   missionsNew: "/missions/new",
   missionsLaunch: "/missions/launch",
   mission: (idMission: string) => `/missions/${encodeURIComponent(idMission)}`,
+  flightPlans: "/flight-plans",
   flightPlansNew: "/flight-plans/new",
   manualInspection: "/manual-inspection",
   drones: "/drones",
