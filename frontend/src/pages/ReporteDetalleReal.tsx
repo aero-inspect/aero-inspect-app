@@ -17,6 +17,8 @@ export function ReporteDetalleRealView({ onBack, reportCode, onViewAsset }: {
  const [error,setError]=useState(""),[saved,setSaved]=useState(""),[signature,setSignature]=useState("");
  const [reviews,setReviews]=useState<Record<string,EvidenceReview>>({});
  const [dirty,setDirty]=useState(false);
+ // Qué PDF se está armando (tarda decenas de segundos): deshabilita los dos botones mientras tanto.
+ const [exporting,setExporting]=useState<"view"|"download"|null>(null);
  const apply=(next:BackendReport)=>{
   setDirty(false);setReport(next);setSignature(next.validatorSignature??"");
   setReviews(Object.fromEntries(next.photos.map(p=>[p.idInspectionPhoto,{idInspectionPhoto:p.idInspectionPhoto,corrosionSeverity:p.corrosionSeverity??null,crackSeverity:p.crackSeverity??null,deformationSeverity:p.deformationSeverity??null,comments:p.validatorComments??"",discarded:p.discarded??false}])));
@@ -49,8 +51,9 @@ export function ReporteDetalleRealView({ onBack, reportCode, onViewAsset }: {
   catch(e){setError(e instanceof Error?e.message:"No se pudo guardar la decisión.");}finally{setSaving(false);}
  };
  const exportPdf=async(inline:boolean)=>{
-  if(!report)return;setError("");
+  if(!report||exporting)return;setError("");setExporting(inline?"view":"download");
   try{if(dirty){const sign=signature;apply(await saveEvidenceReviews(report.code,payload()));setSignature(sign);}await downloadReportPdf(report.code,inline);}catch(e){setError(e instanceof Error?e.message:"No se pudo generar el PDF.");}
+  finally{setExporting(null);}
  };
  const reviewPanel=(photo:BackendInspectionPhoto)=>{
   const f=evidenceFinding(photo),review=reviews[photo.idInspectionPhoto];if(!review)return null;
@@ -71,7 +74,7 @@ export function ReporteDetalleRealView({ onBack, reportCode, onViewAsset }: {
   <header className="real-report-topbar"><div><button className="real-report-back" onClick={onBack}>← Volver a reportes</button><h1 data-page-title="true">Reporte de inspección</h1></div><AppTopActions/></header>
   {loading&&<LoadingState text="Cargando inspección…" compact/>}{error&&<p className="real-report-error" role="alert">{error}</p>}{saved&&<p role="status">{saved}</p>}
   {report&&<>
-   <div className="real-report-document-actions"><button onClick={()=>void exportPdf(true)}><Eye size={17}/> Visualizar PDF</button><button onClick={()=>void exportPdf(false)}><Download size={17}/> Descargar PDF</button></div>
+   <div className="real-report-document-actions"><button disabled={exporting!==null} aria-busy={exporting==="view"} onClick={()=>void exportPdf(true)}><Eye size={17}/> {exporting==="view"?"Generando PDF…":"Visualizar PDF"}</button><button disabled={exporting!==null} aria-busy={exporting==="download"} onClick={()=>void exportPdf(false)}><Download size={17}/> {exporting==="download"?"Generando PDF…":"Descargar PDF"}</button></div>
    <div className={`real-report-status ${status.tone}`} role="status">{closed?<CheckCircle2 size={22}/>:<AlertTriangle size={22}/>}<div><span>Estado del reporte</span><strong>{status.label}</strong></div></div>
    <dl className="real-report-summary"><div><dt>Inspección</dt><dd>{report.missionName}</dd></div><div><dt>Código</dt><dd>{report.code}</dd></div><div><dt>Activos</dt><dd>{report.assets?.length??1}</dd></div><div><dt>Evidencias</dt><dd>{report.photos.length}</dd></div></dl>
    <div className="real-report-grid"><article className="real-report-card"><div className="real-report-photo-list">{(report.assets??(report.idAsset===null?[]:[{idAsset:report.idAsset,assetName:report.assetName,photos:report.photos}])).map(asset=><section className="inspection-evidence-asset" key={asset.idAsset}><header><button className="report-link" onClick={()=>onViewAsset(asset.idAsset)} title="Ver historial de capturas del activo"><h2>{asset.assetName}</h2></button><span>{asset.photos.length} capturas</span></header>{!asset.photos.length&&<p>Sin evidencia en esta inspección.</p>}{asset.photos.map(photo=><div key={photo.idInspectionPhoto}><PhotoResultCard hideSeverity={!closed} index={report.photos.findIndex(p=>p.idInspectionPhoto===photo.idInspectionPhoto)} canRemove={false} onRemove={()=>{}} photo={{id:photo.idInspectionPhoto,waypointId:photo.idMissionWaypoint,previewUrl:photo.rawImageUrl,photoDate:{value:photo.capturedAt,source:"captura"},analysis:photo,error:"",isAnalyzing:false}}/>{reviewPanel(photo)}</div>)}</section>)}</div></article>
