@@ -1,0 +1,493 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:ex="http://earth.google.com/kml/ext">
+<Document id="1pAi86QlXPy9ewzQYJEhRxL8n2Ukgvk5E">
+	<ex:extension>base64;Co4BCoEBCn8KAggBEnkKdwokCiAKAwjQDxoHCNLtZRD_ASEAAAAAAADwPykAAAAAAAAAABgAEg8KCAitgO8HEP8BEKAfGAAaGgoHCP___wcQQBIICK2A7wcQ_wEYoB8gACgAIgkIARIFCP___wcqFwgBEggI____BxD_ARkAAAAAAADwPyAAEgQIARAAGgIIAA</ex:extension>
+	<name>UTN</name>
+	<visibility>0</visibility>
+	<gx:CascadingStyle kml:id="__managed_style_0CF00244CF42C781CBF3_highlight">
+		<ex:extension>base64;EgIYAQ</ex:extension>
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff6abb66</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_0CF00244CF42C781CBF3_normal">
+		<ex:extension>base64;EgIYAQ</ex:extension>
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff6abb66</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_0076F773E842C7817F3B_normal">
+		<ex:extension>base64;EgIYAQ</ex:extension>
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_0CF00244CF42C781CBF3">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_0CF00244CF42C781CBF3_normal</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_0CF00244CF42C781CBF3_highlight</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="__managed_style_0076F773E842C7817F3B">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_0076F773E842C7817F3B_normal</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_0076F773E842C7817F3B_highlight</styleUrl>
+		</Pair>
+	</StyleMap>
+	<gx:CascadingStyle kml:id="__managed_style_0076F773E842C7817F3B_highlight">
+		<ex:extension>base64;EgIYAQ</ex:extension>
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_0731BB685A42C7817F3C_highlight">
+		<ex:extension>base64;EgIYAQ</ex:extension>
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=fbc02d&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<gx:displayMode>card</gx:displayMode>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_0731BB685A42C7817F3C_normal">
+		<ex:extension>base64;EgIYAQ</ex:extension>
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=fbc02d&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<gx:displayMode>card</gx:displayMode>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_0731BB685A42C7817F3C">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_0731BB685A42C7817F3C_normal</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_0731BB685A42C7817F3C_highlight</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Placemark id="06D7F6596642C392A639">
+		<gx:mid>/g/12cpcm624</gx:mid>
+		<gx:fid>0x95bcc966bf151d67:0x255fef772508e89c</gx:fid>
+		<LookAt>
+			<longitude>-58.4679756</longitude>
+			<latitude>-34.65960560000001</latitude>
+			<altitude>0</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>850.5656713658788</range>
+			<altitudeMode>relativeToGround</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0731BB685A42C7817F3C</styleUrl>
+		<Point>
+			<altitudeMode>relativeToGround</altitudeMode>
+			<coordinates>-58.46797559999999,-34.6596056,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark id="0B75D2E2EC42C3966B80">
+		<name>Cancha 1</name>
+		<LookAt>
+			<longitude>-58.46757711636569</longitude>
+			<latitude>-34.65841896824334</latitude>
+			<altitude>5.116682675596396</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>364.297904484265</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0076F773E842C7817F3B</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-58.46753500784726,-34.65880183373391,0 -58.46707991221322,-34.65837466091555,0 -58.46783113196968,-34.65779049517757,0 -58.46832829054759,-34.65820100167114,0 -58.46753500784726,-34.65880183373391,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+	<Placemark id="009DFD6B4142C396EBE3">
+		<name>Arco chancha 1</name>
+		<LookAt>
+			<longitude>-58.46802499228052</longitude>
+			<latitude>-34.6580151924336</latitude>
+			<altitude>5.122702631220928</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>24.99999895062956</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0076F773E842C7817F3B</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-58.46809926253127,-34.65804527422711,0 -58.46809241381648,-34.65805361425056,0 -58.4680293935942,-34.65799905186667,0 -58.46803861646761,-34.65799157177872,0 -58.46809926253127,-34.65804527422711,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+	<Placemark id="0D7574FE0242C3973D98">
+		<name>Arco 2 cancha 1</name>
+		<LookAt>
+			<longitude>-58.46732109964773</longitude>
+			<latitude>-34.65857127603638</latitude>
+			<altitude>7.425174330393802</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>33.38325551746039</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0076F773E842C7817F3B</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-58.46735027045659,-34.65859505533989,0 -58.46734002329667,-34.65860261541198,0 -58.46727991752095,-34.65854893998578,0 -58.46729313442631,-34.65854071339835,0 -58.46735027045659,-34.65859505533989,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+	<Placemark id="063C5ED8DA42C397A974">
+		<name>Lab fisica</name>
+		<LookAt>
+			<longitude>-58.46774623671038</longitude>
+			<latitude>-34.65840084887981</latitude>
+			<altitude>5.083586573140487</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>218.5959358337641</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0076F773E842C7817F3B</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-58.46816744493411,-34.6583965801251,0 -58.4683039883321,-34.65851710468145,0 -58.46770531534738,-34.65894034493989,0 -58.4675763596995,-34.65882475511409,0 -58.46816744493411,-34.6583965801251,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+	<Placemark id="0B2932148342C39808D1">
+		<name>Galpon</name>
+		<LookAt>
+			<longitude>-58.46827819253563</longitude>
+			<latitude>-34.65833463949311</latitude>
+			<altitude>6.897199003326797</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>102.9229576241778</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0076F773E842C7817F3B</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-58.4684296604182,-34.65837550694424,0 -58.46837965885501,-34.65841052913554,0 -58.46827998711448,-34.65832598997928,0 -58.4683711584237,-34.65825943290741,0 -58.46842211952985,-34.65829482132209,0 -58.4683819726626,-34.65833014759627,0 -58.4684296604182,-34.65837550694424,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+	<Placemark id="09FE649F3F42C3984769">
+		<name>Galpon2</name>
+		<LookAt>
+			<longitude>-58.46827819253563</longitude>
+			<latitude>-34.65833463949311</latitude>
+			<altitude>6.897199003326797</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>102.9229576241778</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0076F773E842C7817F3B</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-58.4681534247118,-34.6584000565494,0 -58.46822249426867,-34.65834786577592,0 -58.46831720921199,-34.65843377681239,0 -58.46824358663554,-34.65847690867917,0 -58.4681534247118,-34.6584000565494,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+	<Placemark id="06187FF60942C3987BEB">
+		<name>Pasillo abierto</name>
+		<LookAt>
+			<longitude>-58.46827819253563</longitude>
+			<latitude>-34.65833463949311</latitude>
+			<altitude>6.897199003326797</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>102.9229576241778</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0076F773E842C7817F3B</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-58.46823659789646,-34.65829222050045,0 -58.4683745254436,-34.65841396464811,0 -58.46833408045433,-34.65844816335555,0 -58.46819099059696,-34.65832840507956,0 -58.46823659789646,-34.65829222050045,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+	<Placemark id="0636F9785242C398DED7">
+		<name>Zona con bancos, descanso</name>
+		<LookAt>
+			<longitude>-58.46796423958867</longitude>
+			<latitude>-34.65851265569968</latitude>
+			<altitude>5.052563108833965</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>217.6610210083891</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0076F773E842C7817F3B</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-58.46832967557172,-34.65820479794571,0 -58.4683721440765,-34.65823718798233,0 -58.46755955416227,-34.65882791866301,0 -58.46752960458729,-34.65880140215786,0 -58.46832967557172,-34.65820479794571,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+	<Placemark id="025CD5AC6F42C781B628">
+		<name>Galpon cancha 2</name>
+		<LookAt>
+			<longitude>-58.46712293130583</longitude>
+			<latitude>-34.65807639851684</latitude>
+			<altitude>15.51102816197293</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>153.6651312289359</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0CF00244CF42C781CBF3</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-58.46723025846097,-34.65812297985503,0 -58.46715697952999,-34.65804508005969,0 -58.46734190429535,-34.65790547275154,0 -58.46742470825237,-34.65797098689431,0 -58.46723025846097,-34.65812297985503,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+	<Placemark id="073362580442C7820787">
+		<name>Cancha 2</name>
+		<LookAt>
+			<longitude>-58.4671223556808</longitude>
+			<latitude>-34.65809832225947</latitude>
+			<altitude>14.20914363809344</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>157.0285369712292</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0CF00244CF42C781CBF3</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-58.46692046408869,-34.65844879999649,0 -58.46675918703588,-34.65831118517256,0 -58.46701344914591,-34.65811425047,0 -58.4671732548215,-34.65825217876049,0 -58.46692046408869,-34.65844879999649,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+	<Placemark id="01BEF8FEA242C7823A68">
+		<name>Arco 1 cancha 2</name>
+		<LookAt>
+			<longitude>-58.46706347839719</longitude>
+			<latitude>-34.65817820669701</latitude>
+			<altitude>5.268172890977434</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>37.78429630829123</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0CF00244CF42C781CBF3</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-58.46710337506421,-34.65819954386647,0 -58.46709478320209,-34.65820585922766,0 -58.46707027553638,-34.65818300033951,0 -58.46707778374096,-34.65817794488694,0 -58.46710337506421,-34.65819954386647,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+	<Placemark id="0B350FFA2842C7827791">
+		<name>Arco 2 cancha 2</name>
+		<LookAt>
+			<longitude>-58.46689195818537</longitude>
+			<latitude>-34.65835809746626</latitude>
+			<altitude>5.189067160112753</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>36.90743267771268</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0CF00244CF42C781CBF3</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-58.46686143188739,-34.65838219074921,0 -58.4668547061738,-34.65838811176728,0 -58.46683023016384,-34.65836558382402,0 -58.46684226179944,-34.6583607876954,0 -58.46686143188739,-34.65838219074921,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+	<Placemark id="07E6C8015542C782E9FC">
+		<name>Espacio 2</name>
+		<LookAt>
+			<longitude>-58.46714595013439</longitude>
+			<latitude>-34.6581931233256</latitude>
+			<altitude>5.329176887034519</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>244.15575203333</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0CF00244CF42C781CBF3</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-58.46664242937973,-34.65866598179559,0 -58.46646508486372,-34.65849803290628,0 -58.46731250635383,-34.65783986414566,0 -58.46751795617528,-34.65801702155764,0 -58.46664242937973,-34.65866598179559,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+</Document>
+</kml>

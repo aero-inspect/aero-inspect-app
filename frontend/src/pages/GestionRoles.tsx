@@ -11,7 +11,7 @@ type ManagedUser = {
   lastName: string | null;
   role: "TECNICO_MANTENIMIENTO" | "JEFE_PLANTA";
   plant: string | null;
-  profileImage: string | null;
+  profileImageUrl: string | null;
   active: boolean;
 };
 
@@ -150,8 +150,7 @@ export function RoleManagementView({ user }: { user: SessionUser; onBack: () => 
     <section className="personnel-page">
       <header className="personnel-topbar">
         <div>
-          <h1>Gestión de Personal</h1>
-          <p>Creá y administrá los usuarios de tus plantas</p>
+          <h1 data-page-title="true">Gestión de Personal</h1>
         </div>
         <AppTopActions />
       </header>
@@ -247,8 +246,8 @@ export function RoleManagementView({ user }: { user: SessionUser; onBack: () => 
                     <tr key={item.username}>
                       <td>
                         <div className="personnel-user-cell">
-                          <span className={item.profileImage ? "has-image" : undefined}>
-                            {item.profileImage ? <img src={item.profileImage} alt="" /> : null}
+                          <span className={item.profileImageUrl ? "has-image" : undefined}>
+                            {item.profileImageUrl ? <img src={item.profileImageUrl} alt="" /> : null}
                           </span>
                           <strong>{item.fullName}</strong>
                         </div>

@@ -90,7 +90,8 @@ export type PlanWaypoint = {
   stopSeconds: number;
   pointOfInterest: boolean;
   action: WaypointAction;
-  degree: number;
+  // Rumbo de la nariz del dron en el waypoint: 0 = norte, 90 = este (sentido horario).
+  droneDegree: number;
   latitude: number;
   longitude: number;
   altitude: number;
@@ -98,6 +99,8 @@ export type PlanWaypoint = {
   idAsset?: number | null;
   name?: string | null;
   cameraAngles?: PlannedPhoto[] | null;
+  // Sólo en un punto de interés: false = el dron frena y espera, pero no saca foto.
+  takePhoto: boolean;
 };
 
 export type PlanStatus = "DRAFT" | "CONFIRMED" | "ARCHIVED";
@@ -124,12 +127,17 @@ export type GenerateFlightPlanPayload = {
   markedPointPhotos: Array<PlannedPhoto[]>;
 };
 
-// Edición manual de la posición de un waypoint ya generado. altitude puede mandarse negativa: el
-// borrador la deja ver así (nunca se oculta), sólo confirmFlightPlan la rechaza.
+// Edición manual de un waypoint ya generado, todo en una llamada. altitude puede mandarse negativa:
+// el borrador la deja ver así (nunca se oculta), sólo confirmFlightPlan la rechaza. stopSeconds y
+// droneDegree son opcionales (ausentes = quedan como estaban); stopSeconds sólo en un STOP.
 export type UpdateWaypointPayload = {
   latitude: number;
   longitude: number;
   altitude: number;
+  stopSeconds?: number;
+  droneDegree?: number;
+  cameraAngles?: PlannedPhoto[];
+  takePhoto?: boolean;
 };
 
 // Un waypoint nuevo, insertado justo después de afterSequence. idAsset ausente = punto de paso;

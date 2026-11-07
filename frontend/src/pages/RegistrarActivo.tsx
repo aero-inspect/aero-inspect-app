@@ -1,4 +1,4 @@
-﻿import { useState, type CSSProperties, type ChangeEvent, type DragEvent, type FormEvent, type ReactNode } from "react";
+import { useState, type CSSProperties, type ChangeEvent, type DragEvent, type FormEvent, type ReactNode } from "react";
 import {
   ArrowLeft,
   Building2,
@@ -146,8 +146,7 @@ export function RegistrarActivoView({
             <ArrowLeft size={20} aria-hidden="true" />
           </button>
           <div>
-            <h1>Registrar nuevo activo</h1>
-            <p>Completa la información del activo y selecciona su ubicación en el mapa.</p>
+            <h1 data-page-title="true">Registrar nuevo activo</h1>
           </div>
         </div>
         <AppTopActions />

@@ -68,7 +68,7 @@ export function ReporteDetalleRealView({ onBack, reportCode, onViewAsset }: {
   </div>;
  };
  return <section className="real-report-page">
-  <header className="real-report-topbar"><div><button className="real-report-back" onClick={onBack}>← Volver a reportes</button><h1>Reporte de inspección</h1></div><AppTopActions/></header>
+  <header className="real-report-topbar"><div><button className="real-report-back" onClick={onBack}>← Volver a reportes</button><h1 data-page-title="true">Reporte de inspección</h1></div><AppTopActions/></header>
   {loading&&<LoadingState text="Cargando inspección…" compact/>}{error&&<p className="real-report-error" role="alert">{error}</p>}{saved&&<p role="status">{saved}</p>}
   {report&&<>
    <div className="real-report-document-actions"><button onClick={()=>void exportPdf(true)}><Eye size={17}/> Visualizar PDF</button><button onClick={()=>void exportPdf(false)}><Download size={17}/> Descargar PDF</button></div>

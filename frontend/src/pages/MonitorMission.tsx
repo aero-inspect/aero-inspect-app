@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, Camera, Gauge, Play, Route, Satellite, X } from "lucide-react";
-import type { BackendAsset, BackendFlightPlan, BackendMission, BackendMissionStatus, BackendMissionWaypoint, BackendPlanWaypoint } from "../api/types";
-import { getAssets, getFlightPlan, getMission, getMissions, startMission, cancelMission } from "../api/client";
+import type { BackendAsset, BackendDroneStatus, BackendFlightPlan, BackendMission, BackendMissionStatus, BackendMissionWaypoint, BackendPlanWaypoint } from "../api/types";
+import { getAssets, getDroneStatuses, getFlightPlan, getMission, getMissions, startMission, cancelMission } from "../api/client";
 import { SelectedPlant3DMap as BragadoPlant3DMap } from "../components/SelectedPlant3DMap";
 import { photoCountForWaypoint } from "../utils/missionPhotos";
 import { AppTopActions } from "../components/AppTopActions";
@@ -217,6 +217,35 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
   const progressWidth = progress == null ? 0 : Math.max(0, Math.min(100, progress));
   const missionStatus = statusLabel(mission?.status);
   const isPendingMission = mission?.status === "PLANNED";
+  const pendingDroneId = isPendingMission ? mission.droneId : null;
+  const [droneStatus, setDroneStatus] = useState<BackendDroneStatus | null>(null);
+
+  useEffect(() => {
+    setDroneStatus(null);
+    if (!pendingDroneId) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const statuses = await getDroneStatuses();
+        if (!cancelled) {
+          setDroneStatus(statuses.find((status) => status.droneId === pendingDroneId) ?? null);
+        }
+      } catch {
+        if (!cancelled) setDroneStatus(null);
+      } finally {
+        if (!cancelled) timer = setTimeout(poll, 3000);
+      }
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [pendingDroneId]);
+
+  const preflight = pendingDroneId && droneStatus?.droneId === pendingDroneId ? droneStatus : null;
 
 
   const currentGimbal = useMemo(() => {
@@ -294,20 +323,30 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
     return (end - start) / 1000;
   }, [mission?.startedAt, mission?.finishedAt, now]);
 
+  const battery = isPendingMission ? preflight?.battery : telemetry?.battery;
+  const gps = isPendingMission ? preflight?.gps : telemetry?.gps;
+  const lastUpdate = isPendingMission ? preflight?.lastSeen : telemetry?.timestamp;
   const flightRows = [
-    ["Batería", telemetry?.battery ? `${telemetry.battery.percentage}%` : EMPTY_VALUE],
+    ...(isPendingMission ? [["Conexión", preflight?.mavlinkLinkOk == null
+      ? "Sin señal reciente"
+      : preflight.mavlinkLinkOk ? "Conectado" : "Sin enlace MAVLink"]] : []),
+    ["Batería", battery ? `${battery.percentage}%` : EMPTY_VALUE],
     ["Altitud relativa", telemetry?.position ? `${formatNumber(telemetry.position.relativeAltitude)} m` : EMPTY_VALUE],
     ["Velocidad horizontal", telemetry?.velocity ? `${formatNumber(telemetry.velocity.groundHorizontalSpeedMs)} m/s` : EMPTY_VALUE],
     ["Velocidad vertical", telemetry?.velocity ? `${formatNumber(telemetry.velocity.groundVerticalSpeedMs)} m/s` : EMPTY_VALUE],
     ["Tiempo activo", activeDurationSeconds != null ? formatDuration(activeDurationSeconds) : EMPTY_VALUE],
     ["Distancia recorrida", formatDistance(distanceTraveledMeters)],
     ["Distancia restante", totalRouteDistanceMetersValue > 0 ? formatDistance(distanceRemainingMeters) : EMPTY_VALUE],
-    ["Última actualización", telemetry?.timestamp ? new Date(telemetry.timestamp).toLocaleTimeString("es-AR") : EMPTY_VALUE]
+    ["Última actualización", lastUpdate ? new Date(lastUpdate).toLocaleTimeString("es-AR") : EMPTY_VALUE]
   ];
 
   const gpsRows = [
-    ["Senal GPS", telemetry?.gps?.fixType ?? EMPTY_VALUE],
-    ["Satelites", telemetry?.gps ? String(telemetry.gps.satellites) : EMPTY_VALUE],
+    ["Señal GPS", gps?.fixType ?? EMPTY_VALUE],
+    ["Satélites", gps ? String(gps.satellites) : EMPTY_VALUE],
+    ...(isPendingMission ? [
+      ["Latitud", preflight?.position?.latitude.toFixed(6) ?? EMPTY_VALUE],
+      ["Longitud", preflight?.position?.longitude.toFixed(6) ?? EMPTY_VALUE]
+    ] : []),
     ["Error horizontal (HDOP)", telemetry?.gps ? telemetry.gps.hdop.toFixed(2) : EMPTY_VALUE],
     ["Error vertical (VDOP)", telemetry?.gps ? telemetry.gps.vdop.toFixed(2) : EMPTY_VALUE]
   ];
@@ -320,8 +359,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
             <ArrowLeft size={19} />
           </button>
           <div>
-            <h1>Monitorear misión</h1>
-            <p>Seguimiento en vivo de las inspecciones a los activos.</p>
+            <h1 data-page-title="true">Monitorear misión</h1>
           </div>
         </div>
         <AppTopActions />

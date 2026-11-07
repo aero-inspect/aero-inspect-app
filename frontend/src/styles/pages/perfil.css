@@ -282,7 +282,7 @@
 }
 
 .profile-logout-card {
-  border-color: #063b7a;
+  border-color: #b45a52;
 }
 
 .profile-action-icon {
@@ -300,9 +300,9 @@
 }
 
 .profile-logout-icon {
-  border: 1px solid rgba(15, 90, 180, 0.43);
-  background: rgba(15, 90, 180, 0.43);
-  color: #063b7a;
+  border: 1px solid #e0aaa5;
+  background: #fff0ed;
+  color: #a94740;
 }
 
 .profile-action-copy {
@@ -345,9 +345,9 @@
 }
 
 .profile-logout-button {
-  border: 1px solid #063b7a;
-  background: rgba(126, 194, 255, 0.22);
-  color: #063b7a;
+  border: 1px solid #b45a52;
+  background: #fff0ed;
+  color: #a94740;
 }
 
 .profile-side-card {

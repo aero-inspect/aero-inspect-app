@@ -82,6 +82,47 @@ export function createAsset(payload: CreateAssetPayload) {
   });
 }
 
+async function sendFile<T>(path: string, method: "PUT" | "POST", file: File): Promise<T> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(path, {
+    method,
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+    body: formData
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(body?.message ?? DEFAULT_ERROR_MESSAGE);
+  return body as T;
+}
+
+export function uploadAssetImage(idAsset: number, file: File) {
+  return sendFile<BackendAsset>(`/api/v1/assets/${idAsset}/image`, "PUT", file);
+}
+
+export function deleteAssetImage(idAsset: number) {
+  return request<BackendAsset>(`/api/v1/assets/${idAsset}/image`, { method: "DELETE" });
+}
+
+export function uploadAssetDocument(idAsset: number, file: File) {
+  return sendFile<BackendAsset>(`/api/v1/assets/${idAsset}/documents`, "POST", file);
+}
+
+export function deleteAssetDocument(idAsset: number, idDocument: string) {
+  return request<BackendAsset>(`/api/v1/assets/${idAsset}/documents/${idDocument}`, { method: "DELETE" });
+}
+
+// Los adjuntos viven en un bucket privado: se bajan por el monolito, con el token.
+export async function downloadAssetDocument(idAsset: number, document: { id: string; name: string }, inline = false) {
+  const response = await fetch(`/api/v1/assets/${idAsset}/documents/${document.id}`, {
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined
+  });
+  if (!response.ok) throw new Error("No se pudo descargar el archivo");
+  const url = URL.createObjectURL(await response.blob());
+  if (inline) window.open(url, "_blank", "noopener,noreferrer");
+  else { const anchor = window.document.createElement("a"); anchor.href = url; anchor.download = document.name; anchor.click(); }
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 export function deleteAsset(idAsset: number) {
   return request<void>(`/api/v1/assets/${idAsset}`, {
     method: "DELETE"

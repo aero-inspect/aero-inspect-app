@@ -5,6 +5,9 @@ import { AppTopActions } from "../components/AppTopActions";
 import { LoadingState } from "../components/LoadingState";
 import { mapBackendRole } from "../utils/auth";
 import { useActivity, activityTitles, eventDate } from "../data/ActivityContext";
+import { useSelectedPlant } from "../data/PlantContext";
+import { useNavigate } from "react-router-dom";
+import { ROUTES, plantPath } from "../routes";
 
 type ProfileData = {
   username: string;
@@ -18,6 +21,7 @@ type ProfileData = {
   role: string;
   active: boolean;
   profileImage: string;
+  profileImageUrl?: string | null;
   registeredAt: string | null;
   lastAccessAt: string | null;
 };
@@ -47,6 +51,8 @@ export function ProfileView({
   onViewActivity: () => void;
   onLogout: () => void;
 }) {
+  const selectedPlant = useSelectedPlant();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const {activity,loading:activityLoading,error:activityError}=useActivity();
   const [formData, setFormData] = useState<ProfileFormData>(EMPTY_PROFILE);
@@ -121,13 +127,33 @@ export function ProfileView({
     setError("");
 
     try {
+      // La foto va aparte: se sube (o se borra) antes de guardar los datos, así la respuesta
+      // del PUT ya trae la URL nueva.
+      const { profileImage, ...fields } = formData;
+      if (profileImage.startsWith("data:")) {
+        const body = new FormData();
+        body.append("file", await (await fetch(profileImage)).blob(), "avatar.jpg");
+        const imageResponse = await fetch("/api/v1/users/me/image", {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${user.token}` },
+          body
+        });
+        if (!imageResponse.ok) throw new Error("No se pudo guardar la foto de perfil.");
+      } else if (!profileImage && profile?.profileImage) {
+        const imageResponse = await fetch("/api/v1/users/me/image", {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+        if (!imageResponse.ok) throw new Error("No se pudo borrar la foto de perfil.");
+      }
+
       const response = await fetch("/api/v1/users/me", {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${user.token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(fields)
       });
 
       if (!response.ok) throw new Error("No se pudo guardar el perfil.");
@@ -249,17 +275,13 @@ export function ProfileView({
     }
   };
 
-  const goToHelp = () => {
-    window.history.pushState({}, "", "/centro-ayuda");
-    window.dispatchEvent(new PopStateEvent("popstate"));
-  };
+  const goToHelp = () => navigate(plantPath(selectedPlant.id, ROUTES.help));
 
   return (
     <section className={isEditing ? "profile-dashboard profile-dashboard-editing" : "profile-dashboard"}>
       <header className="profile-topbar">
         <div>
-          <h1>Mi Perfil</h1>
-          <p>Gestiona tus datos personales y seguridad</p>
+          <h1 data-page-title="true">Mi Perfil</h1>
         </div>
         <AppTopActions />
       </header>
@@ -326,7 +348,8 @@ export function ProfileView({
                   <ProfileField disabled={!isEditing} label="Teléfono" onChange={(value) => setFormData((current) => ({ ...current, phone: value }))} value={formData.phone} />
                   <ProfileField disabled={!isEditing} label="Email" onChange={(value) => setFormData((current) => ({ ...current, email: value }))} value={formData.email} />
                   <ProfileField disabled={!isEditing} label="Empresa" onChange={(value) => setFormData((current) => ({ ...current, company: value }))} value={formData.company} />
-                  <ProfileField disabled={!isEditing} label="Planta" onChange={(value) => setFormData((current) => ({ ...current, location: value }))} value={formData.location} />
+                  <ProfileField disabled={!isEditing} label="Planta asignada" onChange={(value) => setFormData((current) => ({ ...current, location: value }))} value={formData.location} />
+                  {!isEditing && <ProfileField disabled label="Planta seleccionada" onChange={() => undefined} value={selectedPlant.name} />}
                 </div>
 
                 {isEditing && (
@@ -361,16 +384,17 @@ export function ProfileView({
 
               <section className="profile-action-card profile-logout-card">
                 <div className="profile-action-icon profile-logout-icon">
-                  <LogOut size={29} />
+                  <LogOut size={28} />
                 </div>
                 <div className="profile-action-copy">
                   <h2>Cerrar sesión</h2>
-                  <p>¿Deseas cerrar tu sesión actual en la plataforma?</p>
+                  <p>Finalizá tu sesión de forma segura en este dispositivo.</p>
                 </div>
                 <button className="profile-logout-button" onClick={onLogout} type="button">
                   Cerrar sesión
                 </button>
               </section>
+
             </>
           )}
         </main>
@@ -478,7 +502,7 @@ function normalizeProfile(profile: ProfileData): ProfileData {
     email: profile.email ?? "",
     company: profile.company ?? "",
     location: profile.location ?? "",
-    profileImage: profile.profileImage ?? ""
+    profileImage: profile.profileImageUrl ?? ""
   };
 }
 
@@ -524,7 +548,7 @@ function ProfileField({
   return (
     <label className="profile-modern-field">
       <span>{label}</span>
-      <input disabled={disabled} onChange={(event) => onChange(event.target.value)} value={value} />
+      {disabled ? <strong className="profile-field-value">{value || "Sin informar"}</strong> : <input onChange={(event) => onChange(event.target.value)} value={value} />}
     </label>
   );
 }

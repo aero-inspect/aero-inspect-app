@@ -108,8 +108,7 @@ export function DroneTelemetryView() {
     <section className="drones-dashboard">
       <header className="drones-topbar">
         <div>
-          <h1>Drones</h1>
-          <p>Monitorea el estado, la telemetría y el historial de tu dron.</p>
+          <h1 data-page-title="true">Drones</h1>
         </div>
         <AppTopActions />
       </header>
