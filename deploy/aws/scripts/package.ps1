@@ -12,21 +12,22 @@ param(
 $ErrorActionPreference = "Stop"
 
 $jar = "general-monolith/target/general-monolith-0.0.1-SNAPSHOT.jar"
-$models = @(
-    "ia-module/artifacts/models/aeroinspect-unet-v2-demo.pt",
-    "ia-module/artifacts/models/aeroinspect-unet-crack-v1-dev.pt",
-    "ia-module/artifacts/training/runs/unet_severity_v2_dev_cpu/best_macro_f1.pt",
-    "ia-module/artifacts/training/runs/unet_deformation_v1_cpu/best.pt"
-)
+# Todos los modelos que ia-module versiona en Git LFS: una lista fija dejaba afuera los que se
+# agregan después (el 06/11 faltaron los perfiles campus y el worker no arrancaba).
+$models = @(& git -C (Join-Path $ReposRoot "ia-module") lfs ls-files -n | Where-Object { $_ -like "*.pt" } |
+    ForEach-Object { "ia-module/$_" })
+if ($LASTEXITCODE -ne 0 -or $models.Count -eq 0) { throw "No se pudieron listar los modelos de Git LFS de ia-module" }
 
 $required = @($jar, "aero-inspect-app/frontend/dist/index.html") + $models
 foreach ($path in $required) {
     $full = Join-Path $ReposRoot $path
     if (-not (Test-Path $full)) { throw "Falta $path. Corriste el build / git lfs pull?" }
 }
-# Un puntero de Git LFS sin bajar pesa ~130 bytes; los checkpoints reales, ~23 MB.
+# Un puntero de Git LFS sin bajar es un texto que empieza así. No sirve mirar el tamaño: los
+# refinadores de grietas son modelos reales de ~5 KB.
 foreach ($model in $models) {
-    if ((Get-Item (Join-Path $ReposRoot $model)).Length -lt 1MB) {
+    $head = Get-Content (Join-Path $ReposRoot $model) -TotalCount 1 -ErrorAction SilentlyContinue
+    if ($head -like "version https://git-lfs*") {
         throw "$model es un puntero de Git LFS: correr 'git lfs pull' en ia-module."
     }
 }
