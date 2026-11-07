@@ -180,14 +180,14 @@ export function Home({
 
           {/* Los planes los gestiona sólo el Jefe de Planta: el técnico no ve esta entrada. */}
           {userCanManagePlans && (
-            <button className={isPlansPath || isGeneratePlanPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.flightPlans)} aria-label="Planes" title="Planes" type="button">
+            <button className={isPlansPath || isGeneratePlanPath || isManualInspectionPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.flightPlans)} aria-label="Planes" title="Planes" type="button">
               <RouteIcon size={20} />
               {!isSidebarCollapsed && <span>Planes</span>}
             </button>
           )}
 
           {(userCanConsultAssets || user.role === "Técnico de Mantenimiento") && (
-            <button className={isMissionsPath || isMissionPath || isManualInspectionPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.missions)} aria-label="Misiones" title="Misiones" type="button">
+            <button className={isMissionsPath || isMissionPath || (isManualInspectionPath && !userCanManagePlans) ? "active" : undefined} onClick={() => navigateTo(ROUTES.missions)} aria-label="Misiones" title="Misiones" type="button">
               <Plane size={20} />
               {!isSidebarCollapsed && <span>Misiones</span>}
             </button>
@@ -285,8 +285,16 @@ export function Home({
               onStartManualInspection={() => navigateTo(ROUTES.manualInspection)}
             />
           )} />
-          <Route path={rel(ROUTES.manualInspection)} element={only(DRONE_OPERATION_ROLES.includes(user.role),
-            <InspeccionManualView onBack={() => navigateTo(ROUTES.home)} />
+          <Route path={rel(ROUTES.manualInspection)} element={only(DRONE_OPERATION_ROLES.includes(user.role) || userCanManagePlans,
+            userCanManagePlans ? (
+              // El jefe llega desde Generar plan y vuelve ahí con el recorrido recién grabado.
+              <InspeccionManualView
+                onBack={() => navigateTo(ROUTES.flightPlansNew)}
+                onGeneratePlan={(idFlightRecording) => navigateWithSearch(ROUTES.flightPlansNew, `recordingId=${idFlightRecording}`)}
+              />
+            ) : (
+              <InspeccionManualView onBack={() => navigateTo(ROUTES.home)} />
+            )
           )} />
           <Route path={rel(ROUTES.missionsNew)} element={only(userCanConsultAssets,
             <ConfigurarMisionView initialFlightPlanIds={selectedFlightPlanIds} onBack={() => navigateTo(ROUTES.missions)} onViewMissions={() => navigateTo(ROUTES.missions)} />
