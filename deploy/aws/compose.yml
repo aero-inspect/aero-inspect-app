@@ -164,6 +164,7 @@ services:
         i=$$((i + 1)); [ $$i -ge 30 ] && echo 'MinIO no responde' && exit 1; sleep 2;
       done &&
       mc mb --ignore-existing local/aeroinspect-evidence &&
+      mc mb --ignore-existing local/aeroinspect-files &&
       echo '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::aeroinspect-evidence/*\"]}]}' > /tmp/policy.json &&
       mc anonymous set-json /tmp/policy.json local/aeroinspect-evidence
       "
