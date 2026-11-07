@@ -130,6 +130,7 @@ export function Home({
   const isActivityPath = currentPath === ROUTES.profileActivity;
   const isPruebaTelemetriaPath = currentPath === ROUTES.dronesTelemetryTest;
   const userCanConsultAssets = canConsultAssets(user.role);
+  const userCanManagePlans = PLAN_CREATION_ROLES.includes(user.role);
   const currentProfileImage = user.profileImage ?? "";
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [assetsViewKey, setAssetsViewKey] = useState(0);
@@ -177,15 +178,16 @@ export function Home({
             </button>
           )}
 
-          {userCanConsultAssets && (
-            <button className={isPlansPath || isGeneratePlanPath || isManualInspectionPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.flightPlans)} aria-label="Planes" title="Planes" type="button">
+          {/* Los planes los gestiona sólo el Jefe de Planta: el técnico no ve esta entrada. */}
+          {userCanManagePlans && (
+            <button className={isPlansPath || isGeneratePlanPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.flightPlans)} aria-label="Planes" title="Planes" type="button">
               <RouteIcon size={20} />
               {!isSidebarCollapsed && <span>Planes</span>}
             </button>
           )}
 
           {(userCanConsultAssets || user.role === "Técnico de Mantenimiento") && (
-            <button className={isMissionsPath || isMissionPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.missions)} aria-label="Misiones" title="Misiones" type="button">
+            <button className={isMissionsPath || isMissionPath || isManualInspectionPath ? "active" : undefined} onClick={() => navigateTo(ROUTES.missions)} aria-label="Misiones" title="Misiones" type="button">
               <Plane size={20} />
               {!isSidebarCollapsed && <span>Misiones</span>}
             </button>
@@ -269,9 +271,9 @@ export function Home({
               onViewMission={(idMission) => navigateTo(ROUTES.mission(idMission))}
             />
           } />
-          <Route path={rel(ROUTES.flightPlans)} element={only(userCanConsultAssets,
+          <Route path={rel(ROUTES.flightPlans)} element={only(userCanManagePlans,
             <PlanesVueloView
-              onGeneratePlan={PLAN_CREATION_ROLES.includes(user.role) ? () => navigateTo(ROUTES.flightPlansNew) : undefined}
+              onGeneratePlan={() => navigateTo(ROUTES.flightPlansNew)}
               onCreateMission={(idFlightPlan) => navigateWithSearch(ROUTES.missionsNew, `planId=${idFlightPlan}`)}
             />
           )} />
