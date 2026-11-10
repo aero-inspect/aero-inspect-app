@@ -1,4 +1,5 @@
 import type { BackendAsset, BackendInspectionPhoto, BackendReport } from "../api/types";
+import { DEFORMATION_DETECTION_DISABLED } from "./deformation";
 
 export const severityLabels = { CRITICAL: "Crítica", HIGH: "Alta", MEDIUM: "Media", LOW: "Baja", NOT_REPORTED: "Sin gravedad informada" };
 export const severityRank = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, NOT_REPORTED: 0 };
@@ -12,9 +13,9 @@ export function evidenceFinding(photo: BackendInspectionPhoto): EvidenceFinding 
     const c = root.corrosion ?? root;
     const corrosion = c.status === "corrosion_candidate_detected" || (c.status !== "no_corrosion_detected" && Number(c.detected_area_percent) > 0);
     const crack = root.crack?.status === "crack_candidate_detected";
-    const deformation = root.deformation?.status === "deformation_candidate_detected";
+    const deformation = !DEFORMATION_DETECTION_DISABLED && root.deformation?.status === "deformation_candidate_detected";
     const severities: Record<string, BackendReport["severity"]> = { baja: "LOW", low: "LOW", media: "MEDIUM", medium: "MEDIUM", alta: "HIGH", high: "HIGH", critica: "CRITICAL", "crítica": "CRITICAL", critical: "CRITICAL" };
-    return { corrosion, crack, deformation, crackSeverity: crack ? photo.crackSeverity ?? "NOT_REPORTED" : "NOT_REPORTED", deformationSeverity: deformation ? photo.deformationSeverity ?? "NOT_REPORTED" : "NOT_REPORTED", severity: corrosion ? photo.corrosionSeverity ?? severities[String(root.severity?.predicted_severity).toLowerCase()] ?? "NOT_REPORTED" : "NOT_REPORTED", readable: ["corrosion_candidate_detected", "no_corrosion_detected"].includes(c.status) || typeof c.detected_area_percent === "number" || ["crack_candidate_detected", "no_crack_detected"].includes(root.crack?.status) || ["deformation_candidate_detected", "no_deformation_detected"].includes(root.deformation?.status), crackOverlay: root.crack?.overlay_url ?? null, deformationOverlay: root.deformation?.overlay_url ?? null };
+    return { corrosion, crack, deformation, crackSeverity: crack ? photo.crackSeverity ?? "NOT_REPORTED" : "NOT_REPORTED", deformationSeverity: deformation ? photo.deformationSeverity ?? "NOT_REPORTED" : "NOT_REPORTED", severity: corrosion ? photo.corrosionSeverity ?? severities[String(root.severity?.predicted_severity).toLowerCase()] ?? "NOT_REPORTED" : "NOT_REPORTED", readable: ["corrosion_candidate_detected", "no_corrosion_detected"].includes(c.status) || typeof c.detected_area_percent === "number" || ["crack_candidate_detected", "no_crack_detected"].includes(root.crack?.status) || ["deformation_candidate_detected", "no_deformation_detected"].includes(root.deformation?.status), crackOverlay: root.crack?.overlay_url ?? null, deformationOverlay: deformation ? root.deformation?.overlay_url ?? null : null };
   } catch { return empty; }
 }
 export function reportTime(report: BackendReport): number {

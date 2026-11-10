@@ -308,13 +308,28 @@ export function validateReport(code: string, signature: string, comments: string
 export function saveEvidenceReviews(code: string, reviews: import("./types").EvidenceReview[]) {
   return request<BackendReport>(`/api/v1/reports/${code}/evidence-validation`, { method: "PUT", body: JSON.stringify(reviews) });
 }
+// Armar un PDF tarda decenas de segundos y ocupa memoria en el backend. Si ya hay un pedido del
+// mismo PDF en curso (doble clic, o "Visualizar" y después "Descargar"), se reusa en vez de pedir
+// otro: el 07/11, 19 pedidos en paralelo del mismo reporte hicieron reiniciar el backend.
+const pendingPdfs = new Map<string, Promise<Blob>>();
+function fetchPdf(path: string, fallbackError: string): Promise<Blob> {
+  const pending = pendingPdfs.get(path);
+  if (pending) return pending;
+  const request = (async () => {
+    const response = await fetch(path, { cache: "no-store", headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined });
+    if (!response.ok) {
+      // 503: el backend ya está armando otros PDF y este no consiguió turno; trae su propio mensaje.
+      const body = await response.json().catch(() => null) as { message?: string } | null;
+      throw new Error(response.status === 503 && body?.message ? body.message : fallbackError);
+    }
+    return response.blob();
+  })().finally(() => pendingPdfs.delete(path));
+  pendingPdfs.set(path, request);
+  return request;
+}
+
 export async function downloadReportPdf(code: string, inline = false) {
-  const response = await fetch(`/api/v1/reports/${code}/pdf?v=${Date.now()}`, {
-    cache: "no-store",
-    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined
-  });
-  if (!response.ok) throw new Error("No se pudo generar el PDF");
-  const url = URL.createObjectURL(await response.blob());
+  const url = URL.createObjectURL(await fetchPdf(`/api/v1/reports/${code}/pdf`, "No se pudo generar el PDF"));
   if (inline) window.open(url, "_blank", "noopener,noreferrer");
   else { const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${code}.pdf`; anchor.click(); }
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
@@ -325,9 +340,7 @@ export function getAssetInspectionPhotos(idAsset: number) {
 }
 export async function downloadInspectionPdf(idMission: string, assetIds: number[], inline = false) {
   if (!assetIds.length) throw new Error("La inspección no tiene activos para exportar");
-  const response = await fetch(`/api/v1/reports/inspections/${encodeURIComponent(idMission)}/pdf?assetIds=${assetIds.join(",")}`, { headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined, cache: "no-store" });
-  if (!response.ok) throw new Error("No se pudo generar el PDF de la inspección");
-  const url = URL.createObjectURL(await response.blob());
+  const url = URL.createObjectURL(await fetchPdf(`/api/v1/reports/inspections/${encodeURIComponent(idMission)}/pdf?assetIds=${assetIds.join(",")}`, "No se pudo generar el PDF de la inspección"));
   if (inline) window.open(url, "_blank", "noopener,noreferrer");
   else { const a=document.createElement("a"); a.href=url; a.download=`inspeccion-${idMission}.pdf`; a.click(); }
   window.setTimeout(()=>URL.revokeObjectURL(url),60_000);
@@ -336,9 +349,7 @@ export async function downloadInspectionPdf(idMission: string, assetIds: number[
 export function getCustomReports(plant: Plant = apiPlant) { return request<import("./types").CustomReport[]>(`/api/v1/custom-reports?plantId=${encodeURIComponent(plant.id)}`); }
 export function createCustomReport(data: import("./types").CreateCustomReport) { return request<import("./types").CustomReport>("/api/v1/custom-reports", { method: "POST", body: JSON.stringify(data) }); }
 export async function downloadCustomReportPdf(code: string, plant: Plant = apiPlant, inline = false) {
-  const response = await fetch(`/api/v1/custom-reports/${code}/pdf?plantId=${encodeURIComponent(plant.id)}`, { headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined });
-  if (!response.ok) throw new Error("No se pudo abrir el reporte personalizado");
-  const url = URL.createObjectURL(await response.blob());
+  const url = URL.createObjectURL(await fetchPdf(`/api/v1/custom-reports/${code}/pdf?plantId=${encodeURIComponent(plant.id)}`, "No se pudo abrir el reporte personalizado"));
   if (inline) window.open(url, "_blank", "noopener,noreferrer");
   else { const link=document.createElement("a");link.href=url;link.download=`${code}.pdf`;link.click(); }
   setTimeout(()=>URL.revokeObjectURL(url),60_000);
