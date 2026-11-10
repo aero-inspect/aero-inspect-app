@@ -1,0 +1,7 @@
+# Secretos generados por scripts/generate-secrets.sh
+.env
+mosquitto/passwd
+secrets/
+
+# Paquete que arma scripts/package.ps1
+out/

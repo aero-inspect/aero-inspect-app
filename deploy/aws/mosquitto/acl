@@ -1,0 +1,11 @@
+# Quién puede publicar y suscribirse a qué. Sin una línea que lo habilite, todo se niega.
+# Las contraseñas están en mosquitto/passwd (lo genera scripts/generate-secrets.sh y no se
+# versiona).
+
+# general-monolith: manda órdenes a cualquier dron y recibe su telemetría.
+user monolith
+topic readwrite aeroinspect/#
+
+# flight-controller de la Raspberry Pi: solo su árbol de tópicos.
+user dron
+topic readwrite aeroinspect/dron/#

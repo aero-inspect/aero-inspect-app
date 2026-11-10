@@ -1,0 +1,7 @@
+# Todo esto corre en Linux: con CRLF, bash y Mosquitto fallan.
+*.sh text eol=lf
+*.conf text eol=lf
+*.yml text eol=lf
+Caddyfile text eol=lf
+mosquitto/acl text eol=lf
+.env.example text eol=lf
