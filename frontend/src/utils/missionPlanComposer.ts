@@ -122,7 +122,7 @@ export function buildCombinedFlightPlan(
   return {
     name: `Recorrido multi-activo - ${missionName}`,
     objective: `Inspección de ${plans.length} activos mediante corredor principal`,
-    cruiseSpeedMs: Math.min(...plans.map((plan) => plan.cruiseSpeedMs || 2)),
+    cruiseSpeedMs: Math.min(...plans.map((plan) => plan.cruiseSpeedMs || 1)),
     minBatteryPct: Math.max(...plans.map((plan) => plan.minBatteryPct || 30)),
     assetIds: [...new Set(plans.flatMap((plan) => plan.assetIds))],
     route: composeInspectionRoute(plans)
