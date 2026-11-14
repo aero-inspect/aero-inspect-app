@@ -328,11 +328,33 @@ function fetchPdf(path: string, fallbackError: string): Promise<Blob> {
   return request;
 }
 
+// La vista previa abre una pestaña. Tiene que abrirse en el mismo instante del clic: si se abre
+// después de esperar el PDF (decenas de segundos) el navegador la bloquea como popup. Se abre
+// vacía y se le carga el PDF cuando llega; si falla, se cierra.
+function openPreviewWindow(): Window | null {
+  const preview = window.open("", "_blank");
+  if (preview) {
+    preview.opener = null;
+    try { preview.document.title = "Generando PDF…"; preview.document.body.textContent = "Generando PDF…"; } catch { /* ignorar */ }
+  }
+  return preview;
+}
+async function deliverPdf(path: string, fallbackError: string, filename: string, inline: boolean) {
+  const preview = inline ? openPreviewWindow() : null;
+  let url: string;
+  try { url = URL.createObjectURL(await fetchPdf(path, fallbackError)); }
+  catch (error) { preview?.close(); throw error; }
+  if (inline) {
+    if (preview) preview.location.href = url;
+    else window.location.assign(url); // popup bloqueado: se abre en esta misma pestaña
+  } else {
+    const anchor = document.createElement("a"); anchor.href = url; anchor.download = filename; anchor.click();
+  }
+  window.setTimeout(() => URL.revokeObjectURL(url), 5 * 60_000);
+}
+
 export async function downloadReportPdf(code: string, inline = false) {
-  const url = URL.createObjectURL(await fetchPdf(`/api/v1/reports/${code}/pdf`, "No se pudo generar el PDF"));
-  if (inline) window.open(url, "_blank", "noopener,noreferrer");
-  else { const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${code}.pdf`; anchor.click(); }
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  await deliverPdf(`/api/v1/reports/${code}/pdf`, "No se pudo generar el PDF", `${code}.pdf`, inline);
 }
 
 export function getAssetInspectionPhotos(idAsset: number) {
@@ -340,17 +362,11 @@ export function getAssetInspectionPhotos(idAsset: number) {
 }
 export async function downloadInspectionPdf(idMission: string, assetIds: number[], inline = false) {
   if (!assetIds.length) throw new Error("La inspección no tiene activos para exportar");
-  const url = URL.createObjectURL(await fetchPdf(`/api/v1/reports/inspections/${encodeURIComponent(idMission)}/pdf?assetIds=${assetIds.join(",")}`, "No se pudo generar el PDF de la inspección"));
-  if (inline) window.open(url, "_blank", "noopener,noreferrer");
-  else { const a=document.createElement("a"); a.href=url; a.download=`inspeccion-${idMission}.pdf`; a.click(); }
-  window.setTimeout(()=>URL.revokeObjectURL(url),60_000);
+  await deliverPdf(`/api/v1/reports/inspections/${encodeURIComponent(idMission)}/pdf?assetIds=${assetIds.join(",")}`, "No se pudo generar el PDF de la inspección", `inspeccion-${idMission}.pdf`, inline);
 }
 
 export function getCustomReports(plant: Plant = apiPlant) { return request<import("./types").CustomReport[]>(`/api/v1/custom-reports?plantId=${encodeURIComponent(plant.id)}`); }
 export function createCustomReport(data: import("./types").CreateCustomReport) { return request<import("./types").CustomReport>("/api/v1/custom-reports", { method: "POST", body: JSON.stringify(data) }); }
 export async function downloadCustomReportPdf(code: string, plant: Plant = apiPlant, inline = false) {
-  const url = URL.createObjectURL(await fetchPdf(`/api/v1/custom-reports/${code}/pdf?plantId=${encodeURIComponent(plant.id)}`, "No se pudo abrir el reporte personalizado"));
-  if (inline) window.open(url, "_blank", "noopener,noreferrer");
-  else { const link=document.createElement("a");link.href=url;link.download=`${code}.pdf`;link.click(); }
-  setTimeout(()=>URL.revokeObjectURL(url),60_000);
+  await deliverPdf(`/api/v1/custom-reports/${code}/pdf?plantId=${encodeURIComponent(plant.id)}`, "No se pudo abrir el reporte personalizado", `${code}.pdf`, inline);
 }
