@@ -12,12 +12,36 @@ import { surface } from "./utn/materials";
 import { buildSpaceTwo } from "./utn/spaceTwo";
 import { buildUtnBuildings } from "./utn/buildings";
 import { UTN_FOOTPRINTS } from "../data/utnFootprints";
+import { addMissionDrone } from "./bragado/drone";
+import { createMissionPlayback, type PlaybackGeoreference } from "./bragado/missionPlayback";
+
+const UTN_DRONE_SCALE = .6;
+const utnPlaybackReference: PlaybackGeoreference = {
+  northRotationDegrees: 0,
+  groundHeight: .113 * UTN_DRONE_SCALE,
+  storagePrefix: 'aeroinspect.utn.mission-trail.',
+  stayAtDockUntilTelemetry: true,
+  showActualTrail: true,
+  toPosition(point) {
+    const height = point.relativeAltitude ?? point.altitude;
+    if (!Number.isFinite(point.latitude) || !Number.isFinite(point.longitude) ||
+        Math.abs(point.latitude) > 90 || Math.abs(point.longitude) > 180 ||
+        height === undefined || !Number.isFinite(height)) return null;
+    return local([point.longitude, point.latitude]).setY(.113 * UTN_DRONE_SCALE + height);
+  }
+};
 
 // Local metric frame: east/right, south/forward. KML elevations are all zero.
 const lat0 = -34.6584, lon0 = -58.4678;
 const lonScale = 111320 * Math.cos(lat0 * Math.PI / 180);
 const local = ([lon, lat]: readonly number[]) => new THREE.Vector3((lon-lon0)*lonScale, 0, -(lat-lat0)*110940);
-export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, onViewAsset, focusedAssetCode, assetSelection }: ComponentProps<typeof BragadoPlant3DMap> & { selectedLocation?: { latitude: string; longitude: string }; onSelect?: (location: { latitude: string; longitude: string }) => void }) {
+export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, onViewAsset, focusedAssetCode, assetSelection, playback }: ComponentProps<typeof BragadoPlant3DMap> & { selectedLocation?: { latitude: string; longitude: string }; onSelect?: (location: { latitude: string; longitude: string }) => void }) {
+  const playbackRef=useRef(playback);playbackRef.current=playback;
+  const playbackController=useRef<ReturnType<typeof createMissionPlayback>|null>(null);
+  const stopAutoFrame=useRef<() => void>(()=>{});
+  const [following,setFollowing]=useState(false);
+  useEffect(()=>{if(playback)playbackController.current?.update(playback);},[playback]);
+  useEffect(()=>{setFollowing(false);playbackController.current?.setFollowing(false);},[playback?.id]);
   const assetProps=useRef({assets,filters,onViewAsset,focusedAssetCode,assetSelection});
   assetProps.current={assets,filters,onViewAsset,focusedAssetCode,assetSelection};
   const refreshAssets=useRef<() => void>(()=>{});
@@ -63,6 +87,7 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
     controls.addEventListener("change", constrainCamera);
     let automaticFrame=true;
     controls.addEventListener("start",()=>{automaticFrame=false;});
+    stopAutoFrame.current=()=>{automaticFrame=false;};
     camera.position.set(65,80,-95);controls.target.set(-12,0,8);controls.update();
     zoomIn.current = () => {
       automaticFrame=false;
@@ -98,6 +123,15 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
     scene.add(buildPitchMarkings(local));
     scene.add(buildPitchMarkings(local,true));
     const buildings=buildUtnBuildings(local);buildings.add(buildSpaceTwo(local));scene.add(buildings);
+    let missionPlayback: ReturnType<typeof createMissionPlayback> | null = null;
+    if (playbackRef.current) {
+      const dock=addMissionDrone(scene);
+      dock.scale.setScalar(UTN_DRONE_SCALE);
+      dock.position.set(-12,0,8);
+      missionPlayback=createMissionPlayback(scene,dock,camera,controls,utnPlaybackReference);
+      playbackController.current=missionPlayback;
+      missionPlayback.update(playbackRef.current);
+    }
     const assetLayer=new THREE.Group();scene.add(assetLayer);
     let labels: Array<{button:HTMLButtonElement;position:THREE.Vector3}>=[];
     let lastFocus: string | null | undefined;
@@ -198,6 +232,7 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       }
     });observer.observe(container);
     renderer.setAnimationLoop(()=>{
+      missionPlayback?.animate();
       controls.update();constrainCamera();camera.updateMatrixWorld();
       for(const label of labels) {
         const p=label.position.clone().project(camera);
@@ -208,7 +243,7 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       }
       renderer.render(scene,camera);
     });
-    return ()=>{refreshAssets.current=()=>{};labels.forEach(l=>l.button.remove());markerRef.current=null;observer.disconnect();renderer.setAnimationLoop(null);controls.dispose();renderer.domElement.removeEventListener("pointerdown",start);renderer.domElement.removeEventListener("pointerup",pick);scene.traverse(o=>{if(o instanceof THREE.Mesh||o instanceof THREE.Line){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});renderer.dispose();renderer.domElement.remove();};
+    return ()=>{missionPlayback?.destroy();playbackController.current=null;refreshAssets.current=()=>{};labels.forEach(l=>l.button.remove());markerRef.current=null;observer.disconnect();renderer.setAnimationLoop(null);controls.dispose();renderer.domElement.removeEventListener("pointerdown",start);renderer.domElement.removeEventListener("pointerup",pick);scene.traverse(o=>{if(o instanceof THREE.Mesh||o instanceof THREE.Line){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});renderer.dispose();renderer.domElement.remove();};
   },[]);
   return <section className="utn-map" style={{position:"relative",width:"100%",height:"100%",minHeight:360,background:"#dce6ec",borderRadius:16,overflow:"hidden"}}>
     <div ref={host} style={{height:"100%",minHeight:360}} />
@@ -217,6 +252,9 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       <button type="button" aria-label="Alejar mapa" title="Alejar" onClick={()=>zoomOut.current()}><Minus size={20}/></button>
       <button type="button" aria-label="Centrar vista superior de la planta" title="Centrar planta" onClick={()=>centerMap.current()}><LocateFixed size={19}/></button>
     </div>
+    {playback && <button className="bragado-follow" type="button" title="Seguir dron" aria-pressed={following} onClick={()=>{
+      const next=!following;if(next)stopAutoFrame.current();setFollowing(next);playbackController.current?.setFollowing(next);
+    }}>Seguir dron</button>}
     {error && <p role="alert" style={{position:"absolute",bottom:16,left:16}}>No se pudo iniciar la vista 3D.</p>}
   </section>;
 }

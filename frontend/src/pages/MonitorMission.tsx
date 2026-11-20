@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ArrowLeft, Camera, Gauge, Play, Route, Satellite, X } from "lucide-react";
 import type { BackendAsset, BackendDroneStatus, BackendFlightPlan, BackendMission, BackendMissionStatus, BackendMissionWaypoint, BackendPlanWaypoint } from "../api/types";
 import { getAssets, getDroneStatuses, getFlightPlan, getMission, getMissions, startMission, cancelMission } from "../api/client";
@@ -96,6 +97,9 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
   const [startError, setStartError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  // Hack de demo: por defecto el recorrido hecho se pinta calcado de la ruta guía; con ?trail=real se ve el vuelo real.
+  const [searchParams] = useSearchParams();
+  const trailMode = searchParams.get("trail") === "real" ? "real" : "guide";
   const frozenProgress = useRef<typeof telemetry | undefined>(undefined);
   const statusPollRef = useRef<number | null>(null);
 
@@ -380,7 +384,7 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
             <div className={`monitor-map-frame${isPendingMission ? " pending" : ""}`}>
               <BragadoPlant3DMap
                 assets={assets}
-                playback={{id:mission.idMission,status:statusEvent?.missionId===mission.idMission&&statusEvent.event==='MISSION_COMPLETED'?'COMPLETED':mission.status,points:routePoints,telemetry}}
+                playback={{id:mission.idMission,status:statusEvent?.missionId===mission.idMission&&statusEvent.event==='MISSION_COMPLETED'?'COMPLETED':mission.status,points:routePoints,telemetry,trailMode}}
               />
               {isPendingMission && (
                 <div className="monitor-pending-overlay">
