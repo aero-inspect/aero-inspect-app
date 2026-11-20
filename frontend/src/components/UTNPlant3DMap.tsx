@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ComponentProps } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { LocateFixed, Minus, Plus } from "lucide-react";
+import { Crosshair, LocateFixed, Minus, Plus } from "lucide-react";
 import type { BragadoPlant3DMap } from "./BragadoPlant3DMap";
 import { createStool, disposeAssetGroup } from "./lujan/assets";
 import { assetBelongsToPlant } from "../data/plantScope";
@@ -127,7 +127,8 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
     if (playbackRef.current) {
       const dock=addMissionDrone(scene);
       dock.scale.setScalar(UTN_DRONE_SCALE);
-      dock.position.set(-12,0,8);
+      // Base del dron = TAKEOFF del plan demo de Lugano (mismo punto que el home del simulador PX4).
+      dock.position.copy(local([-58.4669641,-34.6582935]));
       missionPlayback=createMissionPlayback(scene,dock,camera,controls,utnPlaybackReference);
       playbackController.current=missionPlayback;
       missionPlayback.update(playbackRef.current);
@@ -251,10 +252,10 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       <button type="button" aria-label="Acercar mapa" title="Acercar" onClick={()=>zoomIn.current()}><Plus size={20}/></button>
       <button type="button" aria-label="Alejar mapa" title="Alejar" onClick={()=>zoomOut.current()}><Minus size={20}/></button>
       <button type="button" aria-label="Centrar vista superior de la planta" title="Centrar planta" onClick={()=>centerMap.current()}><LocateFixed size={19}/></button>
+      {playback && <button className="utn-map-follow" type="button" aria-label="Seguir dron" title="Seguir dron" aria-pressed={following} onClick={()=>{
+        const next=!following;if(next)stopAutoFrame.current();setFollowing(next);playbackController.current?.setFollowing(next);
+      }}><Crosshair size={19}/></button>}
     </div>
-    {playback && <button className="bragado-follow" type="button" title="Seguir dron" aria-pressed={following} onClick={()=>{
-      const next=!following;if(next)stopAutoFrame.current();setFollowing(next);playbackController.current?.setFollowing(next);
-    }}>Seguir dron</button>}
     {error && <p role="alert" style={{position:"absolute",bottom:16,left:16}}>No se pudo iniciar la vista 3D.</p>}
   </section>;
 }

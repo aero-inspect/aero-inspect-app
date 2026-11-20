@@ -205,4 +205,5 @@ h1[data-page-title] {
 }
 .utn-map-controls button:last-child { border-bottom:0; }
 .utn-map-controls button:hover { background:#f1f3f2; }
+.utn-map-controls .utn-map-follow[aria-pressed="true"] { background:#e3f2fd; color:#063b7a; }
 .utn-map-controls button:focus-visible { position:relative; outline:2px solid #295b87; outline-offset:-3px; }
