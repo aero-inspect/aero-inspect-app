@@ -128,7 +128,8 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       const dock=addMissionDrone(scene);
       dock.scale.setScalar(UTN_DRONE_SCALE);
       // Base del dron = TAKEOFF del plan demo de Lugano (mismo punto que el home del simulador PX4).
-      dock.position.copy(local([-58.4669641,-34.6582935]));
+      // Base del dron en Lugano: despegue del plan "Rectangulo Lugano" y home del simulador.
+      dock.position.copy(local([-58.466981,-34.658170]));
       missionPlayback=createMissionPlayback(scene,dock,camera,controls,utnPlaybackReference);
       playbackController.current=missionPlayback;
       missionPlayback.update(playbackRef.current);
