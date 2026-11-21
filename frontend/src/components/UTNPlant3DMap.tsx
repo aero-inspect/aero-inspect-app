@@ -135,7 +135,9 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       missionPlayback.update(playbackRef.current);
     }
     const assetLayer=new THREE.Group();scene.add(assetLayer);
-    let labels: Array<{button:HTMLButtonElement;position:THREE.Vector3}>=[];
+    // Las etiquetas de los activos sólo se muestran al clickear el activo (o si es el enfocado).
+    let labels: Array<{button:HTMLButtonElement;position:THREE.Vector3;idAsset:number;focused:boolean}>=[];
+    let openLabel: number | null = null;
     let lastFocus: string | null | undefined;
     refreshAssets.current=()=>{
       disposeAssetGroup(assetLayer);labels.forEach(l=>l.button.remove());labels=[];
@@ -150,8 +152,9 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
         const position=local([asset.longitude,asset.latitude]);
         const ray=new THREE.Raycaster(position.clone().setY(40),new THREE.Vector3(0,-1,0));
         position.y=(ray.intersectObject(buildings,true)[0]?.point.y ?? 0)+.01;
+        const item=new THREE.Group();item.userData.idAsset=asset.idAsset;assetLayer.add(item);
         if (asset.type === "BANQUETA") {
-          const stool=createStool();stool.position.copy(position);assetLayer.add(stool);
+          const stool=createStool();stool.position.copy(position);item.add(stool);
         } else {
           // The map must expose every asset in the plant.  A neutral marker avoids
           // representing roofs, sheds and industrial equipment as benches.
@@ -161,17 +164,17 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
           stem.position.y=.28;stem.castShadow=true;markerGroup.add(stem);
           const head=new THREE.Mesh(new THREE.OctahedronGeometry(.22),markerMaterial);
           head.position.y=.68;head.castShadow=true;markerGroup.add(head);
-          markerGroup.position.copy(position);assetLayer.add(markerGroup);
+          markerGroup.position.copy(position);item.add(markerGroup);
         }
         const selected=asset.code===props.focusedAssetCode || props.assetSelection?.selectedIds.includes(asset.idAsset);
         const halo=new THREE.Mesh(new THREE.RingGeometry(.45,.6,32),new THREE.MeshBasicMaterial({color:selected?0x34b57a:0x3289c6,side:THREE.DoubleSide}));
-        halo.rotation.x=-Math.PI/2;halo.position.copy(position).add(new THREE.Vector3(0,.01,0));assetLayer.add(halo);
+        halo.rotation.x=-Math.PI/2;halo.position.copy(position).add(new THREE.Vector3(0,.01,0));item.add(halo);
         const button=document.createElement("button");button.type="button";button.textContent=asset.name;
         button.setAttribute("aria-label",`Ver ${asset.name} en el mapa`);
         Object.assign(button.style,{position:"absolute",padding:"4px 8px",borderRadius:"6px",border:"1px solid #b8c9d6",background:selected?"#d3f4e1":"white",color:"#20394e",fontSize:"11px",cursor:"pointer",zIndex:"1"});
         button.disabled=Boolean(select.current || props.assetSelection?.disabledIds?.includes(asset.idAsset));
         button.onclick=()=>{const current=assetProps.current;if(current.assetSelection)current.assetSelection.onSelect(asset.idAsset);else current.onViewAsset?.(asset.idAsset);};
-        container.appendChild(button);labels.push({button,position:position.clone().add(new THREE.Vector3(0,.75,0))});
+        container.appendChild(button);labels.push({button,position:position.clone().add(new THREE.Vector3(0,.75,0)),idAsset:asset.idAsset,focused:asset.code===props.focusedAssetCode});
         if(asset.code===props.focusedAssetCode && lastFocus!==asset.code) {
           automaticFrame=false;controls.target.copy(position);camera.position.copy(position).add(new THREE.Vector3(6,5,6));lastFocus=asset.code;
         }
@@ -200,9 +203,20 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
     let down=[0,0];
     const start=(e:PointerEvent)=>{down=[e.clientX,e.clientY];};
     const pick=(e:PointerEvent)=>{
-      if(!select.current || Math.hypot(e.clientX-down[0],e.clientY-down[1])>4)return;
+      if(Math.hypot(e.clientX-down[0],e.clientY-down[1])>4)return;
       const rect=renderer.domElement.getBoundingClientRect();
       const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),camera);
+      if(!select.current) {
+        // Click sobre un activo: muestra su etiqueta y, al armar una misión, lo elige o lo saca.
+        let target: THREE.Object3D | null = ray.intersectObject(assetLayer,true)[0]?.object ?? null;
+        while(target && target.userData.idAsset===undefined)target=target.parent;
+        const idAsset=target?.userData.idAsset as number | undefined;
+        if(idAsset===undefined){openLabel=null;return;}
+        const selection=assetProps.current.assetSelection;
+        if(selection){openLabel=idAsset;if(!selection.disabledIds?.includes(idAsset))selection.onSelect(idAsset);}
+        else openLabel=openLabel===idAsset?null:idAsset;
+        return;
+      }
       const hit=ray.intersectObjects([...areas,buildings],true)[0];if(!hit)return;
       marker.position.copy(hit.point).setY(.6);marker.visible=true;
       select.current({latitude:String(lat0-hit.point.z/110940),longitude:String(lon0+hit.point.x/lonScale)});
@@ -238,7 +252,7 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       controls.update();constrainCamera();camera.updateMatrixWorld();
       for(const label of labels) {
         const p=label.position.clone().project(camera);
-        label.button.hidden=p.z < -1 || p.z > 1 || Math.abs(p.x)>1 || Math.abs(p.y)>1;
+        label.button.hidden=(label.idAsset!==openLabel && !label.focused) || p.z < -1 || p.z > 1 || Math.abs(p.x)>1 || Math.abs(p.y)>1;
         label.button.style.left=`${(p.x+1)/2*container.clientWidth}px`;
         label.button.style.top=`${(1-p.y)/2*container.clientHeight}px`;
         label.button.style.transform="translate(-50%, -100%)";
