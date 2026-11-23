@@ -27,10 +27,6 @@ async function syncAssetFiles(idAsset:number,saved:{hadImage:boolean;documents:D
   for(const d of files.documents)if(d.file)latest=await uploadAssetDocument(idAsset,d.file);
   return latest;
 }
-const demoAssetsForPlant=(plant:Plant): BackendAsset[]=>[
-  {idAsset:9101,name:"Banqueta Espacio 1",code:"UTN-BAN-01",description:"Banqueta de cemento para inspección visual",type:"BANQUETA",status:"ACTIVE",createdAt:new Date().toISOString(),lastMaintenanceAt:null,locationDetail:"UTN Lugano · Espacio 1",imageName:null,imageUrl:null,documents:[],latitude:Number(plant.center.latitude),longitude:Number(plant.center.longitude)},
-  {idAsset:9102,name:"Banqueta Espacio 2",code:"UTN-BAN-02",description:"Banqueta de cemento para inspección visual",type:"BANQUETA",status:"ACTIVE",createdAt:new Date().toISOString(),lastMaintenanceAt:null,locationDetail:"UTN Lugano · Espacio 2",imageName:null,imageUrl:null,documents:[],latitude:Number(plant.center.latitude)+0.00006,longitude:Number(plant.center.longitude)+0.00008}
-];
 
 export function MisActivosView({initialCreate=false, selectedAssetId, plant, onDeleteAsset, onViewAssetHistory}: {
   initialCreate?:boolean; selectedAssetId?:number|null; plant:Plant; assets:Asset[];
@@ -46,8 +42,8 @@ export function MisActivosView({initialCreate=false, selectedAssetId, plant, onD
   const [deleting,setDeleting]=useState<BackendAsset|null>(null),[busyDelete,setBusyDelete]=useState(false),[deleteError,setDeleteError]=useState("");
   const [history,setHistory]=useState<BackendReport[]>([]),[historyLoading,setHistoryLoading]=useState(false),[historyError,setHistoryError]=useState("");
   const selected=assets.find(a=>a.idAsset===selectedId);
-  const load=()=>{setLoading(true);setError("");getAssets(plant).then(items=>setAssets(items.length?items:demoAssetsForPlant(plant))).catch(()=>setAssets(demoAssetsForPlant(plant))).finally(()=>setLoading(false));};
-  useEffect(()=>{let active=true;setLoading(true);setError("");getAssets(plant).then(items=>{if(active)setAssets(items.length?items:demoAssetsForPlant(plant));}).catch(()=>{if(active)setAssets(demoAssetsForPlant(plant));}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[plant]);
+  const load=()=>{setLoading(true);setError("");getAssets(plant).then(setAssets).catch(e=>{setAssets([]);setError(e.message);}).finally(()=>setLoading(false));};
+  useEffect(()=>{let active=true;setLoading(true);setError("");getAssets(plant).then(items=>{if(active)setAssets(items);}).catch(e=>{if(active){setAssets([]);setError(e.message);}}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[plant]);
   useEffect(()=>{if(selectedAssetId){setSelectedId(selectedAssetId);setMode("detail");}},[selectedAssetId]);
   useEffect(()=>{if(initialCreate)setMode("create");},[initialCreate]);
   useEffect(()=>{

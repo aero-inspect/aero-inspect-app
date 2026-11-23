@@ -23,9 +23,7 @@ export function loadStoredMissions() {
   }
 }
 
-const demoAssets: Asset[] = [
-  { id: 9101, name: "Banqueta Espacio 1", type: "Banqueta", status: "Activo", latitude: "-34.65840", longitude: "-58.46780", description: "Banqueta de cemento para inspección visual", locationDetail: "UTN Lugano · Espacio 1", plantId: "utn-lugano" },
-  { id: 9102, name: "Banqueta Espacio 2", type: "Banqueta", status: "Activo", latitude: "-34.65834", longitude: "-58.46772", description: "Banqueta de cemento para inspección visual", locationDetail: "UTN Lugano · Espacio 2", plantId: "utn-lugano" }
-];
-const demoMissions: InspectionMission[] = [{ id: 9201, name: "Recorrido UTN Lugano", assetId: 9101, assetName: "Banqueta Espacio 1", routePoints: [{ id: 1, latitude: "-34.65840", longitude: "-58.46780" }, { id: 2, latitude: "-34.65846", longitude: "-58.46772" }], status: "Pendiente" }];
+// Sin datos de demostración: los activos y misiones reales vienen del backend.
+const demoAssets: Asset[] = [];
+const demoMissions: InspectionMission[] = [];
 
