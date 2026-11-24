@@ -160,13 +160,6 @@ export function MisMisionesView({
   const [savingPilotMissionId, setSavingPilotMissionId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const activePolls = useRef<Map<string, number>>(new Map());
-  const demoMission: BackendMission = {
-    idMission: "demo-mission-1", idFlightPlan: 0, name: "Recorrido UTN Lugano",
-    objective: "Inspección de demostración", droneId: "", scheduledAt: new Date().toISOString(),
-    startedAt: null, finishedAt: null, status: "PLANNED", completionPercentage: 0, notes: "Datos de demostración",
-    assignedPilotUsername: null, selectedPlanWaypointIds: null, missionWaypoints: []
-  };
-
   useEffect(() => {
     return () => {
       activePolls.current.forEach((timerId) => window.clearInterval(timerId));
@@ -185,8 +178,7 @@ export function MisMisionesView({
       user.role === "Jefe de Planta" ? getManagedUsers() : Promise.resolve([] as ManagedUser[])
     ])
       .then(([missionList, scheduleList, flightPlans, droneList, userList]) => {
-        const fallbackMission = { ...demoMission, droneId: droneList[0]?.droneId ?? "" };
-        setMissions(missionList.length ? missionList : [fallbackMission]);
+        setMissions(missionList);
         setMissionSchedules(scheduleList);
         setFlightPlans(flightPlans);
         setDrones(droneList);
@@ -194,7 +186,8 @@ export function MisMisionesView({
         setFlightPlansById(new Map(flightPlans.map((plan) => [plan.idFlightPlan, plan])));
       })
       .catch(() => {
-        setMissions([demoMission]);
+        setLoadError("No se pudieron cargar las misiones.");
+        setMissions([]);
         setMissionSchedules([]);
         setFlightPlans([]);
         setDrones([]);
