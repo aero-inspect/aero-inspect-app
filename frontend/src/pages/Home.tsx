@@ -33,7 +33,7 @@ import { AppTopActions, SharedHeaderContext, DroneGlyph } from "../components/Ap
 import { LoadingState } from "../components/LoadingState";
 import sidebarLogo from "../assets/aeroinspect-sidebar-logo.png";
 
-import { PLANTS, PLANT_STORAGE_KEY } from "../data/plants";
+import { PLANTS, PLANT_STORAGE_KEY, SELECTABLE_PLANTS } from "../data/plants";
 import { ROUTES, RESERVED_SEGMENTS, plantPath } from "../routes";
 import { PlantContext } from "../data/PlantContext";
 import { ActivityProvider } from "../data/ActivityContext";
@@ -231,7 +231,9 @@ export function Home({
               if (!next) return;
               navigate(plantPath(next.id, ROUTES.home));
             }}>
-              {PLANTS.map(plant => <option key={plant.id} value={plant.id}>{plant.name}</option>)}
+              {/* Una planta oculta solo aparece si es la que está abierta (por ejemplo, por URL). */}
+              {PLANTS.filter(plant => SELECTABLE_PLANTS.includes(plant) || plant.id === selectedPlant.id)
+                .map(plant => <option key={plant.id} value={plant.id}>{plant.name}</option>)}
             </select>
           </label>
           {isMissionPath && <div id="mission-plan-slot" className="mission-plan-slot" />}

@@ -25,6 +25,9 @@ export const UTN_PLANT: Plant = {
   bounds: []
 };
 export const PLANTS = [BRAGADO_PLANT, LUJAN_PLANT, UTN_PLANT];
+// Plantas que no se ofrecen en el selector. Siguen existiendo: sus rutas y datos andan igual.
+const HIDDEN_PLANT_IDS = new Set([LUJAN_PLANT.id]);
+export const SELECTABLE_PLANTS = PLANTS.filter(plant => !HIDDEN_PLANT_IDS.has(plant.id));
 export const PLANT_STORAGE_KEY = "aeroinspect.selectedPlant";
 export function loadSelectedPlant(): Plant {
   try { return PLANTS.find(plant => plant.id === localStorage.getItem(PLANT_STORAGE_KEY)) ?? BRAGADO_PLANT; }
