@@ -135,6 +135,34 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       missionPlayback.update(playbackRef.current);
     }
     const assetLayer=new THREE.Group();scene.add(assetLayer);
+    // Al armar una misión, el recorrido del plan elegido queda dibujado como referencia:
+    // la línea a la altura de vuelo y un punto por waypoint (más grande en las paradas).
+    const routeLayer=new THREE.Group();routeLayer.name="Selected plan route";scene.add(routeLayer);
+    const routeLineMaterial=new THREE.LineBasicMaterial({color:0x38c6e0,toneMapped:false});
+    const routePointMaterial=new THREE.MeshBasicMaterial({color:0x1f8fb0,toneMapped:false});
+    const clearRoute=()=>{routeLayer.children.forEach(o=>(o as THREE.Mesh|THREE.Line).geometry.dispose());routeLayer.clear();};
+    // Puntos a encuadrar mientras el usuario no mueva la cámara: el recorrido, si hay uno dibujado.
+    let routeFrame: THREE.Vector3[] | null = null;
+    const frameCamera={current:()=>{}};
+    const drawRoute=(route:NonNullable<typeof assetSelection>["route"])=>{
+      clearRoute();
+      const hadFrame=routeFrame!==null;routeFrame=null;
+      const points=[...route].sort((a,b)=>a.sequence-b.sequence)
+        .map(point=>({point,position:utnPlaybackReference.toPosition(point)}))
+        .filter((item):item is {point:typeof item.point;position:THREE.Vector3}=>item.position!==null);
+      if(points.length<2){if(hadFrame)frameCamera.current();return;}
+      // Margen de unos metros alrededor del recorrido, a ras del piso y a la altura de vuelo.
+      const box=new THREE.Box3().setFromPoints(points.map(item=>item.position)).expandByScalar(4);
+      routeFrame=[];
+      for(const x of [box.min.x,box.max.x])for(const y of [0,box.max.y])for(const z of [box.min.z,box.max.z])routeFrame.push(new THREE.Vector3(x,y,z));
+      frameCamera.current();
+      routeLayer.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points.map(item=>item.position)),routeLineMaterial));
+      for(const {point,position} of points){
+        const isStop=(point as {action?:string}).action==="STOP";
+        const dot=new THREE.Mesh(new THREE.SphereGeometry(isStop?.18:.1,16,12),routePointMaterial);
+        dot.position.copy(position);routeLayer.add(dot);
+      }
+    };
     // Las etiquetas de los activos sólo se muestran al clickear el activo (o si es el enfocado).
     let labels: Array<{button:HTMLButtonElement;position:THREE.Vector3;idAsset:number;focused:boolean}>=[];
     let openLabel: number | null = null;
@@ -142,6 +170,7 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
     refreshAssets.current=()=>{
       disposeAssetGroup(assetLayer);labels.forEach(l=>l.button.remove());labels=[];
       const props=assetProps.current;
+      drawRoute(props.assetSelection?.route ?? []);
       const statuses={ACTIVE:"Activo",MAINTENANCE:"En mantenimiento",OUT_OF_SERVICE:"Fuera de servicio",UNCONFIRMED:"Sin confirmar"};
       for(const asset of props.assets) {
         if(asset.idAsset<=0 || !assetBelongsToPlant(asset,UTN_PLANT))continue;
@@ -233,19 +262,24 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       camera.position.copy(controls.target).add(new THREE.Vector3(0,185,.01));
       camera.lookAt(controls.target);controls.update();
     };
+    // Encuadre automático (hasta que el usuario mueva la cámara): todo el predio o, si hay un
+    // recorrido dibujado, sólo el recorrido.
+    frameCamera.current=()=>{
+      if(!automaticFrame || !container.clientWidth || !container.clientHeight)return;
+      const targets=routeFrame ?? corners;
+      controls.target.copy(routeFrame ? new THREE.Box3().setFromPoints(routeFrame).getCenter(new THREE.Vector3()).setY(0) : bounds.getCenter(new THREE.Vector3()));
+      const direction=select.current ? new THREE.Vector3(0,1,.001) : new THREE.Vector3(.65,.8,-.95).normalize();
+      for(let distance=routeFrame ? 8 : 60;distance<=350;distance*=1.1) {
+        camera.position.copy(controls.target).addScaledVector(direction,distance);
+        camera.lookAt(controls.target);camera.updateMatrixWorld();
+        if(targets.every(c=>{const p=c.clone().project(camera);return Math.abs(p.x)<.88 && Math.abs(p.y)<.88;}))break;
+      }
+      controls.update();
+    };
     const observer=new ResizeObserver(()=>{
       const w=container.clientWidth,h=container.clientHeight;if(!w || !h)return;
       renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();
-      if(automaticFrame) {
-        controls.target.copy(bounds.getCenter(new THREE.Vector3()));
-        const direction=select.current ? new THREE.Vector3(0,1,.001) : new THREE.Vector3(.65,.8,-.95).normalize();
-        for(let distance=60;distance<=350;distance*=1.1) {
-          camera.position.copy(controls.target).addScaledVector(direction,distance);
-          camera.lookAt(controls.target);camera.updateMatrixWorld();
-          if(corners.every(c=>{const p=c.clone().project(camera);return Math.abs(p.x)<.88 && Math.abs(p.y)<.88;}))break;
-        }
-        controls.update();
-      }
+      frameCamera.current();
     });observer.observe(container);
     renderer.setAnimationLoop(()=>{
       missionPlayback?.animate();
