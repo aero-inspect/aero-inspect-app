@@ -160,7 +160,7 @@ export function ConfigurarMisionView({
   // cambia, se eligen los activos de ese plan en los que se para.
   const fixedPlan = (initialFlightPlanIds?.length === 1 || planChosenManually) && selectedFlightPlans.length === 1 ? selectedFlightPlans[0] : null;
 
-  const eligiblePlans = (flightPlans ?? []).filter((plan) => plan.status !== "DRAFT" && plan.route.length > 1);
+  const eligiblePlans = (flightPlans ?? []).filter((plan) => plan.status !== "DRAFT" && plan.status !== "ARCHIVED" && plan.route.length > 1);
 
   // Sin un plan que venga ya elegido, se arranca con el primero de la planta.
   useEffect(() => {

@@ -13,8 +13,6 @@ import { useSelectedPlant } from "../data/PlantContext";
 const statusLabels: Record<BackendReport["status"], string> = { PROCESSING: "Procesando", PENDING_VALIDATION: "Pendiente de validación", VALIDATED: "Validada", REJECTED: "Rechazada" };
 const assetTypes = Object.entries(BACKEND_ASSET_TYPE_LABELS).map(([value,label])=>({value: value as BackendAssetType,label}));
 const severityFilters = { Todas: "Todas", CRITICAL: "Crítica", HIGH: "Alta", MEDIUM: "Media", LOW: "Baja", NOT_REPORTED: "No informada" };
-const demoPhoto = "https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=80";
-const demoAsset = (plant: ReturnType<typeof useSelectedPlant>): BackendAsset => ({ idAsset: 9001, name: "Banqueta Espacio 1", code: "UTN-BAN-01", description: "Banqueta de cemento para inspección visual", type: "BANQUETA", status: "ACTIVE", createdAt: new Date().toISOString(), lastMaintenanceAt: null, locationDetail: plant.name, imageName: null, imageUrl: null, documents: [], latitude: Number(plant.center.latitude), longitude: Number(plant.center.longitude) });
 
 export function ReportesView({ onViewReport, initialAssetId = null }: { onViewReport: (code: string) => void; initialAssetId?: number | null }) {
   const plant=useSelectedPlant();
@@ -31,7 +29,7 @@ export function ReportesView({ onViewReport, initialAssetId = null }: { onViewRe
   const [openDate, setOpenDate] = useState<"start" | "end" | null>(null), [deleteCandidate, setDeleteCandidate] = useState<BackendReport | null>(null);
   useEffect(() => {
     let cancelled=false;setLoading(true);setError("");
-    Promise.all([getReports(plant),getAssets(plant),getCustomReports(plant)]).then(([nextReports,nextAssets,nextCustom])=>{if(!cancelled){setReports(nextReports.length?nextReports:[demoReport(plant)]);setAssets(nextAssets.length?nextAssets:[demoAsset(plant)]);setCustomReports(nextCustom);}}).catch(()=>{if(!cancelled){const asset=demoAsset(plant);setAssets([asset]);setReports([demoReport(plant,asset)]);setError("Mostrando datos de demostración mientras el backend no está conectado.");}}).finally(()=>{if(!cancelled)setLoading(false);});
+    Promise.all([getReports(plant),getAssets(plant),getCustomReports(plant)]).then(([nextReports,nextAssets,nextCustom])=>{if(!cancelled){setReports(nextReports);setAssets(nextAssets);setCustomReports(nextCustom);}}).catch(()=>{if(!cancelled){setAssets([]);setReports([]);setError("No se pudieron cargar los reportes.");}}).finally(()=>{if(!cancelled)setLoading(false);});
     return ()=>{cancelled=true;};
   },[plant.id,refresh]);
   const assetTypeById = useMemo(() => new Map(assets.map((asset) => [asset.idAsset, asset.type])), [assets]);
@@ -70,11 +68,6 @@ export function ReportesView({ onViewReport, initialAssetId = null }: { onViewRe
     {customForm&&<CustomReportForm key={plant.id} plant={plant} assets={assets} reports={reports} onClose={()=>setCustomForm(false)} onCreated={r=>{setCustomReports(current=>[r,...current]);setCustomForm(false);}}/>}
     {deleteCandidate && <div className="modal-backdrop profile-delete-modal-backdrop" role="presentation"><section aria-modal="true" className="profile-delete-modal report-delete-modal" role="dialog"><span className="profile-delete-modal-icon" aria-hidden="true"><AlertTriangle size={31} /></span><h2>Eliminar reporte</h2><p>¿Seguro que querés eliminar el reporte {deleteCandidate.code}? Esta acción no se puede deshacer.</p><div className="profile-delete-modal-actions"><button className="profile-delete-modal-secondary" onClick={() => setDeleteCandidate(null)} type="button">Cancelar</button><button className="profile-delete-modal-primary" onClick={() => void removeReport(deleteCandidate)} type="button">Eliminar</button></div></section></div>}
   </section>;
-}
-
-function demoReport(plant: ReturnType<typeof useSelectedPlant>, asset = demoAsset(plant)): BackendReport {
-  const now = new Date().toISOString();
-  return { idReport:"demo-report-1", code:"REP-DEMO-001", title:"Inspección de demostración", idMission:"demo-mission-1", missionName:"Recorrido UTN Lugano", idAsset:asset.idAsset, assetName:asset.name, createdAt:now, updatedAt:now, status:"PENDING_VALIDATION", validatorSignature:null, validatorComments:null, validatedAt:null, severity:"MEDIUM", findingsCount:2, corrosionFindingsCount:1, crackFindingsCount:1, deformationFindingsCount:0, photos:[{idInspectionPhoto:"demo-photo-1",idMission:"demo-mission-1",idMissionWaypoint:"demo-waypoint-1",reportCode:"REP-DEMO-001",idAsset:asset.idAsset,capturedAt:now,rawImageUrl:demoPhoto,analyzedImageUrl:demoPhoto,status:"ANALYZED",findings:"Se observa desgaste superficial",analyzedAt:now}]};
 }
 
 function Filter({ label, open, onToggle, options, labels = {}, value, onSelect }: { label: string; open: boolean; onToggle: () => void; options: string[]; labels?: Record<string, string>; value: string; onSelect: (value: string) => void }) {

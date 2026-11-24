@@ -66,7 +66,10 @@ export function PlanesVueloView({
     Promise.all([getFlightPlans(), getAssets()])
       .then(([loadedPlans, loadedAssets]) => {
         if (cancelled) return;
-        const sorted = [...loadedPlans].sort((a, b) => a.name.localeCompare(b.name, "es"));
+        // Los planes archivados no se ofrecen: quedan en la base para las misiones que los usaron.
+        const sorted = loadedPlans
+          .filter((plan) => plan.status !== "ARCHIVED")
+          .sort((a, b) => a.name.localeCompare(b.name, "es"));
         setPlans(sorted);
         setAssets(loadedAssets);
         setSelectedId(sorted[0]?.idFlightPlan ?? null);
