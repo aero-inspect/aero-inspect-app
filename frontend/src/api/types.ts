@@ -89,7 +89,7 @@ export type BackendFlightPlan = {
   // Recorrido manual del que se generó el plan; null en los planes armados a mano o por SQL.
   sourceRecordingId?: number | null;
   // DRAFT mientras se revisa el plan generado, CONFIRMED una vez confirmado.
-  status?: "DRAFT" | "CONFIRMED";
+  status?: "DRAFT" | "CONFIRMED" | "ARCHIVED";
 };
 
 export type CreateFlightPlanPayload = Omit<BackendFlightPlan, "idFlightPlan">;
