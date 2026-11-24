@@ -7,7 +7,10 @@ import { DroneModelViewer } from "../components/DroneModelViewer";
 
 const HEARTBEAT_POLL_INTERVAL_MS = 3000;
 const LOW_BATTERY_THRESHOLD_PCT = 20;
-const MIN_GPS_SATELLITES = 6;
+// Con 10 satélites o más el GPS se da por bueno. El flight-controller manda el fixType con los
+// nombres de MAVSDK (FIX_3D, FIX_DGPS, RTK_FLOAT, RTK_FIXED); sin fix 3D no sirve para volar.
+const MIN_GPS_SATELLITES = 10;
+const USABLE_GPS_FIXES = new Set(["FIX_3D", "FIX_DGPS", "RTK_FLOAT", "RTK_FIXED"]);
 
 const EMPTY_VALUE = "--";
 
@@ -35,7 +38,7 @@ function buildPreflightChecks(heartbeat: BackendDroneStatus | null): PreflightCh
     },
     {
       label: "GPS",
-      ok: gps == null ? null : gps.fixType === "3D_FIX" && gps.satellites >= MIN_GPS_SATELLITES,
+      ok: gps == null ? null : USABLE_GPS_FIXES.has(gps.fixType) && gps.satellites >= MIN_GPS_SATELLITES,
       detail: gps == null ? EMPTY_VALUE : `${gps.fixType} - ${gps.satellites} sat`
     }
   ];
