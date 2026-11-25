@@ -123,7 +123,7 @@ function getResult(report: AiCorrosionReport, severity: AiSeverityReport | null)
   }
   if (report.status === "corrosion_candidate_detected") {
     return {
-      label: "REQUIERE REVISION",
+      label: "CORROSIÓN DETECTADA - REQUIERE REVISION",
       tone: "review",
       description: severityDescription
     };
