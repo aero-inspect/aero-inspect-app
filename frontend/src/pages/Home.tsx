@@ -1,6 +1,6 @@
 import { Fragment, Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, ChevronLeft, ChevronRight, UsersRound, Route as RouteIcon } from "lucide-react";
+import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, ChevronDown, ChevronLeft, ChevronRight, UsersRound, Route as RouteIcon } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { MockUser, InspectionMission, Asset, Plant, SessionUser } from "../types";
 import type { BackendAsset, BackendMission } from "../api/types";
@@ -225,16 +225,18 @@ export function Home({
 
       <section key={selectedPlant.id} className={isRegisterAssetPath || isAssetsPath || isMissionPath || isMissionsPath || isPlansPath || isGeneratePlanPath || isManualInspectionPath || isReportsPath || isCreateReportPath || isReportDetailPath || isReportDetailRealPath || isRoleMgmtPath || isHelpPath || isActivityPath ? "workspace-no-header register-workspace" : "workspace-no-header"}>
         <header className="shared-app-header"><AppTopActions shared><div className="plant-switcher">
-          <label htmlFor="selected-plant"><span className="sr-only">Cambiar planta</span>
+          <label className="plant-switcher-control" htmlFor="selected-plant"><span className="sr-only">Cambiar planta</span>
             <select id="selected-plant" value={selectedPlant.id} onChange={(event) => {
               const next = PLANTS.find(plant => plant.id === event.target.value);
               if (!next) return;
               navigate(plantPath(next.id, ROUTES.home));
             }}>
-              {/* Una planta oculta solo aparece si es la que está abierta (por ejemplo, por URL). */}
-              {PLANTS.filter(plant => SELECTABLE_PLANTS.includes(plant) || plant.id === selectedPlant.id)
-                .map(plant => <option key={plant.id} value={plant.id}>{plant.name}</option>)}
+              {!SELECTABLE_PLANTS.some(plant => plant.id === selectedPlant.id) && (
+                <option hidden value={selectedPlant.id}>{selectedPlant.name}</option>
+              )}
+              {SELECTABLE_PLANTS.map(plant => <option key={plant.id} value={plant.id}>{plant.name}</option>)}
             </select>
+            <ChevronDown aria-hidden="true" className="plant-switcher-chevron" size={16} />
           </label>
           {isMissionPath && <div id="mission-plan-slot" className="mission-plan-slot" />}
         </div></AppTopActions></header>

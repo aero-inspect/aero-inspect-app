@@ -44,6 +44,9 @@
   background:transparent; box-shadow:none; width:auto; min-height:0;
 }
 .shared-app-header .plant-switcher label { display:block; }
+.shared-app-header .plant-switcher .plant-switcher-control {
+  position:relative; display:flex; align-items:center; min-width:180px;
+}
 .shared-app-header .plant-switcher:has(.mission-plan-slot) { display:flex; align-items:center; gap:16px; }
 .mission-plan-slot { display:flex; align-items:center; gap:8px; padding-left:16px; border-left:1px solid #dbe3e8; }
 .mission-plan-slot > span { color:#647886; font-size:13px; font-weight:600; white-space:nowrap; }
@@ -52,10 +55,18 @@
   background-color:transparent; color:var(--text-strong); font-size:15px; font-weight:650; cursor:pointer;
 }
 .shared-app-header .plant-switcher select {
-  max-width: min(280px, 42vw); border:0; border-radius:6px;
-  padding:8px 38px 8px 0; background-color:transparent; color:var(--text-strong);
-  background-position:right 10px center !important;
-  font-size:15px; font-weight:650; cursor:pointer;
+  width:100%; max-width:min(280px, 42vw); border:1px solid #d7e0e6; border-radius:10px;
+  padding:9px 40px 9px 13px; background:#f7f9f8; color:var(--text-strong);
+  appearance:none; -webkit-appearance:none; background-image:none !important;
+  font-size:15px; font-weight:650; line-height:1.25; cursor:pointer;
+  transition:border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+.shared-app-header .plant-switcher select:hover { background:#fff; border-color:#bdccd5; }
+.shared-app-header .plant-switcher select:focus {
+  outline:0; border-color:#7895aa; box-shadow:0 0 0 3px rgba(41,91,135,.12); background:#fff;
+}
+.shared-app-header .plant-switcher-chevron {
+  position:absolute; right:13px; color:#486579; pointer-events:none;
 }
 .shared-app-header .tech-user-button,
 .shared-app-header .tech-notification-button {

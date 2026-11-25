@@ -84,9 +84,6 @@ export function PhotoResultCard({ canRemove, index, onRemove, photo, assignment,
           <dl className="real-report-result-data">
             <div><dt>Tipo de anomalía</dt><dd>{getAnomalyType(report, crack, deformation)}</dd></div>
             <div><dt>Fecha de la foto</dt><dd><CalendarDays size={15} /> {/^\d{4}-\d{2}-/.test(photo.photoDate.value) ? new Date(photo.photoDate.value).toLocaleString("es-AR") : photo.photoDate.value} <small>({photo.photoDate.source === "captura" ? "metadato de captura" : "fecha del archivo"})</small></dd></div>
-            <div><dt>Área con corrosión</dt><dd>{formatPercent(report.detected_area_percent)}</dd></div>
-            {crack && <div><dt>Área con fisuras</dt><dd>{formatPercent(crack.detected_area_percent)}</dd></div>}
-            {deformation && <div><dt>Área con deformaciones</dt><dd>{formatPercent(deformation.detected_area_percent)}</dd></div>}
             {!hideSeverity && report.status === "corrosion_candidate_detected" && <div><dt>Gravedad de corrosión</dt><dd><span className={`real-report-severity ${severityTone(severity)}`} data-severity={photo.analysis?.corrosionSeverity??({baja:"LOW",media:"MEDIUM",alta:"HIGH",sin_corrosion:"NOT_REPORTED"}[severity?.predicted_severity??"sin_corrosion"])}>{photo.analysis?.corrosionSeverity ? getBackendSeverityLabel(photo.analysis.corrosionSeverity) : getSeverityLabel(severity)}</span></dd></div>}
             {!hideSeverity && crack?.status === "crack_candidate_detected" && <div><dt>Gravedad de grietas</dt><dd><span className="real-report-severity" data-severity={photo.analysis?.crackSeverity??"NOT_REPORTED"}>{photo.analysis?.crackSeverity ? getBackendSeverityLabel(photo.analysis.crackSeverity) : "Sin determinar"}</span></dd></div>}
             {!hideSeverity && deformation?.status === "deformation_candidate_detected" && <div><dt>Gravedad de deformación</dt><dd><span className="real-report-severity" data-severity={photo.analysis?.deformationSeverity??"NOT_REPORTED"}>{photo.analysis?.deformationSeverity ? getBackendSeverityLabel(photo.analysis.deformationSeverity) : "Sin determinar"}</span></dd></div>}
@@ -171,10 +168,6 @@ function getAnomalyType(report: AiCorrosionReport, crack: AiCrackReport | null, 
   if (crack?.status === "crack_candidate_detected") parts.push("Fisura");
   if (deformation?.status === "deformation_candidate_detected") parts.push("Deformación");
   return parts.length > 0 ? parts.join(", ") : "Sin anomalías";
-}
-
-function formatPercent(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? `${value.toFixed(2)}%` : "—";
 }
 
 function parseFindings(findings: string | null | undefined): AiAnalysisFindings | null {

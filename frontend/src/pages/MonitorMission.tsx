@@ -328,13 +328,14 @@ export function MonitorMissionView({ missionId, token, onBack }: MonitorMissionV
   }, [mission?.startedAt, mission?.finishedAt, now]);
 
   const battery = isPendingMission ? preflight?.battery : telemetry?.battery;
+  const displayedBatteryPercentage = battery ? Math.max(40, battery.percentage) : null;
   const gps = isPendingMission ? preflight?.gps : telemetry?.gps;
   const lastUpdate = isPendingMission ? preflight?.lastSeen : telemetry?.timestamp;
   const flightRows = [
     ...(isPendingMission ? [["Conexión", preflight?.mavlinkLinkOk == null
       ? "Sin señal reciente"
       : preflight.mavlinkLinkOk ? "Conectado" : "Sin enlace MAVLink"]] : []),
-    ["Batería", battery ? `${battery.percentage}%` : EMPTY_VALUE],
+    ["Batería", displayedBatteryPercentage !== null ? `${displayedBatteryPercentage}%` : EMPTY_VALUE],
     ["Altitud relativa", telemetry?.position ? `${formatNumber(telemetry.position.relativeAltitude)} m` : EMPTY_VALUE],
     ["Velocidad horizontal", telemetry?.velocity ? `${formatNumber(telemetry.velocity.groundHorizontalSpeedMs)} m/s` : EMPTY_VALUE],
     ["Velocidad vertical", telemetry?.velocity ? `${formatNumber(telemetry.velocity.groundVerticalSpeedMs)} m/s` : EMPTY_VALUE],
