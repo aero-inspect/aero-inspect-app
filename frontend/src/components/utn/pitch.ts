@@ -1,6 +1,19 @@
 import * as THREE from "three";
 import { UTN_FOOTPRINTS } from "../../data/utnFootprints";
 
+/** Midpoint of the two front corners of the small goal area, nearest the shed. */
+export function smallPitchGoalAreaCenter(project: (p: readonly number[]) => THREE.Vector3) {
+  const p = UTN_FOOTPRINTS["Cancha 2"].map(project);
+  const goal = UTN_FOOTPRINTS["Arco 1 cancha 2"].map(project)
+    .reduce((center, corner) => center.add(corner), new THREE.Vector3()).multiplyScalar(.25);
+  const width = (p[0].distanceTo(p[1]) + p[3].distanceTo(p[2])) / 2;
+  const length = (p[0].distanceTo(p[3]) + p[1].distanceTo(p[2])) / 2;
+  const edge = p[2].clone().sub(p[3]);
+  const x = THREE.MathUtils.clamp(goal.clone().sub(p[3]).dot(edge) / edge.lengthSq(), .3, .7);
+  const z = 1 - Math.min(5.5, length * .07) / length;
+  return p[0].clone().lerp(p[1], x).lerp(p[3].clone().lerp(p[2], x), z);
+}
+
 /** Painted markings fitted to the supplied four-corner pitch. Dimensions are
  * a visual reconstruction, not a surveyed or certified sporting layout. */
 export function buildPitchMarkings(project: (p: readonly number[]) => THREE.Vector3, second = false) {
@@ -40,16 +53,18 @@ export function buildPitchMarkings(project: (p: readonly number[]) => THREE.Vect
     const base=end===0?0:length,sign=end===0?1:-1;
     const boxWidth=Math.min(40.32,width*.8),depth=Math.min(16.5,length*.2);
     const smallWidth=Math.min(18.32,width*.4),smallDepth=Math.min(5.5,length*.07);
-    for(const [w,d] of [[boxWidth,depth],[smallWidth,smallDepth]]) {
+    for(const [w,d] of (second ? [[smallWidth,smallDepth]] : [[boxWidth,depth],[smallWidth,smallDepth]])) {
       line(cx-w/2,base,cx-w/2,base+sign*d);
       line(cx-w/2,base+sign*d,cx+w/2,base+sign*d);
       line(cx+w/2,base+sign*d,cx+w/2,base);
     }
-    const penalty=Math.min(11,length*.13);spot(cx,base+sign*penalty);
-    const radius=Math.min(9.15,width*.18);
-    const angle=Math.asin(THREE.MathUtils.clamp((depth-penalty)/radius,0,1));
-    if(end===0)arc(cx,base+penalty,radius,angle,Math.PI-angle);
-    else arc(cx,base-penalty,radius,Math.PI+angle,2*Math.PI-angle);
+    if (!second) {
+      const penalty=Math.min(11,length*.13);spot(cx,base+sign*penalty);
+      const radius=Math.min(9.15,width*.18);
+      const angle=Math.asin(THREE.MathUtils.clamp((depth-penalty)/radius,0,1));
+      if(end===0)arc(cx,base+penalty,radius,angle,Math.PI-angle);
+      else arc(cx,base-penalty,radius,Math.PI+angle,2*Math.PI-angle);
+    }
   });
   arc(0,0,1,0,Math.PI/2);arc(width,0,1,Math.PI/2,Math.PI);
   arc(width,length,1,Math.PI,1.5*Math.PI);arc(0,length,1,1.5*Math.PI,2*Math.PI);

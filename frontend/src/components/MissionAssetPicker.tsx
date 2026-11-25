@@ -12,7 +12,7 @@ import { SelectedPlant3DMap as BragadoPlant3DMap } from "./SelectedPlant3DMap";
 import { LoadingState } from "./LoadingState";
 import { useSelectedPlant } from "../data/PlantContext";
 
-const INSPECTABLE_TYPES = ["SILO", "SILO_FLOTANTE", "CELDA", "NORIA", "SECADORA", "BANQUETA"];
+const INSPECTABLE_TYPES = ["SILO", "SILO_FLOTANTE", "CELDA", "NORIA", "SECADORA", "BANQUETA", "ESTUFA", "TAMBOR_METALICO"];
 
 export function resolveInspectionPlan(asset: BackendAsset, plans: BackendFlightPlan[]) {
   if (!INSPECTABLE_TYPES.includes(asset.type)) return null;
