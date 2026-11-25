@@ -82,7 +82,7 @@ export function PhotoResultCard({ canRemove, index, onRemove, photo, assignment,
           {crackResult && <div className={`real-report-result-badge ${crackResult.tone}`}>{crackResult.label}</div>}
           {deformationResult && <div className={`real-report-result-badge ${deformationResult.tone}`}>{deformationResult.label}</div>}
           <dl className="real-report-result-data">
-            <div><dt>Tipo de anomalia</dt><dd>{getAnomalyType(report, crack, deformation)}</dd></div>
+            <div><dt>Tipo de anomalía</dt><dd>{getAnomalyType(report, crack, deformation)}</dd></div>
             <div><dt>Fecha de la foto</dt><dd><CalendarDays size={15} /> {/^\d{4}-\d{2}-/.test(photo.photoDate.value) ? new Date(photo.photoDate.value).toLocaleString("es-AR") : photo.photoDate.value} <small>({photo.photoDate.source === "captura" ? "metadato de captura" : "fecha del archivo"})</small></dd></div>
             <div><dt>Área con corrosión</dt><dd>{formatPercent(report.detected_area_percent)}</dd></div>
             {crack && <div><dt>Área con fisuras</dt><dd>{formatPercent(crack.detected_area_percent)}</dd></div>}
@@ -123,7 +123,7 @@ function getResult(report: AiCorrosionReport, severity: AiSeverityReport | null)
   }
   if (report.status === "corrosion_candidate_detected") {
     return {
-      label: "CORROSIÓN DETECTADA - REQUIERE REVISION",
+      label: "CORROSIÓN DETECTADA - REQUIERE REVISIÓN",
       tone: "review",
       description: severityDescription
     };
@@ -138,39 +138,39 @@ function getResult(report: AiCorrosionReport, severity: AiSeverityReport | null)
 function getCrackResult(crack: AiCrackReport) {
   if (crack.status === "crack_candidate_detected") {
     return {
-      label: "FISURA DETECTADA - REQUIERE REVISION",
+      label: "FISURA DETECTADA - REQUIERE REVISIÓN",
       tone: "review",
-      description: "El modelo marco lineas compatibles con fisuras. Validar en campo: juntas, bordes o sombras pueden generar falsas alarmas."
+      description: "El modelo marcó líneas compatibles con fisuras. Validar en campo: juntas, bordes o sombras pueden generar falsas alarmas."
     };
   }
   return {
     label: "SIN FISURAS DETECTADAS",
     tone: "clear",
-    description: "El modelo no marco fisuras visibles en esta imagen."
+    description: "El modelo no marcó fisuras visibles en esta imagen."
   };
 }
 
 function getDeformationResult(deformation: AiDeformationReport) {
   if (deformation.status === "deformation_candidate_detected") {
     return {
-      label: "DEFORMACIÓN DETECTADA - REQUIERE REVISION",
+      label: "DEFORMACIÓN DETECTADA - REQUIERE REVISIÓN",
       tone: "review",
-      description: "El modelo detecto zonas compatibles con deformaciones en metal. Validar en campo: reflejos, sombras o irregularidades de soldadura pueden generar falsas alarmas."
+      description: "El modelo detectó zonas compatibles con deformaciones en metal. Validar en campo: reflejos, sombras o irregularidades de soldadura pueden generar falsas alarmas."
     };
   }
   return {
     label: "SIN DEFORMACIONES DETECTADAS",
     tone: "clear",
-    description: "El modelo no detecto deformaciones visibles en esta imagen."
+    description: "El modelo no detectó deformaciones visibles en esta imagen."
   };
 }
 
 function getAnomalyType(report: AiCorrosionReport, crack: AiCrackReport | null, deformation?: AiDeformationReport | null) {
   const parts: string[] = [];
-  if (report.status === "corrosion_candidate_detected") parts.push("Corrosion");
+  if (report.status === "corrosion_candidate_detected") parts.push("Corrosión");
   if (crack?.status === "crack_candidate_detected") parts.push("Fisura");
-  if (deformation?.status === "deformation_candidate_detected") parts.push("Deformacion");
-  return parts.length > 0 ? parts.join(", ") : "Sin anomalias";
+  if (deformation?.status === "deformation_candidate_detected") parts.push("Deformación");
+  return parts.length > 0 ? parts.join(", ") : "Sin anomalías";
 }
 
 function formatPercent(value: unknown) {
