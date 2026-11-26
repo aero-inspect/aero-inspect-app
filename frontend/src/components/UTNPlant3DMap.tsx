@@ -147,8 +147,8 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       }
       platform.scale.set(.85, 1, .85);
       dock.add(platform);
-      // Base del dron en Lugano: sobre la Banqueta inicio (ACT-8B586BAC). Es solo visual: el despegue
-      // del plan demo y el home del simulador siguen en -34.658170, -58.466981 (~1 m al noroeste).
+      // Base del dron en Lugano: sobre la Banqueta inicio (ACT-8B586BAC), que es el despegue del plan
+      // demo. El home del simulador PX4 quedo ~1 m al noroeste; el flight-controller ancla el plan al dron.
       dock.position.copy(local([-58.46697110019356,-34.65817664557261]));
       missionPlayback=createMissionPlayback(scene,dock,camera,controls,utnPlaybackReference);
       playbackController.current=missionPlayback;
