@@ -1,4 +1,4 @@
-import { Fragment, Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowRight, LogOut, Package, MapPin, Radio, CheckCircle2, Clock, AlertCircle, Home as HomeIcon, Plane, ChevronLeft, ChevronRight, UsersRound, Route as RouteIcon } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
@@ -25,7 +25,6 @@ import { MonitorMissionView } from "./MonitorMission";
 import { ReportesView } from "./ReportesConnected";
 import { CrearReporteView } from "./CrearReporte";
 import { ReporteDetalleView } from "./ReporteDetalle";
-import { TemporaryManualAnalysisShortcut } from "../components/TemporaryManualAnalysisShortcut";
 import { ReporteDetalleRealView } from "./ReporteDetalleReal";
 import { CentroAyudaView } from "./CentroAyuda";
 import { ActividadRecienteView } from "./ActividadReciente";
@@ -40,7 +39,6 @@ import { ActivityProvider } from "../data/ActivityContext";
 import { setApiPlant } from "../api/client";
 
 
-const ManualAnalysisView = lazy(() => import("./ManualAnalysis").then(module => ({ default: module.ManualAnalysisView })));
 
 export function Home({
   plant: selectedPlant,
@@ -124,8 +122,7 @@ export function Home({
   const isCreateReportPath = currentPath === ROUTES.reportsNew;
   const isReportDetailPath = currentPath === ROUTES.reportsDemoDetail;
   const isSavedReportPath = detailOf(ROUTES.reports, RESERVED_SEGMENTS.reports) !== null;
-  const isTemporaryAnalysisPath = currentPath === ROUTES.reportsManualAnalysis;
-  const isReportDetailRealPath = isSavedReportPath || isTemporaryAnalysisPath;
+  const isReportDetailRealPath = isSavedReportPath;
   const isHelpPath = currentPath === ROUTES.help;
   const isActivityPath = currentPath === ROUTES.profileActivity;
   const isPruebaTelemetriaPath = currentPath === ROUTES.dronesTelemetryTest;
@@ -320,14 +317,11 @@ export function Home({
           ))}
           <Route path={rel(ROUTES.reportsNew)} element={<CrearReporteView onBack={() => navigateTo(ROUTES.reports)} />} />
           <Route path={rel(ROUTES.reportsDemoDetail)} element={<ReporteDetalleView onBack={() => navigateTo(ROUTES.reports)} />} />
-          <Route path={rel(ROUTES.reportsManualAnalysis)} element={
-            <Suspense fallback={<LoadingState text="Cargando herramienta manual..." compact />}><ManualAnalysisView onBack={() => navigateTo(ROUTES.reports)} onViewReport={code => navigateTo(ROUTES.report(code))} /></Suspense>
-          } />
           <Route path={`${rel(ROUTES.reports)}/:reportCode`} element={<ReportDetailRoute onBack={() => navigateTo(ROUTES.reports)} onViewAsset={viewAssetHistory} />} />
           <Route path={rel(ROUTES.help)} element={<CentroAyudaView />} />
           <Route path={rel(ROUTES.profileActivity)} element={<ActividadRecienteView />} />
           <Route path={rel(ROUTES.reports)} element={
-            <div className="reports-route-shell"><TemporaryManualAnalysisShortcut onOpen={() => navigateTo(ROUTES.reportsManualAnalysis)} /><ReportesView initialAssetId={reportCaptureAssetId} onViewReport={(code) => navigateTo(ROUTES.report(code))} /></div>
+            <div className="reports-route-shell"><ReportesView initialAssetId={reportCaptureAssetId} onViewReport={(code) => navigateTo(ROUTES.report(code))} /></div>
           } />
           <Route path={rel(ROUTES.home)} element={
             user.role === "Jefe de Planta" || user.role === "Técnico de Mantenimiento" ? (
