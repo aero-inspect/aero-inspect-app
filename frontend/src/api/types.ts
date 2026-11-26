@@ -2,7 +2,7 @@
 // No confundir con los tipos de src/types/index.ts, que son del modelo mock/local
 // que todavía usan RegistrarActivo/MisActivos/ConfigurarMision.
 
-export type BackendAssetType = "SILO" | "NORIA" | "CINTA_TRANSPORTADORA" | "TUBERIA" | "TECHO" | "SILO_FLOTANTE" | "CELDA" | "SECADORA" | "BANQUETA";
+export type BackendAssetType = "SILO" | "NORIA" | "CINTA_TRANSPORTADORA" | "TUBERIA" | "TECHO" | "SILO_FLOTANTE" | "CELDA" | "SECADORA" | "BANQUETA" | "ESTUFA" | "TAMBOR_METALICO";
 export type BackendAssetStatus = "ACTIVE" | "MAINTENANCE" | "OUT_OF_SERVICE" | "UNCONFIRMED";
 
 // Metadata de un adjunto: el contenido se baja aparte (downloadAssetDocument), nunca viene en el JSON.

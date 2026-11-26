@@ -10,6 +10,8 @@ export const ASSET_TYPE_COLORS: Record<AssetType, string> = {
   "Silo flotante": "#368b80",
   Celda: "#637ca0",
   Secadora: "#ac7755",
+  "Tambor Metálico": "#0879bf",
+  Estufa: "#d4d2c5",
   Banqueta: "#303438"
 };
 export const DRONE_OPERATION_ROLES = ["Técnico de Mantenimiento"];

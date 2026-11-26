@@ -21,7 +21,7 @@ export type MockUser = {
   profileImage?: string;
 };
 
-export type AssetType = "Silo" | "Noria" | "Cinta transportadora" | "Tuberia" | "Techo" | "Silo flotante" | "Celda" | "Secadora" | "Banqueta";
+export type AssetType = "Silo" | "Noria" | "Cinta transportadora" | "Tuberia" | "Techo" | "Silo flotante" | "Celda" | "Secadora" | "Banqueta" | "Estufa" | "Tambor Metálico";
 
 export type AssetImage = {
   id: number;

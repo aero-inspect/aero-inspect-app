@@ -4,10 +4,12 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Crosshair, LocateFixed, Minus, Plus } from "lucide-react";
 import type { BragadoPlant3DMap } from "./BragadoPlant3DMap";
 import { createStool, disposeAssetGroup } from "./lujan/assets";
+import { createHeater } from "./lujan/heater";
+import { createMetalDrum } from "./lujan/metalDrum";
 import { assetBelongsToPlant } from "../data/plantScope";
 import { UTN_PLANT } from "../data/plants";
 import { BACKEND_ASSET_TYPE_LABELS } from "../api/constants";
-import { buildPitchMarkings } from "./utn/pitch";
+import { buildPitchMarkings, smallPitchGoalAreaCenter } from "./utn/pitch";
 import { surface } from "./utn/materials";
 import { buildSpaceTwo } from "./utn/spaceTwo";
 import { buildUtnBuildings } from "./utn/buildings";
@@ -27,7 +29,7 @@ const utnPlaybackReference: PlaybackGeoreference = {
     if (!Number.isFinite(point.latitude) || !Number.isFinite(point.longitude) ||
         Math.abs(point.latitude) > 90 || Math.abs(point.longitude) > 180 ||
         height === undefined || !Number.isFinite(height)) return null;
-    return local([point.longitude, point.latitude]).setY(.113 * UTN_DRONE_SCALE + height);
+    return local([point.longitude, point.latitude]).setY(.113 * UTN_DRONE_SCALE + Math.max(0, height));
   }
 };
 
@@ -35,6 +37,13 @@ const utnPlaybackReference: PlaybackGeoreference = {
 const lat0 = -34.6584, lon0 = -58.4678;
 const lonScale = 111320 * Math.cos(lat0 * Math.PI / 180);
 const local = ([lon, lat]: readonly number[]) => new THREE.Vector3((lon-lon0)*lonScale, 0, -(lat-lat0)*110940);
+// Align the small goal-area corners with the two fixed demo stools; flight coordinates stay untouched.
+const stoolCenter = local([
+  (-58.46697110019356 - 58.46704569581885) / 2,
+  (-34.65817664557261 - 34.658225717413075) / 2
+]);
+const smallPitchOffset = stoolCenter.sub(smallPitchGoalAreaCenter(local));
+const smallPitchProject = (point: readonly number[]) => local(point).add(smallPitchOffset);
 export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, onViewAsset, focusedAssetCode, assetSelection, playback }: ComponentProps<typeof BragadoPlant3DMap> & { selectedLocation?: { latitude: string; longitude: string }; onSelect?: (location: { latitude: string; longitude: string }) => void }) {
   const playbackRef=useRef(playback);playbackRef.current=playback;
   const playbackController=useRef<ReturnType<typeof createMissionPlayback>|null>(null);
@@ -46,6 +55,7 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
   assetProps.current={assets,filters,onViewAsset,focusedAssetCode,assetSelection};
   const refreshAssets=useRef<() => void>(()=>{});
   useEffect(()=>{refreshAssets.current();},[assets,filters,onViewAsset,focusedAssetCode,assetSelection]);
+  useEffect(()=>{refreshAssets.current();},[playback?.points]);
   const host = useRef<HTMLDivElement>(null);
   const select = useRef(onSelect); select.current = onSelect;
   const markerRef = useRef<THREE.Mesh | null>(null);
@@ -113,7 +123,7 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
     for (const [name, ring] of Object.entries(UTN_FOOTPRINTS).sort(([a],[b])=>Number(b==="Espacio 2")-Number(a==="Espacio 2"))) {
       // User confirmed Galpon and Galpon2 refer to the same building.
       if (name.startsWith("Arco") || name === "Galpon2") continue;
-      const points=ring.map(local);
+      const points=ring.map(name === "Cancha 2" ? smallPitchProject : local);
       const shape=new THREE.Shape(points.map(p=>new THREE.Vector2(p.x,-p.z)));
       const color=name==="Cancha 1"?0x6e9154:name==="Pasillo abierto"?0x77915a:name.includes("descanso")?0xa4b68a:0x8999a5;
       const mesh=new THREE.Mesh(new THREE.ShapeGeometry(shape),name.startsWith("Cancha") ? pitchGrass : name==="Pasillo abierto" || name==="Espacio 2" || name.includes("descanso") ? grass : new THREE.MeshStandardMaterial({color,side:THREE.DoubleSide,roughness:1}));
@@ -121,12 +131,20 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       // KML sectors delimit geometry; they are not painted white lines on site.
     }
     scene.add(buildPitchMarkings(local));
-    scene.add(buildPitchMarkings(local,true));
-    const buildings=buildUtnBuildings(local);buildings.add(buildSpaceTwo(local));scene.add(buildings);
+    scene.add(buildPitchMarkings(smallPitchProject,true));
+    const buildings=buildUtnBuildings(local);buildings.add(buildSpaceTwo(local,smallPitchProject));scene.add(buildings);
     let missionPlayback: ReturnType<typeof createMissionPlayback> | null = null;
     if (playbackRef.current) {
       const dock=addMissionDrone(scene);
       dock.scale.setScalar(UTN_DRONE_SCALE);
+      // Reduce the platform footprint by 15%, preserving aircraft size and ground height.
+      const platform = new THREE.Group();
+      platform.name = "Lugano landing platform";
+      for (const child of [...dock.children]) {
+        if (child.name !== "Reference quadcopter") platform.add(child);
+      }
+      platform.scale.set(.85, 1, .85);
+      dock.add(platform);
       // Base del dron = TAKEOFF del plan demo de Lugano (mismo punto que el home del simulador PX4).
       // Base del dron en Lugano: despegue del plan "Rectangulo Lugano" y home del simulador.
       dock.position.copy(local([-58.466981,-34.658170]));
@@ -171,6 +189,12 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       disposeAssetGroup(assetLayer);labels.forEach(l=>l.button.remove());labels=[];
       const props=assetProps.current;
       drawRoute(props.assetSelection?.route ?? []);
+      const route = props.assetSelection?.route ?? playbackRef.current?.points ?? [];
+      const isRectangleDemo = [
+        [-34.658288, -58.46683],
+        [-34.658342, -58.466892]
+      ].every(([latitude, longitude]) => route.some(point =>
+        Math.abs(point.latitude - latitude) < .000015 && Math.abs(point.longitude - longitude) < .000015));
       const statuses={ACTIVE:"Activo",MAINTENANCE:"En mantenimiento",OUT_OF_SERVICE:"Fuera de servicio",UNCONFIRMED:"Sin confirmar"};
       for(const asset of props.assets) {
         if(asset.idAsset<=0 || !assetBelongsToPlant(asset,UTN_PLANT))continue;
@@ -182,8 +206,15 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
         const ray=new THREE.Raycaster(position.clone().setY(40),new THREE.Vector3(0,-1,0));
         position.y=(ray.intersectObject(buildings,true)[0]?.point.y ?? 0)+.01;
         const item=new THREE.Group();item.userData.idAsset=asset.idAsset;assetLayer.add(item);
-        if (asset.type === "BANQUETA") {
-          const stool=createStool();stool.position.copy(position);item.add(stool);
+        if (asset.type === "TAMBOR_METALICO") {
+          const drum=createMetalDrum();drum.position.copy(position);item.add(drum);
+        } else if (asset.type === "ESTUFA") {
+          const heater=createHeater();heater.position.copy(position);item.add(heater);
+        } else if (asset.type === "BANQUETA") {
+          // The demo route keeps both stools as selectable waypoints without rendering their 3D bodies.
+          if (!(isRectangleDemo && ["ACT-8B586BAC", "ACT-F536EFAF"].includes(asset.code))) {
+            const stool=createStool();stool.position.copy(position);item.add(stool);
+          }
         } else {
           // The map must expose every asset in the plant.  A neutral marker avoids
           // representing roofs, sheds and industrial equipment as benches.

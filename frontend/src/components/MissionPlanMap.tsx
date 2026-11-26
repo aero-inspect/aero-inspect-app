@@ -20,6 +20,8 @@ export const ASSET_TYPE_ICONS: Record<BackendAssetType, typeof Cylinder> = {
   SILO_FLOTANTE: Cylinder,
   CELDA: Building2,
   SECADORA: Wind,
+  TAMBOR_METALICO: Cylinder,
+  ESTUFA: Building2,
   BANQUETA: Armchair
 };
 

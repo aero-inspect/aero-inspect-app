@@ -276,6 +276,7 @@ export function MisMisionesView({
   };
 
   const handleAssignPilot = async (mission: BackendMission, username: string | null) => {
+    if (mission.status !== "PLANNED") return;
     setStartError(null);
     setSavingPilotMissionId(mission.idMission);
     try {
@@ -575,7 +576,7 @@ export function MisMisionesView({
                             <span className={`mission-state ${statusClass(statusLabel)}`}>{statusLabel}</span>
                           </td>
                           <td onClick={(event) => event.stopPropagation()}>
-                            {user.role === "Jefe de Planta" ? (
+                            {user.role === "Jefe de Planta" && mission.status === "PLANNED" ? (
                               <div className={mission.assignedPilotUsername ? "mission-pilot-select selected" : "mission-pilot-select"}>
                                 <button
                                   disabled={savingPilotMissionId === mission.idMission}

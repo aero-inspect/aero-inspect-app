@@ -56,7 +56,7 @@ export function createMissionPlayback(scene:T.Scene,dock:T.Group,camera:T.Perspe
   function update(data:MissionPlaybackData){
     const nextMode=data.trailMode==='real'?'real':'guide',modeChanged=nextMode!==mode;mode=nextMode;
     if(data.id!==id){save();id=data.id;last=null;trail=[];guideProgress=0;routeKey='';terminal=false;following=false;drone.position.copy(home);drone.quaternion.identity();
-      try{const saved=JSON.parse(sessionStorage.getItem(storagePrefix+id)||'null');if(saved&&Number.isFinite(saved.guide))guideProgress=Math.max(0,saved.guide);if(saved&&Array.isArray(saved.trail)&&saved.trail.every((p:unknown)=>Array.isArray(p)&&p.length===3&&p.every(Number.isFinite))&&saved.last&&Number.isFinite(saved.last.time)&&Number.isFinite(saved.last.heading)&&Array.isArray(saved.last.position)&&saved.last.position.length===3&&saved.last.position.every(Number.isFinite)){trail=saved.trail.slice(-MAX_POINTS);last=saved.last;drone.position.fromArray(last!.position);drone.rotation.y=last!.heading;}}catch{/* Ignore invalid saved visualization data. */}redraw();duration=0;
+      try{const saved=JSON.parse(sessionStorage.getItem(storagePrefix+id)||'null');if(saved&&Number.isFinite(saved.guide))guideProgress=Math.max(0,saved.guide);if(saved&&Array.isArray(saved.trail)&&saved.trail.every((p:unknown)=>Array.isArray(p)&&p.length===3&&p.every(Number.isFinite))&&saved.last&&Number.isFinite(saved.last.time)&&Number.isFinite(saved.last.heading)&&Array.isArray(saved.last.position)&&saved.last.position.length===3&&saved.last.position.every(Number.isFinite)){trail=saved.trail.slice(-MAX_POINTS);last=saved.last;drone.position.fromArray(last!.position);drone.position.y=Math.max(groundHeight,drone.position.y);drone.rotation.y=last!.heading;}}catch{/* Ignore invalid saved visualization data. */}redraw();duration=0;
     }
     const points=[...data.points].sort((a,b)=>a.sequence-b.sequence),key=JSON.stringify(points);
     if(key!==routeKey){routeKey=key;const positions=points.map(project).filter((p):p is T.Vector3=>p!==null);planned.geometry.dispose();planned.geometry=new T.BufferGeometry().setFromPoints(positions);guideRoute=positions;if(mode==='guide')redraw();if(!last&&positions.length&&!reference?.stayAtDockUntilTelemetry){drone.position.copy(positions[0]);drone.rotation.y=T.MathUtils.degToRad(-(points[0].droneDegree??0)+northRotation);} }
@@ -87,6 +87,7 @@ from.copy(drone.position);target.copy(position);fromRotation.copy(drone.quaterni
     const dt=Math.min(.1,(now-previousFrame)/1000);previousFrame=now;
     if(spinning&&!terminal)propellers.forEach((propeller,i)=>{propeller.rotation.y=(propeller.rotation.y+dt*90*(i%2?1:-1))%(Math.PI*2);});
     if(duration){const t=Math.min(1,(now-start)/duration);drone.position.lerpVectors(from,target,t);drone.quaternion.slerpQuaternions(fromRotation,targetRotation,t);if(t===1)duration=0;}
+    drone.position.y=Math.max(groundHeight,drone.position.y);
     if(following){const movement=drone.position.clone().sub(controls.target).multiplyScalar(1-Math.exp(-dt*5));controls.target.add(movement);camera.position.add(movement);}
   },destroy(){save();planned.geometry.dispose();actual.geometry.dispose();plannedMaterial.dispose();actualMaterial.dispose();planned.removeFromParent();actual.removeFromParent();}};
 }

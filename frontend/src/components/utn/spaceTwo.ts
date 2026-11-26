@@ -4,7 +4,7 @@ import { surface } from './materials';
 
 // Footprints surveyed in the supplied KML; heights and facade details estimated
 // from the October 31 photographs. Local shed +z points toward the pitch.
-export function buildSpaceTwo(project: (p: readonly number[]) => THREE.Vector3) {
+export function buildSpaceTwo(project: (p: readonly number[]) => THREE.Vector3, pitchProject = project) {
   const group = new THREE.Group(); group.name = 'UTN · Espacio 2';
   const white = surface(0xdadbd1, 'plaster');
   const sage = surface(0x8e9c80, 'plaster');
@@ -52,10 +52,10 @@ export function buildSpaceTwo(project: (p: readonly number[]) => THREE.Vector3) 
   box(shed,.15,.12,3.3,-width/2-.1,4,-1.8,green);
   box(shed,.09,2.1,1,-width/2-.04,1.05,-depth*.7,green);
 
-  const pitch=UTN_FOOTPRINTS['Cancha 2'].map(project);
+  const pitch=UTN_FOOTPRINTS['Cancha 2'].map(pitchProject);
   const center=pitch.reduce((a,b)=>a.add(b),new THREE.Vector3()).multiplyScalar(.25);
   for(const name of ['Arco 1 cancha 2','Arco 2 cancha 2'] as const){
-    const ring=UTN_FOOTPRINTS[name].map(project);
+    const ring=UTN_FOOTPRINTS[name].map(pitchProject);
     const short=ring.reduce((best,a,i)=>a.distanceTo(ring[(i+1)%4])<ring[best].distanceTo(ring[(best+1)%4])?i:best,0);
     const a=ring[short].clone().add(ring[(short+1)%4]).multiplyScalar(.5);
     const b=ring[(short+2)%4].clone().add(ring[(short+3)%4]).multiplyScalar(.5);

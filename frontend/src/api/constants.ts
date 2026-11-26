@@ -16,6 +16,8 @@ export const BACKEND_ASSET_TYPE_COLORS: Record<BackendAssetType, string> = {
   SILO_FLOTANTE: "#bf40b3",
   CELDA: "#bf4084",
   SECADORA: "#60bf40",
+  TAMBOR_METALICO: "#0879bf",
+  ESTUFA: "#d4d2c5",
   BANQUETA: "#303438"
 };
 
@@ -28,6 +30,8 @@ export const BACKEND_ASSET_TYPE_LABELS: Record<BackendAssetType, string> = {
   SILO_FLOTANTE: "Silo flotante",
   CELDA: "Celda",
   SECADORA: "Secadora",
+  TAMBOR_METALICO: "Tambor Metálico",
+  ESTUFA: "Estufa",
   BANQUETA: "Banqueta"
 };
 
