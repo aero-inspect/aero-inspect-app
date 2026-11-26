@@ -44,6 +44,8 @@ const stoolCenter = local([
 ]);
 const smallPitchOffset = stoolCenter.sub(smallPitchGoalAreaCenter(local));
 const smallPitchProject = (point: readonly number[]) => local(point).add(smallPitchOffset);
+// Banqueta inicio y Banqueta fin del rectangulo de la demo.
+const DEMO_HIDDEN_STOOLS = ["ACT-8B586BAC", "ACT-F536EFAF"];
 export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, onViewAsset, focusedAssetCode, assetSelection, playback }: ComponentProps<typeof BragadoPlant3DMap> & { selectedLocation?: { latitude: string; longitude: string }; onSelect?: (location: { latitude: string; longitude: string }) => void }) {
   const playbackRef=useRef(playback);playbackRef.current=playback;
   const playbackController=useRef<ReturnType<typeof createMissionPlayback>|null>(null);
@@ -145,9 +147,9 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       }
       platform.scale.set(.85, 1, .85);
       dock.add(platform);
-      // Base del dron = TAKEOFF del plan demo de Lugano (mismo punto que el home del simulador PX4).
-      // Base del dron en Lugano: despegue del plan "Rectangulo Lugano" y home del simulador.
-      dock.position.copy(local([-58.466981,-34.658170]));
+      // Base del dron en Lugano: sobre la Banqueta inicio (ACT-8B586BAC). Es solo visual: el despegue
+      // del plan demo y el home del simulador siguen en -34.658170, -58.466981 (~1 m al noroeste).
+      dock.position.copy(local([-58.46697110019356,-34.65817664557261]));
       missionPlayback=createMissionPlayback(scene,dock,camera,controls,utnPlaybackReference);
       playbackController.current=missionPlayback;
       missionPlayback.update(playbackRef.current);
@@ -189,12 +191,6 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       disposeAssetGroup(assetLayer);labels.forEach(l=>l.button.remove());labels=[];
       const props=assetProps.current;
       drawRoute(props.assetSelection?.route ?? []);
-      const route = props.assetSelection?.route ?? playbackRef.current?.points ?? [];
-      const isRectangleDemo = [
-        [-34.658288, -58.46683],
-        [-34.658342, -58.466892]
-      ].every(([latitude, longitude]) => route.some(point =>
-        Math.abs(point.latitude - latitude) < .000015 && Math.abs(point.longitude - longitude) < .000015));
       const statuses={ACTIVE:"Activo",MAINTENANCE:"En mantenimiento",OUT_OF_SERVICE:"Fuera de servicio",UNCONFIRMED:"Sin confirmar"};
       for(const asset of props.assets) {
         if(asset.idAsset<=0 || !assetBelongsToPlant(asset,UTN_PLANT))continue;
@@ -211,8 +207,9 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
         } else if (asset.type === "ESTUFA") {
           const heater=createHeater();heater.position.copy(position);item.add(heater);
         } else if (asset.type === "BANQUETA") {
-          // The demo route keeps both stools as selectable waypoints without rendering their 3D bodies.
-          if (!(isRectangleDemo && ["ACT-8B586BAC", "ACT-F536EFAF"].includes(asset.code))) {
+          // Las dos banquetas del rectangulo de la demo son invisibles en todas las pantallas: siguen
+          // como activo (con su etiqueta) para que el dron frene ahi, pero no se dibuja la banqueta.
+          if (!DEMO_HIDDEN_STOOLS.includes(asset.code)) {
             const stool=createStool();stool.position.copy(position);item.add(stool);
           }
         } else {
