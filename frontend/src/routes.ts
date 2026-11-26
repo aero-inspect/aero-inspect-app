@@ -20,7 +20,6 @@ export const ROUTES = {
   reports: "/reports",
   reportsNew: "/reports/new",
   reportsDemoDetail: "/reports/demo-detail",
-  reportsManualAnalysis: "/reports/manual-analysis",
   report: (code: string) => `/reports/${encodeURIComponent(code)}`,
   profile: "/profile",
   profileActivity: "/profile/activity",
@@ -62,7 +61,7 @@ const LEGACY_ROUTES: Record<string, string> = {
   "/crear-reporte": ROUTES.reportsNew,
   "/reporte-detalle": ROUTES.reportsDemoDetail,
   "/reporte-detalle-real": ROUTES.reports,
-  "/analisis-manual": ROUTES.reportsManualAnalysis,
+  "/analisis-manual": ROUTES.reports,
   "/perfil": ROUTES.profile,
   "/actividad-reciente": ROUTES.profileActivity,
   "/centro-ayuda": ROUTES.help
