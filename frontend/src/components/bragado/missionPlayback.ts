@@ -9,9 +9,11 @@ export type MissionRoutePoint={latitude:number;longitude:number;altitude:number;
 export type MissionPlaybackData={id:string;status:string;points:MissionRoutePoint[];telemetry:TelemetryUpdate|null;trailMode?:'guide'|'real'};
 type Sample={position:number[];heading:number;time:number};
 const MAX_POINTS=4096;
-export type PlaybackGeoreference={toPosition:(point:GeographicPosition)=>T.Vector3|null;northRotationDegrees:number;groundHeight:number;storagePrefix:string;stayAtDockUntilTelemetry?:boolean;showActualTrail?:boolean};
+// telemetryToPosition: opcional, sólo para la posición que llega por telemetría (sin ella se usa toPosition).
+export type PlaybackGeoreference={toPosition:(point:GeographicPosition)=>T.Vector3|null;telemetryToPosition?:(point:GeographicPosition)=>T.Vector3|null;northRotationDegrees:number;groundHeight:number;storagePrefix:string;stayAtDockUntilTelemetry?:boolean;showActualTrail?:boolean};
 export function createMissionPlayback(scene:T.Scene,dock:T.Group,camera:T.PerspectiveCamera,controls:OrbitControls,reference?:PlaybackGeoreference){
   const project=reference?.toPosition ?? toPlantPosition;
+  const projectTelemetry=reference?.telemetryToPosition ?? project;
   const northRotation=reference?.northRotationDegrees ?? plantGeoreference.northRotationDegrees;
   const groundHeight=reference?.groundHeight ?? plantGeoreference.groundHeight;
   const storagePrefix=reference?.storagePrefix ?? 'aeroinspect.mission-trail.';
@@ -68,7 +70,7 @@ export function createMissionPlayback(scene:T.Scene,dock:T.Group,camera:T.Perspe
     if(terminal)return;
     const packet=data.telemetry;
     if(packet&&packet.missionId===id&&packet.position&&data.status!=='PLANNED'){
-      const position=project(packet.position),time=Date.parse(packet.timestamp);
+      const position=projectTelemetry(packet.position),time=Date.parse(packet.timestamp);
       if(position&&Number.isFinite(time)&&(!last||time>last.time)){
         const delta=last?position.clone().sub(new T.Vector3().fromArray(last.position)):new T.Vector3();
         const heading=Number.isFinite(packet.velocity?.headingDegree)?T.MathUtils.degToRad(-packet.velocity!.headingDegree+northRotation):delta.x*delta.x+delta.z*delta.z>.04?Math.atan2(-delta.x,-delta.z):last?.heading??drone.rotation.y;

@@ -30,8 +30,18 @@ const utnPlaybackReference: PlaybackGeoreference = {
         Math.abs(point.latitude) > 90 || Math.abs(point.longitude) > 180 ||
         height === undefined || !Number.isFinite(height)) return null;
     return local([point.longitude, point.latitude]).setY(.113 * UTN_DRONE_SCALE + Math.max(0, height));
+  },
+  // El dron se dibuja corrido un valor fijo para que caiga sobre el recorrido del plan. En los vuelos
+  // del 26/11/2026 se apoyo ~6,6 m al sur-sudoeste del despegue del plan (promedio de los anclajes:
+  // 5,2 m al sur, 4,0 m al oeste) y el flight-controller corre todo el plan esa distancia. Es solo
+  // visual: el recorrido, los activos y el vuelo no cambian. Sirve si el dron despega siempre de ese
+  // mismo lugar.
+  telemetryToPosition(point) {
+    return utnPlaybackReference.toPosition(point)?.add(LUGANO_TELEMETRY_SHIFT) ?? null;
   }
 };
+// Metros en el marco local del mapa: x = este, z = sur. 5,2 m al norte y 4,0 m al este.
+const LUGANO_TELEMETRY_SHIFT = new THREE.Vector3(4.0, 0, -5.2);
 
 // Local metric frame: east/right, south/forward. KML elevations are all zero.
 const lat0 = -34.6584, lon0 = -58.4678;
@@ -147,9 +157,9 @@ export function UTNPlant3DMap({ onSelect, selectedLocation, assets=[], filters, 
       }
       platform.scale.set(.85, 1, .85);
       dock.add(platform);
-      // Base del dron en Lugano: sobre la Banqueta inicio (ACT-8B586BAC), que es el despegue del plan
-      // demo. El home del simulador PX4 quedo ~1 m al noroeste; el flight-controller ancla el plan al dron.
-      dock.position.copy(local([-58.46697110019356,-34.65817664557261]));
+      // Base del dron en Lugano: en el despegue del Rectángulo Lugano Demo (-34.65817, -58.466981), que es
+      // donde se dibuja el dron apoyado con el corrimiento de la telemetría (ver telemetryToPosition).
+      dock.position.copy(local([-58.466981,-34.65817]));
       missionPlayback=createMissionPlayback(scene,dock,camera,controls,utnPlaybackReference);
       playbackController.current=missionPlayback;
       missionPlayback.update(playbackRef.current);
